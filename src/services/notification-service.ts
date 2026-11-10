@@ -9,7 +9,10 @@ export type NotificationType =
   | "group_invite"
   | "mention"
   | "system"
-  | "challenge";
+  | "challenge"
+  | "announcement"
+  | "scam_alert"
+  | "emergency";
 
 export interface NotificationItem {
   id: string;
@@ -27,6 +30,17 @@ export interface NotificationItem {
   createdAt?: string;
   isUnread: boolean;
   hasActionButtons?: boolean;
+  announcement?: {
+    id: string;
+    title: string;
+    content: string;
+    category: string;
+    priority: string;
+    targetAudience?: string;
+    isPinned?: boolean;
+    createdAt: string;
+    author?: string;
+  };
 }
 
 interface NotificationsResponse {

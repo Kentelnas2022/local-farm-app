@@ -87,7 +87,13 @@ export default function ResetPasswordScreen() {
       >
         <TouchableOpacity
           className="p-2 self-start rounded-full active:opacity-70"
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/auth/Login");
+            }
+          }}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back-outline" size={26} color="#4B5563" />

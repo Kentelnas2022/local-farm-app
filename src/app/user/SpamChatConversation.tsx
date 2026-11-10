@@ -7,7 +7,7 @@ import {
 } from "@/services/chat-service";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -131,7 +131,10 @@ export default function SpamChatConversation() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+    <SafeAreaView
+      className="flex-1 bg-white"
+      style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+    >
       {/* Top Header */}
       <View className="flex-row items-center justify-between px-4 py-3 bg-white border-b border-gray-100 shadow-2xs z-10">
         <View className="flex-row items-center gap-3 flex-1 pr-2">
@@ -146,17 +149,26 @@ export default function SpamChatConversation() {
 
           <View className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center overflow-hidden border border-gray-200">
             {otherUserAvatar ? (
-              <Image source={{ uri: otherUserAvatar }} className="w-full h-full" resizeMode="cover" />
+              <Image
+                source={{ uri: otherUserAvatar }}
+                className="w-full h-full"
+                resizeMode="cover"
+              />
             ) : (
               <Ionicons name="person" size={22} color="#9CA3AF" />
             )}
           </View>
 
           <View className="flex-1">
-            <Text className="text-base font-bold text-gray-900 leading-tight" numberOfLines={1}>
+            <Text
+              className="text-base font-bold text-gray-900 leading-tight"
+              numberOfLines={1}
+            >
               {otherUserName}
             </Text>
-            <Text className="text-xs text-amber-600 font-medium">Spam Conversation</Text>
+            <Text className="text-xs text-amber-600 font-medium">
+              Spam Conversation
+            </Text>
           </View>
         </View>
       </View>
@@ -165,7 +177,11 @@ export default function SpamChatConversation() {
       <ScrollView
         className="flex-1 bg-[#F9F9F9] px-4 pt-4"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1, justifyContent: messages.length === 0 ? "center" : "flex-end", paddingBottom: 24 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: messages.length === 0 ? "center" : "flex-end",
+          paddingBottom: 24,
+        }}
       >
         {isLoading ? (
           <View className="items-center justify-center py-12">
@@ -179,11 +195,18 @@ export default function SpamChatConversation() {
           messages.map((m) => {
             const isUser = m.sender === "user";
             return (
-              <View key={m.id} className={`flex-row items-end mb-2.5 ${isUser ? "justify-end" : "justify-start"}`}>
+              <View
+                key={m.id}
+                className={`flex-row items-end mb-2.5 ${isUser ? "justify-end" : "justify-start"}`}
+              >
                 {!isUser && (
                   <View className="w-7 h-7 rounded-full bg-gray-300 mr-2 items-center justify-center overflow-hidden border border-gray-200">
                     {otherUserAvatar ? (
-                      <Image source={{ uri: otherUserAvatar }} className="w-full h-full" resizeMode="cover" />
+                      <Image
+                        source={{ uri: otherUserAvatar }}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                      />
                     ) : (
                       <Ionicons name="person" size={14} color="#FFFFFF" />
                     )}
@@ -196,8 +219,11 @@ export default function SpamChatConversation() {
                       : "bg-[#F0F0F0] rounded-bl-xs shadow-2xs"
                   }`}
                 >
-                  <Text className={`text-sm leading-snug ${isUser ? "text-white" : "text-gray-900"}`}>
-                    {m.text || (m.type === "image" ? "📷 [Photo]" : "Shared attachment")}
+                  <Text
+                    className={`text-sm leading-snug ${isUser ? "text-white" : "text-gray-900"}`}
+                  >
+                    {m.text ||
+                      (m.type === "image" ? "📷 [Photo]" : "Shared attachment")}
                   </Text>
                 </View>
               </View>

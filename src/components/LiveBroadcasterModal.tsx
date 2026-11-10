@@ -349,7 +349,7 @@ export default function LiveBroadcasterModal({
             <View className="flex-row items-center gap-2">
               {/* Flip Camera */}
               <TouchableOpacity
-                onPress={() => setFacing((prev) => (prev === "back" ? "front" : "back"))}
+                onPress={() => setFacing((prev: any) => (prev === "back" ? "front" : "back"))}
                 className="w-10 h-10 rounded-full bg-black/60 items-center justify-center border border-white/20 active:opacity-75"
                 accessibilityLabel="Flip Camera"
               >

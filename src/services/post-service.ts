@@ -51,6 +51,14 @@ export interface PostItem {
   expiresAt?: number | string | null;
   durationLabel?: string;
   taggedUsers?: TaggedUser[];
+  isPreHarvest?: boolean;
+  expectedHarvestDate?: string | null;
+  availableQuantity?: number | null;
+  reservedQuantity?: number;
+  cropName?: string | null;
+  unit?: string;
+  pricePerUnit?: number | null;
+  pickupHub?: string | null;
 }
 
 export interface SavedPostItem extends PostItem {
@@ -100,8 +108,22 @@ export interface CreatePostPayload {
   isLiveReplay?: boolean;
 }
 
-export async function getPostsApi(category?: string): Promise<PostItem[]> {
-  const query = category && category !== "All" ? `?category=${encodeURIComponent(category)}` : "";
+export async function getPostsApi(
+  category?: string,
+  userId?: string | number,
+  search?: string
+): Promise<PostItem[]> {
+  const queryParts: string[] = [];
+  if (category && category !== "All") {
+    queryParts.push(`category=${encodeURIComponent(category)}`);
+  }
+  if (userId) {
+    queryParts.push(`userId=${encodeURIComponent(String(userId))}`);
+  }
+  if (search && search.trim()) {
+    queryParts.push(`search=${encodeURIComponent(search.trim())}`);
+  }
+  const query = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
   const res = await apiFetch<{ posts: PostItem[]; count: number }>(`/posts${query}`);
   return res.posts || [];
 }

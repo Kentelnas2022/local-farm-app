@@ -64,7 +64,14 @@ export interface ChatMessage {
   sender: "user" | "other";
   senderId?: string;
   receiverId?: string;
-  type?: "text" | "image" | "location" | "offer" | "auto_reply" | "sticker" | "audio";
+  type?:
+    | "text"
+    | "image"
+    | "location"
+    | "offer"
+    | "auto_reply"
+    | "sticker"
+    | "audio";
   text?: string;
   imageUrl?: string;
   avatarUrl?: string;
@@ -76,7 +83,9 @@ export interface ChatMessage {
 }
 
 export async function getActiveChatUsersApi(): Promise<ActiveChatUser[]> {
-  const res = await apiFetch<{ users: ActiveChatUser[] }>("/chats/active-users");
+  const res = await apiFetch<{ users: ActiveChatUser[] }>(
+    "/chats/active-users",
+  );
   return res.users || [];
 }
 
@@ -84,53 +93,54 @@ export async function getConversationsApi(options?: {
   category?: "messages" | "requests" | "spam" | "archived";
 }): Promise<ConversationItem[]> {
   const category = options?.category || "messages";
-  const res = await apiFetch<{ conversations: ConversationItem[]; count: number }>(
-    `/chats/conversations?category=${category}`
-  );
+  const res = await apiFetch<{
+    conversations: ConversationItem[];
+    count: number;
+  }>(`/chats/conversations?category=${category}`);
   return res.conversations || [];
 }
 
 export async function archiveConversationApi(
   conversationId: string,
-  isArchived = true
+  isArchived = true,
 ): Promise<{ success: boolean; isArchived: boolean }> {
   return await apiFetch<{ success: boolean; isArchived: boolean }>(
     `/chats/conversations/${conversationId}/archive`,
     {
       method: "POST",
       body: JSON.stringify({ isArchived }),
-    }
+    },
   );
 }
 
 export async function spamConversationApi(
   conversationId: string,
-  isSpam = true
+  isSpam = true,
 ): Promise<{ success: boolean; isSpam: boolean }> {
   return await apiFetch<{ success: boolean; isSpam: boolean }>(
     `/chats/conversations/${conversationId}/spam`,
     {
       method: "POST",
       body: JSON.stringify({ isSpam }),
-    }
+    },
   );
 }
 
 export async function acceptMessageRequestApi(
-  conversationId: string
+  conversationId: string,
 ): Promise<{ success: boolean; message: string }> {
   return await apiFetch<{ success: boolean; message: string }>(
     `/chats/conversations/${conversationId}/accept-request`,
     {
       method: "POST",
-    }
+    },
   );
 }
 
 export async function getRestrictedUsersApi(): Promise<RestrictedUserItem[]> {
   try {
     const res = await apiFetch<{ users: RestrictedUserItem[]; count: number }>(
-      "/chats/restricted-users"
+      "/chats/restricted-users",
     );
     return res.users || [];
   } catch {
@@ -140,54 +150,63 @@ export async function getRestrictedUsersApi(): Promise<RestrictedUserItem[]> {
 
 export async function muteConversationApi(
   conversationId: string,
-  isMuted = true
+  isMuted = true,
 ): Promise<{ success: boolean; isMuted: boolean }> {
   return await apiFetch<{ success: boolean; isMuted: boolean }>(
     `/chats/conversations/${conversationId}/mute`,
     {
       method: "POST",
       body: JSON.stringify({ isMuted }),
-    }
+    },
   );
 }
 
 export async function restrictUserApi(
   userId: string,
-  restrict = true
+  restrict = true,
 ): Promise<{ success: boolean; isRestricted: boolean }> {
   return await apiFetch<{ success: boolean; isRestricted: boolean }>(
     `/chats/users/${userId}/restrict`,
     {
       method: "POST",
       body: JSON.stringify({ restrict }),
-    }
+    },
   );
 }
 
 export async function blockUserChatApi(
   userId: string,
-  block = true
+  block = true,
 ): Promise<{ success: boolean; isBlocked: boolean }> {
   return await apiFetch<{ success: boolean; isBlocked: boolean }>(
     `/chats/users/${userId}/block`,
     {
       method: "POST",
       body: JSON.stringify({ block }),
-    }
+    },
   );
 }
 
 export async function getMessagesApi(params: {
   conversationId?: string;
   userId?: string;
-}): Promise<{ messages: ChatMessage[]; conversationId: string | null; isTyping?: boolean }> {
+}): Promise<{
+  messages: ChatMessage[];
+  conversationId: string | null;
+  isTyping?: boolean;
+}> {
   let endpoint = "/chats/messages";
   const queryParams: string[] = [];
-  if (params.conversationId) queryParams.push(`conversationId=${params.conversationId}`);
+  if (params.conversationId)
+    queryParams.push(`conversationId=${params.conversationId}`);
   if (params.userId) queryParams.push(`userId=${params.userId}`);
   if (queryParams.length > 0) endpoint += `?${queryParams.join("&")}`;
 
-  return await apiFetch<{ messages: ChatMessage[]; conversationId: string | null; isTyping?: boolean }>(endpoint);
+  return await apiFetch<{
+    messages: ChatMessage[];
+    conversationId: string | null;
+    isTyping?: boolean;
+  }>(endpoint);
 }
 
 export async function sendTypingStatusApi(payload: {
@@ -209,12 +228,23 @@ export async function sendMessageApi(params: {
   receiverId?: string;
   conversationId?: string;
   messageText: string;
-  messageType?: "text" | "image" | "location" | "offer" | "auto_reply" | "sticker" | "audio";
+  messageType?:
+    | "text"
+    | "image"
+    | "location"
+    | "offer"
+    | "auto_reply"
+    | "sticker"
+    | "audio";
   imageUrl?: string;
   autoReplyText?: string;
   autoReplyType?: string;
 }): Promise<{ message: string; data: ChatMessage; autoReply?: ChatMessage }> {
-  return await apiFetch<{ message: string; data: ChatMessage; autoReply?: ChatMessage }>("/chats/messages", {
+  return await apiFetch<{
+    message: string;
+    data: ChatMessage;
+    autoReply?: ChatMessage;
+  }>("/chats/messages", {
     method: "POST",
     body: JSON.stringify(params),
   });
@@ -249,9 +279,13 @@ export interface SharedLinkItem {
   createdAt?: string;
 }
 
-export async function getChatUserInfoApi(userId: string): Promise<ChatFarmerInfo | null> {
+export async function getChatUserInfoApi(
+  userId: string,
+): Promise<ChatFarmerInfo | null> {
   try {
-    const res = await apiFetch<{ user: ChatFarmerInfo }>(`/chats/user/${userId}/info`);
+    const res = await apiFetch<{ user: ChatFarmerInfo }>(
+      `/chats/user/${userId}/info`,
+    );
     return res.user;
   } catch (err) {
     console.warn("[chat-service] getChatUserInfoApi error:", err);
@@ -260,7 +294,7 @@ export async function getChatUserInfoApi(userId: string): Promise<ChatFarmerInfo
 }
 
 export async function getSharedMediaApi(
-  params: string | { conversationId?: string; userId?: string }
+  params: string | { conversationId?: string; userId?: string },
 ): Promise<{
   media: SharedMediaItem[];
   links: SharedLinkItem[];
@@ -308,9 +342,13 @@ export interface QuickInquiryCard {
   locationData?: LocationPinData;
 }
 
-export async function getFarmerInquiriesApi(farmerId: string): Promise<QuickInquiryCard[]> {
+export async function getFarmerInquiriesApi(
+  farmerId: string,
+): Promise<QuickInquiryCard[]> {
   try {
-    const res = await apiFetch<{ inquiries: QuickInquiryCard[] }>(`/chats/farmer/${farmerId}/inquiries`);
+    const res = await apiFetch<{ inquiries: QuickInquiryCard[] }>(
+      `/chats/farmer/${farmerId}/inquiries`,
+    );
     return res.inquiries || [];
   } catch (err) {
     console.warn("[chat-service] getFarmerInquiriesApi error:", err);
@@ -350,16 +388,14 @@ export interface SubmitReportPayload {
 }
 
 export async function submitUserReportApi(
-  payload: SubmitReportPayload
+  payload: SubmitReportPayload,
 ): Promise<{ success: boolean; reportId?: number; message: string }> {
-  return await apiFetch<{ success: boolean; reportId?: number; message: string }>(
-    "/reports",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }
-  );
+  return await apiFetch<{
+    success: boolean;
+    reportId?: number;
+    message: string;
+  }>("/reports", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
-
-
-

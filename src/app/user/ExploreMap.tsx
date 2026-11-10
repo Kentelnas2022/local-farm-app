@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
@@ -14,8 +14,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
+import { apiFetch } from "@/lib/api";
 
 import Navigation from "../../components/Navigation";
+import { STATIC_POST_LOCATIONS } from "../../components/CreatePostModal";
 
 const openDirections = (lat: number, lng: number, label: string) => {
   const scheme = Platform.select({
@@ -377,10 +379,27 @@ export default function ExploreMap() {
   const iframeRef = useRef<any>(null);
   const webViewRef = useRef<WebView>(null);
 
+  const params = useLocalSearchParams<{
+    location?: string;
+    latitude?: string;
+    longitude?: string;
+  }>();
+
+  const [filterLocationName, setFilterLocationName] = useState<string | null>(
+    params.location ? String(params.location) : null,
+  );
+
+  useEffect(() => {
+    if (params.location) {
+      setFilterLocationName(String(params.location));
+    }
+  }, [params.location, params.latitude, params.longitude]);
+
   const [selectedLocation, setSelectedLocation] =
     useState<FarmLocationItem | null>(null);
   const [activeRouteLocation, setActiveRouteLocation] =
     useState<FarmLocationItem | null>(null);
+  const [allFarms, setAllFarms] = useState<FarmLocationItem[]>(MOCK_LOCAL_FARMS);
   const [searchText, setSearchText] = useState("");
   const [userLocation, setUserLocation] = useState(DEFAULT_USER_LOCATION);
   const [liveRoadStats, setLiveRoadStats] = useState<{
@@ -388,6 +407,61 @@ export default function ExploreMap() {
     durationDrive: string;
     durationWalk: string;
   } | null>(null);
+
+  const targetLocationItem = useMemo<FarmLocationItem | null>(() => {
+    if (!filterLocationName) return null;
+    const q = filterLocationName.toLowerCase().trim();
+
+    // 1. Check in allFarms
+    const found = allFarms.find(
+      (f) =>
+        f.title.toLowerCase().includes(q) ||
+        f.distance.toLowerCase().includes(q) ||
+        f.farmerName.toLowerCase().includes(q) ||
+        q.includes(f.title.toLowerCase()) ||
+        q.includes(f.distance.toLowerCase()),
+    );
+    if (found) return found;
+
+    // 2. Check in STATIC_POST_LOCATIONS
+    const staticMatch = STATIC_POST_LOCATIONS.find(
+      (loc) =>
+        q.includes(loc.barangay.toLowerCase()) ||
+        loc.name.toLowerCase().includes(q) ||
+        loc.barangay.toLowerCase().includes(q),
+    );
+
+    const lat =
+      params.latitude && !isNaN(Number(params.latitude))
+        ? Number(params.latitude)
+        : staticMatch?.latitude || 8.2283;
+    const lng =
+      params.longitude && !isNaN(Number(params.longitude))
+        ? Number(params.longitude)
+        : staticMatch?.longitude || 124.2452;
+
+    return {
+      id: `target-loc-${filterLocationName.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()}`,
+      latitude: lat,
+      longitude: lng,
+      title: filterLocationName,
+      farmerName: "Local Farm Producer",
+      type: "Farm",
+      produce: "Fresh Local Harvest & Produce",
+      priceRange: "Local Direct",
+      distance: `${filterLocationName}, Iligan City`,
+      rating: 4.9,
+      description: `Target farming location: ${filterLocationName}`,
+      imageUrl:
+        "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=400&q=80",
+    };
+  }, [filterLocationName, allFarms, params.latitude, params.longitude]);
+
+  useEffect(() => {
+    if (targetLocationItem) {
+      setSelectedLocation(targetLocationItem);
+    }
+  }, [targetLocationItem]);
 
   // Compute active route details from current user position to destination
   const activeRouteDetails = useMemo(() => {
@@ -519,7 +593,7 @@ export default function ExploreMap() {
             timeInterval: 2000, // Stream update every 2 seconds
             distanceInterval: 2, // Or every 2 meters of movement
           },
-          (loc) => {
+          (loc: any) => {
             if (isMounted && loc?.coords) {
               const { latitude, longitude } = loc.coords;
               setUserLocation({ latitude, longitude });
@@ -547,13 +621,40 @@ export default function ExploreMap() {
     };
   }, []);
 
-  // Filter farms by search keyword
+  // Fetch verified local farmers and producers dynamically from backend database
+  useEffect(() => {
+    let isMounted = true;
+    async function loadDynamicProducers() {
+      try {
+        const res = await apiFetch<{ locations?: FarmLocationItem[] }>("/farmers/locations");
+        if (res && Array.isArray(res.locations) && res.locations.length > 0 && isMounted) {
+          setAllFarms((prev) => {
+            const existingIds = new Set(prev.map((f) => f.id));
+            const newFarms = res.locations!.filter((f) => !existingIds.has(f.id));
+            return [...prev, ...newFarms];
+          });
+        }
+      } catch (err) {
+        // Silently keep static fallback if offline
+      }
+    }
+
+    loadDynamicProducers();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Filter farms by search keyword or single location target
   const filteredFarms = useMemo(() => {
+    if (filterLocationName && targetLocationItem) {
+      return [targetLocationItem];
+    }
     if (!searchText.trim()) {
-      return MOCK_LOCAL_FARMS;
+      return allFarms;
     }
     const query = searchText.toLowerCase();
-    return MOCK_LOCAL_FARMS.filter(
+    return allFarms.filter(
       (farm) =>
         farm.title.toLowerCase().includes(query) ||
         farm.type.toLowerCase().includes(query) ||
@@ -562,7 +663,7 @@ export default function ExploreMap() {
         farm.distance.toLowerCase().includes(query) ||
         farm.description.toLowerCase().includes(query),
     );
-  }, [searchText]);
+  }, [allFarms, searchText, filterLocationName, targetLocationItem]);
 
   // Unified message handler from Leaflet map
   const handleMapIncomingMessage = useCallback(
@@ -653,9 +754,13 @@ export default function ExploreMap() {
     sendMapMessage({ type: "RECENTER" });
   };
 
-  const initialLat = userLocation.latitude;
-  const initialLng = userLocation.longitude;
-  const initialZoom = 13;
+  const initialLat = targetLocationItem
+    ? targetLocationItem.latitude
+    : userLocation.latitude;
+  const initialLng = targetLocationItem
+    ? targetLocationItem.longitude
+    : userLocation.longitude;
+  const initialZoom = targetLocationItem ? 16 : 13;
 
   // Leaflet HTML template with dynamic Farm / Wholesaler markers, User Location, and Route Polyline
   const leafletHtml = `
@@ -697,19 +802,24 @@ export default function ExploreMap() {
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
         .custom-location-marker {
-          background: transparent;
-          border: none;
+          background: transparent !important;
+          border: none !important;
+          width: 80px !important;
+          height: 84px !important;
         }
         .marker-wrapper {
+          width: 80px;
+          height: 84px;
           display: flex;
           flex-direction: column;
           align-items: center;
           cursor: pointer;
-          transform: translate(-50%, -100%);
-          transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+          position: relative;
+          transform-origin: 40px 82px;
+          transition: transform 0.15s ease-out;
         }
         .marker-wrapper:hover, .marker-wrapper:active {
-          transform: translate(-50%, -106%) scale(1.08);
+          transform: scale(1.08);
           z-index: 9999 !important;
         }
         .marker-image-container {
@@ -889,7 +999,7 @@ export default function ExploreMap() {
             className: 'custom-location-marker',
             html: markerHtml,
             iconSize: [80, 84],
-            iconAnchor: [40, 84]
+            iconAnchor: [40, 82]
           });
 
           var marker = L.marker([locationData.latitude, locationData.longitude], {
@@ -914,6 +1024,12 @@ export default function ExploreMap() {
             offset: [0, -78],
             closeButton: true
           });
+
+          if (locations.length === 1) {
+            setTimeout(function() {
+              marker.openPopup();
+            }, 300);
+          }
 
           marker.on('click', function(e) {
             if (e && e.originalEvent) {
@@ -1101,7 +1217,7 @@ export default function ExploreMap() {
         {Platform.OS === "web" ? (
           <iframe
             ref={iframeRef}
-            key={searchText}
+            key={`${searchText}-${filterLocationName || "all"}`}
             srcDoc={leafletHtml}
             style={{
               width: "100%",
@@ -1120,7 +1236,7 @@ export default function ExploreMap() {
         ) : (
           <WebView
             ref={webViewRef}
-            key={searchText}
+            key={`${searchText}-${filterLocationName || "all"}`}
             originWhitelist={["*"]}
             source={{ html: leafletHtml }}
             onMessage={handleWebViewMessage}
@@ -1156,6 +1272,9 @@ export default function ExploreMap() {
             if (activeRouteLocation) {
               setActiveRouteLocation(null);
               sendMapMessage({ type: "CLEAR_ROUTE" });
+            } else if (filterLocationName) {
+              setFilterLocationName(null);
+              setSelectedLocation(null);
             } else if (router.canGoBack()) {
               router.back();
             } else {
@@ -1199,12 +1318,54 @@ export default function ExploreMap() {
         </View>
       </View>
 
+      {/* 2.5 Filtered Single Location Floating Banner */}
+      {filterLocationName && (
+        <View
+          style={{
+            position: "absolute",
+            top: topInset + 54,
+            left: 16,
+            right: 16,
+            zIndex: 35,
+          }}
+          className="bg-white rounded-2xl p-3 shadow-xl elevation-6 border border-emerald-200 flex-row items-center justify-between"
+        >
+          <View className="flex-row items-center gap-2 flex-1 mr-2">
+            <View className="w-8 h-8 rounded-full bg-[#72AF5B]/15 items-center justify-center">
+              <Ionicons name="location-sharp" size={18} color="#237227" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-[10px] font-bold uppercase tracking-wider text-[#237227]">
+                Viewing Location
+              </Text>
+              <Text
+                className="text-xs font-bold text-gray-900"
+                numberOfLines={1}
+              >
+                {filterLocationName}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => {
+              setFilterLocationName(null);
+              setSelectedLocation(null);
+            }}
+            className="bg-[#72AF5B] px-3 py-1.5 rounded-full flex-row items-center gap-1 active:bg-[#5e944a]"
+          >
+            <Text className="text-white text-xs font-bold">View All</Text>
+            <Ionicons name="close-circle" size={14} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* 3. Active Route Floating HUD Banner */}
       {activeRouteLocation && activeRouteDetails && (
         <View
           style={{
             position: "absolute",
-            top: topInset + 54,
+            top: filterLocationName ? topInset + 116 : topInset + 54,
             left: 16,
             right: 16,
             zIndex: 35,

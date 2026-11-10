@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { createContext, useState, useEffect, ReactNode } from "react";
+import { removeAuthToken } from "@/lib/api";
 import {
   User,
   SignUpParams,
@@ -207,16 +208,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       await logoutApi();
-      await AsyncStorage.removeItem("localfarm_cached_user");
-      setUser(null);
-      router.replace("/auth/Login" as any);
     } catch (err) {
       console.error("Logout error", err);
-      await AsyncStorage.removeItem("localfarm_cached_user");
-      setUser(null);
-      router.replace("/auth/Login" as any);
     } finally {
+      try {
+        await AsyncStorage.removeItem("localfarm_cached_user");
+        await removeAuthToken();
+      } catch {}
+      if (typeof window !== "undefined" && window.localStorage) {
+        try {
+          window.localStorage.removeItem("localfarm_auth_token");
+          window.localStorage.removeItem("localfarm_cached_user");
+          window.localStorage.removeItem("localfarm_user");
+        } catch {}
+      }
+      inMemoryUser = null;
+      setUser(null);
       setIsLoading(false);
+      try {
+        router.replace("/auth/Login" as any);
+      } catch (navErr) {
+        console.warn("Navigation replace error:", navErr);
+        if (typeof window !== "undefined" && window.location) {
+          window.location.href = "/auth/Login";
+        }
+      }
     }
   };
 

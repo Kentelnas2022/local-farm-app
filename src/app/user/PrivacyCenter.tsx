@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { apiFetch } from "@/lib/api";
 import { useToast } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import { Ionicons } from "@expo/vector-icons";
@@ -224,21 +225,42 @@ export default function PrivacyCenter() {
   >(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Load saved privacy preferences
+  // Load saved privacy preferences dynamically from backend, falling back to AsyncStorage
   useEffect(() => {
-    AsyncStorage.getItem(PRIVACY_SETTINGS_KEY)
-      .then((saved) => {
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved);
-            setSettings((prev) => ({ ...prev, ...parsed }));
-          } catch (e) {
-            console.warn("Failed to parse privacy settings:", e);
-          }
+    let isMounted = true;
+
+    async function loadPrivacySettings() {
+      // 1. Try backend API
+      try {
+        const res = await apiFetch<{ settings: PrivacySettings }>("/user/privacy");
+        if (res && res.settings && isMounted) {
+          setSettings((prev) => ({ ...prev, ...res.settings }));
+          await AsyncStorage.setItem(PRIVACY_SETTINGS_KEY, JSON.stringify(res.settings));
+          setIsLoading(false);
+          return;
         }
-      })
-      .catch((err) => console.warn("Error loading privacy settings:", err))
-      .finally(() => setIsLoading(false));
+      } catch (e) {
+        // Fall back to local storage
+      }
+
+      // 2. Offline / local fallback
+      try {
+        const saved = await AsyncStorage.getItem(PRIVACY_SETTINGS_KEY);
+        if (saved && isMounted) {
+          const parsed = JSON.parse(saved);
+          setSettings((prev) => ({ ...prev, ...parsed }));
+        }
+      } catch (err) {
+        console.warn("Error loading privacy settings:", err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+
+    loadPrivacySettings();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const updateSetting = async <K extends keyof PrivacySettings>(
@@ -248,6 +270,8 @@ export default function PrivacyCenter() {
   ) => {
     const next = { ...settings, [key]: value };
     setSettings(next);
+
+    // Save locally
     try {
       await AsyncStorage.setItem(PRIVACY_SETTINGS_KEY, JSON.stringify(next));
       if (key === "storyAudience") {
@@ -257,8 +281,18 @@ export default function PrivacyCenter() {
         showToast(toastMessage, "success");
       }
     } catch (err) {
-      console.warn("Failed to save privacy setting:", err);
+      console.warn("Failed to save privacy setting locally:", err);
       showToast("Failed to update setting.", "error");
+    }
+
+    // Persist dynamically to backend & MySQL
+    try {
+      await apiFetch("/user/privacy", {
+        method: "PUT",
+        body: JSON.stringify(next),
+      });
+    } catch (err) {
+      console.warn("Failed to sync privacy setting with server:", err);
     }
   };
 

@@ -6,11 +6,13 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import { NotificationModal } from "./NotificationModal";
+import { SearchModal } from "./SearchModal";
 
 const UserHeader = () => {
   const router = useRouter();
   const { user } = useAuth();
   const [isNotifOpen, setNotifOpen] = useState(false);
+  const [isSearchOpen, setSearchOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [rsbsaApp, setRsbsaApp] = useState<RSBSAApplication | null>(null);
 
@@ -81,6 +83,7 @@ const UserHeader = () => {
 
         {/* Search Icon */}
         <TouchableOpacity
+          onPress={() => setSearchOpen(true)}
           className="p-1.5 rounded-full active:bg-gray-100"
           accessibilityRole="button"
           accessibilityLabel="Search"
@@ -135,6 +138,12 @@ const UserHeader = () => {
           loadBadgeCounts();
         }}
         onUnreadCountChange={setUnreadCount}
+      />
+
+      {/* Global Produce & Farmers Search Modal */}
+      <SearchModal
+        visible={isSearchOpen}
+        onClose={() => setSearchOpen(false)}
       />
     </>
   );

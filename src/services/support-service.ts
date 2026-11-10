@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { apiFetch } from "../lib/api";
 
 export type TicketCategory =
   | "App Glitch"
@@ -47,9 +48,19 @@ export const DEFAULT_TICKETS: SupportTicket[] = [
 ];
 
 /**
- * Fetch all submitted support tickets from local storage
+ * Fetch all submitted support tickets dynamically from backend API with local cache
  */
 export async function getSupportTicketsApi(): Promise<SupportTicket[]> {
+  try {
+    const res = await apiFetch<{ tickets: SupportTicket[] }>("/reports/my-tickets");
+    if (res && Array.isArray(res.tickets) && res.tickets.length > 0) {
+      await AsyncStorage.setItem(STORAGE_TICKETS_KEY, JSON.stringify(res.tickets));
+      return res.tickets;
+    }
+  } catch (err) {
+    // Fall back to offline storage
+  }
+
   try {
     const data = await AsyncStorage.getItem(STORAGE_TICKETS_KEY);
     if (data) {
@@ -68,32 +79,48 @@ export async function getSupportTicketsApi(): Promise<SupportTicket[]> {
 }
 
 /**
- * Create a new support ticket and persist it to local storage
+ * Create a new support ticket dynamically, persisting to MySQL database
  */
 export async function createSupportTicketApi(
   ticketInput: Omit<SupportTicket, "id" | "date" | "status">
 ): Promise<SupportTicket> {
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  const newTicket: SupportTicket = {
+    ...ticketInput,
+    id: `LF-${Date.now().toString().slice(-4)}-${randomSuffix}`,
+    status: "Under Review",
+    date: new Date().toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+  };
+
+  // Cache locally first for instant optimistic response
   try {
     const current = await getSupportTicketsApi();
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const newTicket: SupportTicket = {
-      ...ticketInput,
-      id: `LF-${Date.now().toString().slice(-4)}-${randomSuffix}`,
-      status: "Under Review",
-      date: new Date().toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }),
-    };
-
     const updated = [newTicket, ...current];
     await AsyncStorage.setItem(STORAGE_TICKETS_KEY, JSON.stringify(updated));
-    return newTicket;
   } catch (err) {
-    console.warn("Failed to create support ticket:", err);
-    throw err;
+    console.warn("Failed to cache support ticket locally:", err);
   }
+
+  // Persist to backend database
+  try {
+    await apiFetch("/reports", {
+      method: "POST",
+      body: JSON.stringify({
+        reason: ticketInput.category,
+        statement: `${ticketInput.subject}\n\n${ticketInput.description}`,
+        severity: ticketInput.priority === "Urgent" ? "high" : "medium",
+        attachmentUrl: ticketInput.attachments?.[0] || null,
+      }),
+    });
+  } catch (err) {
+    console.warn("Server report sync failed, ticket saved locally:", err);
+  }
+
+  return newTicket;
 }
 
 /**

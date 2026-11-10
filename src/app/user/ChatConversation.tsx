@@ -2378,7 +2378,7 @@ export default function ChatConversation() {
             <View className="flex-row items-center justify-around bg-black/60 backdrop-blur-md py-3.5 px-4 rounded-3xl border border-white/10">
               {/* Flip Camera */}
               <TouchableOpacity
-                onPress={() => setCameraFacing((f) => (f === "front" ? "back" : "front"))}
+                onPress={() => setCameraFacing((f: any) => (f === "front" ? "back" : "front"))}
                 className="w-12 h-12 rounded-full bg-white/20 items-center justify-center active:bg-white/30"
               >
                 <Ionicons name="camera-reverse" size={24} color="#FFFFFF" />

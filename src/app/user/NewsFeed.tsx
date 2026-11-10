@@ -23,10 +23,18 @@ import {
   getStoriesApi,
   getStoryViewersApi,
   markStoryViewedApi,
+  StoryStickerItem,
   StoryViewerItem,
   UserStory,
 } from "@/services/story-service";
+import DraggableStoryElement, { Position } from "@/components/DraggableStoryElement";
+import {
+  playStorySoundtrack,
+  stopStorySoundtrack,
+  getCurrentPlayingTrack,
+} from "@/services/sound-service";
 import { sendMessageApi } from "@/services/chat-service";
+import { apiFetch } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library/legacy";
@@ -52,6 +60,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import {
@@ -62,13 +71,16 @@ import {
 import CreatePostModal, {
   STATIC_POST_LOCATIONS,
 } from "../../components/CreatePostModal";
-import LeafletMap from "../../components/LeafletMap";
 import BottomNavBar from "../../components/Navigation";
 import UserHeader from "../../components/UserHeader";
 import LiveViewerModal from "../../components/LiveViewerModal";
 import SharePostModal from "../../components/SharePostModal";
 import PostImageGrid from "../../components/PostImageGrid";
 import SaveToCollectionModal from "../../components/SaveToCollectionModal";
+import PreHarvestReserveModal from "../../components/PreHarvestReserveModal";
+import DigitalReceiptModal from "../../components/DigitalReceiptModal";
+import WeighInVerificationModal from "../../components/WeighInVerificationModal";
+import { HarvestReservation } from "@/services/reservation-service";
 import { LinearGradient } from "expo-linear-gradient";
 
 // Suppress known Expo Go sandbox media library warning, service log warnings, and empty uri warnings
@@ -240,6 +252,11 @@ export default function NewsFeed() {
     return () => clearInterval(timer);
   }, []);
 
+  // Pre-Harvest Batch Reservation & Digital Receipt states
+  const [reserveModalPost, setReserveModalPost] = useState<PostItem | null>(null);
+  const [activeReceipt, setActiveReceipt] = useState<HarvestReservation | null>(null);
+  const [weighInReservation, setWeighInReservation] = useState<HarvestReservation | null>(null);
+
   // Fullscreen Image Lightbox Modal State
   const [previewImage, setPreviewImage] = useState<{
     uri?: string;
@@ -259,7 +276,8 @@ export default function NewsFeed() {
     isLiked?: boolean;
     isSaved?: boolean;
   } | null>(null);
-  const screenWidth = Dimensions.get("window").width;
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const screenWidth = windowWidth;
   const lightboxListRef = useRef<FlatList>(null);
 
   useEffect(() => {
@@ -329,6 +347,31 @@ export default function NewsFeed() {
   >("Public");
   const [selectedStoryBg, setSelectedStoryBg] = useState<string>("emerald");
   const [isDefaultStoryAudience, setIsDefaultStoryAudience] = useState(false);
+
+  // Dynamic Story Editor state (Aa text sticker, music, filters, emojis)
+  const [storyTextOverlay, setStoryTextOverlay] = useState("");
+  const [isAddingTextOverlay, setIsAddingTextOverlay] = useState(false);
+  const [textOverlayBg, setTextOverlayBg] = useState<
+    "white" | "black" | "emerald" | "transparent"
+  >("white");
+  const [storyStickers, setStoryStickers] = useState<StoryStickerItem[]>([]);
+  const [isStickerPickerOpen, setIsStickerPickerOpen] = useState(false);
+  const [storyMusicTitle, setStoryMusicTitle] = useState<string | null>(null);
+  const [isMusicPickerOpen, setIsMusicPickerOpen] = useState(false);
+  const [storyFilter, setStoryFilter] = useState<
+    "normal" | "warm" | "fresh" | "vintage" | "sunset"
+  >("normal");
+  const [textOverlayPos, setTextOverlayPos] = useState<Position>({
+    x: 36,
+    y: 220,
+  });
+  const [musicBadgePos, setMusicBadgePos] = useState<Position>({
+    x: 18,
+    y: 84,
+  });
+  const [previewingTrack, setPreviewingTrack] = useState<string | null>(null);
+  const [isStoryAudioMuted, setIsStoryAudioMuted] = useState(false);
+
   const [isCreatePostVisible, setCreatePostVisible] = useState(false);
   const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
   const [activeReactionPostId, setActiveReactionPostId] = useState<
@@ -566,6 +609,26 @@ export default function NewsFeed() {
   };
 
 
+  const ensureDataUri = async (uri: string): Promise<string> => {
+    if (!uri) return "";
+    if (uri.startsWith("data:") || uri.startsWith("http://") || uri.startsWith("https://")) {
+      return uri;
+    }
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (err) {
+      console.warn("[NewsFeed] Could not convert URI to data URI:", err);
+      return uri;
+    }
+  };
+
   const handlePickCamera = async () => {
     try {
       if (Platform.OS !== "web") {
@@ -578,10 +641,15 @@ export default function NewsFeed() {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["images"],
         allowsEditing: true,
-        quality: 0.85,
+        quality: 0.7,
+        base64: true,
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setSelectedStoryImage(result.assets[0].uri);
+        const asset = result.assets[0];
+        const uri = asset.base64
+          ? `data:image/jpeg;base64,${asset.base64}`
+          : asset.uri;
+        setSelectedStoryImage(uri);
         setStoryStep("EDIT_STORY");
       }
     } catch (error) {
@@ -602,10 +670,15 @@ export default function NewsFeed() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         allowsEditing: true,
-        quality: 0.85,
+        quality: 0.7,
+        base64: true,
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setSelectedStoryImage(result.assets[0].uri);
+        const asset = result.assets[0];
+        const uri = asset.base64
+          ? `data:image/jpeg;base64,${asset.base64}`
+          : asset.uri;
+        setSelectedStoryImage(uri);
         setStoryStep("EDIT_STORY");
       }
     } catch (error) {
@@ -672,25 +745,58 @@ export default function NewsFeed() {
   }, [devicePhotos]);
 
   const handleShareStory = async () => {
-    if (!selectedStoryImage && !storyTextContent.trim()) {
+    if (
+      !selectedStoryImage &&
+      !storyTextContent.trim() &&
+      !storyTextOverlay.trim()
+    ) {
       showToast("Please add a photo or text for your story.", "warning");
       return;
     }
     try {
       setIsSharingStory(true);
+
+      const primaryText = storyTextOverlay.trim() || storyTextContent.trim();
+      const secondaryCaption =
+        storyTextOverlay.trim() &&
+        storyTextContent.trim() &&
+        storyTextContent.trim() !== storyTextOverlay.trim()
+          ? storyTextContent.trim()
+          : "";
+
+      let finalMediaUrl = selectedStoryImage;
+      if (finalMediaUrl) {
+        finalMediaUrl = await ensureDataUri(finalMediaUrl);
+      }
+
       await createStoryApi({
-        mediaUrl: selectedStoryImage || undefined,
-        textContent: storyTextContent.trim() || undefined,
-        backgroundColor: !selectedStoryImage ? selectedStoryBg : undefined,
+        mediaUrl: finalMediaUrl || undefined,
+        textContent: primaryText || undefined,
+        caption: secondaryCaption || undefined,
+        backgroundColor: !finalMediaUrl ? selectedStoryBg : undefined,
+        musicTitle: storyMusicTitle || undefined,
         privacy: storyPrivacy,
+        overlays: {
+          text: storyTextOverlay.trim() ? textOverlayPos : undefined,
+          music: storyMusicTitle ? musicBadgePos : undefined,
+          stickers: storyStickers.length > 0 ? storyStickers : undefined,
+        },
       });
+
+      stopStorySoundtrack();
       showToast("Story shared successfully!", "success");
       setStoryModalVisible(false);
       setSelectedStoryImage(null);
       setStoryTextContent("");
+      setStoryTextOverlay("");
+      setStoryMusicTitle(null);
+      setStoryStickers([]);
+      setTextOverlayPos({ x: 36, y: 220 });
+      setMusicBadgePos({ x: 18, y: 84 });
+      setStoryFilter("normal");
       setSelectedStoryBg("emerald");
       setStoryStep("SELECT_MEDIA");
-      fetchFeedStories();
+      await fetchFeedStories();
     } catch (err: any) {
       console.error("[NewsFeed] Error sharing story:", err);
       showToast(err.message || "Failed to share story.", "error");
@@ -1229,6 +1335,7 @@ export default function NewsFeed() {
   };
 
   const handleCloseStoryViewer = () => {
+    stopStorySoundtrack();
     setActiveStoryIndex(null);
     setStoryReplyText("");
     setIsReplyingStory(false);
@@ -1341,20 +1448,47 @@ export default function NewsFeed() {
 
   const isOwnActiveStory = Boolean(
     currentStoryUser &&
-      user &&
-      (String(currentStoryUser.userId) === String(user.id) ||
-        (user.username &&
-          currentStoryUser.userName.trim().toLowerCase() ===
-            user.username.trim().toLowerCase())),
+      (currentStoryUser.isSelf ||
+        (user &&
+          (String(currentStoryUser.userId) === String(user.id) ||
+            (user.username &&
+              currentStoryUser.userName.trim().toLowerCase() ===
+                user.username.trim().toLowerCase()) ||
+            (user.name &&
+              currentStoryUser.userName.trim().toLowerCase() ===
+                user.name.trim().toLowerCase()) ||
+            (user.fullName &&
+              currentStoryUser.userName.trim().toLowerCase() ===
+                user.fullName.trim().toLowerCase())))),
   );
 
-  // Automatically mark story as viewed when current user is viewing someone else's story
+  // Automatically mark story as viewed and PLAY/STOP story soundtrack
   useEffect(() => {
-    if (activeStoryIndex === null || !currentSubStory?.id) return;
+    if (activeStoryIndex === null || !currentSubStory?.id) {
+      stopStorySoundtrack();
+      return;
+    }
     if (!isOwnActiveStory) {
       markStoryViewedApi(currentSubStory.id).catch(() => {});
     }
-  }, [activeStoryIndex, activeSubStoryIndex, currentSubStory?.id, isOwnActiveStory]);
+
+    if (currentSubStory.musicTitle && !isStoryAudioMuted) {
+      playStorySoundtrack(currentSubStory.musicTitle);
+    } else {
+      stopStorySoundtrack();
+    }
+
+    return () => {
+      stopStorySoundtrack();
+    };
+  }, [
+    activeStoryIndex,
+    activeSubStoryIndex,
+    currentSubStory?.id,
+    currentSubStory?.musicTitle,
+    isOwnActiveStory,
+    isStoryAudioMuted,
+  ]);
 
   const handleOpenStoryViewers = async () => {
     if (!currentSubStory) return;
@@ -1473,102 +1607,181 @@ export default function NewsFeed() {
                 scrollEventThrottle={16}
                 className="px-4"
               >
-                {/* Item 1: "Your story" (The Trigger) */}
-                <View className="items-center mr-4 ml-4">
-                  <TouchableOpacity
-                    onPress={() => {
-                      setStoryStep("SELECT_MEDIA");
-                      setStoryModalVisible(true);
-                    }}
-                    activeOpacity={0.8}
-                    className="items-center"
-                  >
-                    {/* Avatar Container */}
-                    <View className="relative">
-                      <View className="w-16 h-16 rounded-full bg-gray-200 items-center justify-center overflow-hidden border border-gray-200">
-                        {Boolean(user?.avatarUrl && user.avatarUrl.trim()) ? (
-                          <Image
-                            source={{ uri: user!.avatarUrl!.trim() }}
-                            style={{ width: "100%", height: "100%" }}
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <Ionicons name="person" size={32} color="#9CA3AF" />
-                        )}
-                      </View>
-                      {/* The '+' Badge */}
-                      <View className="absolute bottom-0 right-0 bg-blue-500 w-5 h-5 rounded-full items-center justify-center border-2 border-white shadow-xs">
-                        <Ionicons name="add" size={14} color="#FFFFFF" />
-                      </View>
-                    </View>
-                    <Text className="text-xs font-medium text-gray-700 mt-1">
-                      Your story
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Items 2+: Other Users' Stories (Grouped per User) */}
-                {userStories.map((userStory, index) => {
-                  const hasUnseen = userStory.stories.some((s) => !s.isSeen);
-                  const isSelf = Boolean(
-                    user &&
-                      (String(userStory.userId) === String(user.id) ||
-                        (user.username &&
-                          userStory.userName?.trim().toLowerCase() ===
-                            user.username.trim().toLowerCase()) ||
-                        (user.name &&
-                          userStory.userName?.trim().toLowerCase() ===
-                            user.name.trim().toLowerCase())),
+                {(() => {
+                  const myUserStoryIndex = userStories.findIndex((us) =>
+                    Boolean(
+                      us.isSelf ||
+                      (user &&
+                        (String(us.userId) === String(user.id) ||
+                          (user.username &&
+                            us.userName?.trim().toLowerCase() ===
+                              user.username.trim().toLowerCase()) ||
+                          (user.name &&
+                            us.userName?.trim().toLowerCase() ===
+                              user.name.trim().toLowerCase()) ||
+                          (user.fullName &&
+                            us.userName?.trim().toLowerCase() ===
+                              user.fullName.trim().toLowerCase()) ||
+                          (us.userName &&
+                            user.name &&
+                            (us.userName.toLowerCase().includes(user.name.toLowerCase()) ||
+                              user.name.toLowerCase().includes(us.userName.toLowerCase()))))),
+                    ),
                   );
+                  const hasMyStory = myUserStoryIndex !== -1;
+                  const myStoryGroup = hasMyStory ? userStories[myUserStoryIndex] : null;
+                  const myAvatar =
+                    myStoryGroup?.userAvatar?.trim() ||
+                    user?.avatarUrl?.trim() ||
+                    "";
 
                   return (
-                    <View key={userStory.userId} className="items-center mr-4">
-                      <TouchableOpacity
-                        onPress={() => {
-                          setActiveStoryIndex(index);
-                          setActiveSubStoryIndex(0);
-                        }}
-                        activeOpacity={0.8}
-                        className="items-center"
-                      >
-                        {/* Avatar with unseen story colored border (#72AF5B) */}
-                        <View
-                          className={`w-16 h-16 rounded-full p-[2px] items-center justify-center bg-white ${
-                            hasUnseen
-                              ? "border-2 border-[#72AF5B]"
-                              : "border border-gray-300"
-                          }`}
-                          style={
-                            hasUnseen ? { borderColor: "#72AF5B" } : undefined
-                          }
-                        >
-                          <View className="w-full h-full rounded-full bg-gray-200 items-center justify-center overflow-hidden">
-                            {Boolean(userStory.userAvatar && userStory.userAvatar.trim()) ? (
-                              <Image
-                                source={{ uri: userStory.userAvatar!.trim() }}
-                                style={{ width: "100%", height: "100%" }}
-                                resizeMode="cover"
-                              />
-                            ) : (
-                              <Ionicons
-                                name="person"
-                                size={28}
-                                color="#6B7280"
-                              />
-                            )}
-                          </View>
+                    <>
+                      {/* Item 1: Profile bubble with '+' icon & green circle line when story is active */}
+                      <View className="items-center mr-4 ml-4">
+                        <View className="relative">
+                          <TouchableOpacity
+                            onPress={() => {
+                              if (hasMyStory) {
+                                setActiveStoryIndex(myUserStoryIndex);
+                                setActiveSubStoryIndex(0);
+                              } else {
+                                setStoryStep("SELECT_MEDIA");
+                                setStoryModalVisible(true);
+                              }
+                            }}
+                            activeOpacity={0.8}
+                            className="items-center"
+                          >
+                            <View
+                              className={`w-16 h-16 rounded-full p-[2px] items-center justify-center bg-white ${
+                                hasMyStory ? "border-2 border-[#72AF5B]" : "border border-gray-200"
+                              }`}
+                              style={hasMyStory ? { borderColor: "#72AF5B" } : undefined}
+                            >
+                              <View className="w-full h-full rounded-full bg-gray-200 items-center justify-center overflow-hidden">
+                                {Boolean(myAvatar) ? (
+                                  <Image
+                                    source={{ uri: myAvatar }}
+                                    style={{ width: "100%", height: "100%" }}
+                                    resizeMode="cover"
+                                  />
+                                ) : (
+                                  <Ionicons name="person" size={32} color="#9CA3AF" />
+                                )}
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+
+                          {/* The '+' Badge: Always creates new story */}
+                          <TouchableOpacity
+                            onPress={() => {
+                              setStoryStep("SELECT_MEDIA");
+                              setStoryModalVisible(true);
+                            }}
+                            activeOpacity={0.85}
+                            className="absolute bottom-0 right-0 bg-[#72AF5B] w-5 h-5 rounded-full items-center justify-center border-2 border-white shadow-xs z-10"
+                            style={{ backgroundColor: "#72AF5B" }}
+                          >
+                            <Ionicons name="add" size={14} color="#FFFFFF" />
+                          </TouchableOpacity>
                         </View>
                         <Text
                           className="text-xs font-medium text-gray-700 mt-1 max-w-[76px] text-center"
                           numberOfLines={1}
                         >
-                          {isSelf ? "My story" : userStory.userName}
+                          {hasMyStory ? "Your story" : "Add story"}
                         </Text>
-                      </TouchableOpacity>
-                    </View>
+                      </View>
+
+                      {/* Items 2+: Other Users' Stories (Excluding current user to prevent duplicate bubble) */}
+                      {userStories
+                        .map((userStory, originalIndex) => ({ userStory, originalIndex }))
+                        .filter(
+                          ({ userStory, originalIndex }) =>
+                            originalIndex !== myUserStoryIndex && !userStory.isSelf,
+                        )
+                        .map(({ userStory, originalIndex }) => {
+                          const hasUnseen = userStory.stories.some((s) => !s.isSeen);
+
+                          return (
+                            <View key={userStory.userId} className="items-center mr-4">
+                              <TouchableOpacity
+                                onPress={() => {
+                                  setActiveStoryIndex(originalIndex);
+                                  setActiveSubStoryIndex(0);
+                                }}
+                                activeOpacity={0.8}
+                                className="items-center"
+                              >
+                                <View
+                                  className={`w-16 h-16 rounded-full p-[2px] items-center justify-center bg-white ${
+                                    hasUnseen
+                                      ? "border-2 border-[#72AF5B]"
+                                      : "border border-gray-300"
+                                  }`}
+                                  style={hasUnseen ? { borderColor: "#72AF5B" } : undefined}
+                                >
+                                  <View className="w-full h-full rounded-full bg-gray-200 items-center justify-center overflow-hidden">
+                                    {Boolean(userStory.userAvatar && userStory.userAvatar.trim()) ? (
+                                      <Image
+                                        source={{ uri: userStory.userAvatar!.trim() }}
+                                        style={{ width: "100%", height: "100%" }}
+                                        resizeMode="cover"
+                                      />
+                                    ) : (
+                                      <Ionicons name="person" size={28} color="#6B7280" />
+                                    )}
+                                  </View>
+                                </View>
+                                <Text
+                                  className="text-xs font-medium text-gray-700 mt-1 max-w-[76px] text-center"
+                                  numberOfLines={1}
+                                >
+                                  {userStory.userName}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          );
+                        })}
+                    </>
                   );
-                })}
+                })()}
               </ScrollView>
+            </View>
+
+            {/* Quick Advance Harvest Reservations Bar */}
+            <View className="px-4 py-2 bg-white border-b border-gray-100 flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <View className="w-7 h-7 rounded-lg bg-emerald-50 items-center justify-center">
+                  <Ionicons name="leaf" size={15} color="#237227" />
+                </View>
+                <Text className="text-xs font-bold text-slate-800">
+                  Pre-Harvest Advance Trade
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={async () => {
+                  try {
+                    const { getMyReservationsApi } = await import('@/services/reservation-service');
+                    const res = await getMyReservationsApi('all', 'all');
+                    if (res.reservations && res.reservations.length > 0) {
+                      setActiveReceipt(res.reservations[0]);
+                    } else {
+                      showToast('No active bookings. Reserve a pre-harvest batch below to generate a digital QR pickup receipt.', 'info');
+                    }
+                  } catch (err: any) {
+                    showToast('Browse batches below to reserve.', 'error');
+                  }
+                }}
+                className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 flex-row items-center gap-1 active:bg-emerald-100"
+              >
+                <Ionicons name="qr-code-outline" size={13} color="#237227" />
+                <Text className="text-[11px] font-bold text-[#237227]">
+                  My QR Receipts
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Feed Posts Section */}
@@ -1727,13 +1940,7 @@ export default function NewsFeed() {
                                 <Text className="font-bold text-gray-900 text-xs">
                                   {post.authorName}
                                 </Text>
-                                {(post.isVerified ||
-                                  ((Boolean(
-                                    user?.id && post.userId === String(user.id),
-                                  ) ||
-                                    post.authorName === user?.name ||
-                                    post.authorName === user?.username) &&
-                                    isRSBSAVerified)) && (
+                                {(post.isVerified || (Boolean(user?.id && post.userId && String(post.userId) === String(user.id)) && isRSBSAVerified)) && (
                                   <Ionicons
                                     name="checkmark-circle"
                                     size={13}
@@ -1753,12 +1960,7 @@ export default function NewsFeed() {
                             <TouchableOpacity
                               activeOpacity={0.85}
                               onPress={() => {
-                                const isCurrentUser =
-                                  Boolean(
-                                    user?.id && post.userId === String(user.id),
-                                  ) ||
-                                  post.authorName === user?.name ||
-                                  post.authorName === user?.username;
+                                const isCurrentUser = Boolean(user?.id && post.userId && String(post.userId) === String(user.id));
                                 const isVerifiedUser =
                                   Boolean(post.isVerified) ||
                                   (isCurrentUser && isRSBSAVerified);
@@ -1815,14 +2017,7 @@ export default function NewsFeed() {
                                         : ""}
                                     </Text>
                                   )}
-                                  {(post.isVerified ||
-                                    ((Boolean(
-                                      user?.id &&
-                                      post.userId === String(user.id),
-                                    ) ||
-                                      post.authorName === user?.name ||
-                                      post.authorName === user?.username) &&
-                                      isRSBSAVerified)) && (
+                                  {(post.isVerified || (Boolean(user?.id && post.userId && String(post.userId) === String(user.id)) && isRSBSAVerified)) && (
                                     <Ionicons
                                       name="checkmark-circle"
                                       size={16}
@@ -1832,24 +2027,12 @@ export default function NewsFeed() {
                                   )}
                                   <Text
                                     className={`text-xs font-bold px-1.5 py-0.5 rounded ${
-                                      (Boolean(
-                                        user?.id &&
-                                        post.userId === String(user.id),
-                                      ) ||
-                                        post.authorName === user?.name ||
-                                        post.authorName === user?.username) &&
-                                      isRSBSAVerified
+                                      Boolean(user?.id && post.userId && String(post.userId) === String(user.id)) && isRSBSAVerified
                                         ? "text-emerald-700 bg-emerald-50"
                                         : "text-green-600 bg-green-50"
                                     }`}
                                   >
-                                    {(Boolean(
-                                      user?.id &&
-                                      post.userId === String(user.id),
-                                    ) ||
-                                      post.authorName === user?.name ||
-                                      post.authorName === user?.username) &&
-                                    isRSBSAVerified
+                                    {Boolean(user?.id && post.userId && String(post.userId) === String(user.id)) && isRSBSAVerified
                                       ? "RSBSA Verified Farmer"
                                       : post.authorRole}
                                   </Text>
@@ -1861,16 +2044,34 @@ export default function NewsFeed() {
                                     post.location !==
                                       "Iligan City, Philippines",
                                   ) && (
-                                    <>
+                                    <TouchableOpacity
+                                      activeOpacity={0.7}
+                                      onPress={() => {
+                                        const coords = getPostLocationCoords(
+                                          post.location,
+                                          post.latitude,
+                                          post.longitude,
+                                        );
+                                        router.push({
+                                          pathname: "/user/ExploreMap",
+                                          params: {
+                                            location: post.location,
+                                            latitude: String(coords.latitude),
+                                            longitude: String(coords.longitude),
+                                          },
+                                        } as any);
+                                      }}
+                                      className="flex-row items-center"
+                                    >
                                       <Ionicons
                                         name="location"
                                         size={12}
                                         color="#72AF5B"
                                       />
-                                      <Text className="text-xs text-gray-500 ml-1 mr-1.5">
+                                      <Text className="text-xs text-gray-500 ml-1 mr-1.5 hover:underline">
                                         {post.location} •
                                       </Text>
-                                    </>
+                                    </TouchableOpacity>
                                   )}
                                   <Text className="text-xs text-gray-500 mr-2">
                                     {post.timeAgo}
@@ -1908,6 +2109,53 @@ export default function NewsFeed() {
                             <Text className="text-gray-800 text-sm mb-3 leading-5">
                               {post.content}
                             </Text>
+                          )}
+
+                          {/* Pre-Harvest Advance Reservation Card */}
+                          {(post.isPreHarvest || !!post.expectedHarvestDate) && (
+                            <View className="mb-3 p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 shadow-2xs">
+                              <View className="flex-row items-center justify-between mb-2.5">
+                                <View className="flex-row items-center gap-2 flex-1 pr-2">
+                                  <View className="w-8 h-8 rounded-xl bg-[#237227] items-center justify-center">
+                                    <Ionicons name="leaf" size={16} color="#ffffff" />
+                                  </View>
+                                  <View className="flex-1">
+                                    <Text className="text-xs font-bold text-slate-900" numberOfLines={1}>
+                                      {post.cropName || "Advance Harvest Batch"}
+                                    </Text>
+                                    <Text className="text-[10px] text-emerald-800 font-medium">
+                                      {post.expectedHarvestDate
+                                        ? `Expected Harvest: ${new Date(post.expectedHarvestDate).toLocaleDateString()}`
+                                        : "Direct Farm Advance Booking"}
+                                    </Text>
+                                  </View>
+                                </View>
+
+                                <TouchableOpacity
+                                  onPress={() => setReserveModalPost(post)}
+                                  className="px-3 py-1.5 rounded-xl bg-[#237227] flex-row items-center gap-1 shadow-2xs active:bg-[#1c5c1f]"
+                                >
+                                  <Ionicons name="bag-add-outline" size={13} color="#ffffff" />
+                                  <Text className="text-[11px] font-bold text-white">Reserve</Text>
+                                </TouchableOpacity>
+                              </View>
+
+                              {/* Quota & Pricing Row */}
+                              <View className="pt-2 border-t border-emerald-200/60 flex-row items-center justify-between">
+                                <Text className="text-xs font-medium text-slate-700">
+                                  Price: <Text className="font-extrabold text-[#237227]">₱{(post.pricePerUnit || 35).toFixed(2)} / {post.unit || "kg"}</Text>
+                                </Text>
+                                {post.availableQuantity ? (
+                                  <Text className="text-[10px] font-semibold text-emerald-900">
+                                    {post.reservedQuantity || 0} / {post.availableQuantity} {post.unit || "kg"} booked
+                                  </Text>
+                                ) : (
+                                  <Text className="text-[10px] font-medium text-slate-500">
+                                    Hub: {post.pickupHub || "Bogo Public Market"}
+                                  </Text>
+                                )}
+                              </View>
+                            </View>
                           )}
 
                           {/* Shared Post: Embedded Original Post Card */}
@@ -2140,77 +2388,51 @@ export default function NewsFeed() {
                             </TouchableOpacity>
                           ) : null}
 
-                          {/* Attached Location Static Leaflet Map Card */}
+                          {/* Minimal Clickable Location Label */}
                           {Boolean(
                             post.location &&
                             post.location.trim().length > 0 &&
                             post.location !== "Iligan City, Philippines",
                           ) && (
-                            <View className="mb-3 rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-2xs">
-                              <View className="flex-row items-center justify-between px-3.5 py-2 bg-gray-50/95 border-b border-gray-100">
-                                <View className="flex-row items-center gap-1.5 flex-1 mr-2">
-                                  <Ionicons
-                                    name="location-sharp"
-                                    size={14}
-                                    color="#72AF5B"
-                                  />
-                                  <Text
-                                    className="text-xs font-bold text-gray-900 flex-1"
-                                    numberOfLines={1}
-                                  >
-                                    {post.location}
-                                  </Text>
-                                </View>
-                                <TouchableOpacity
-                                  onPress={() =>
-                                    router.push("/user/ExploreMap" as any)
-                                  }
-                                  className="flex-row items-center gap-1 bg-white border border-[#72AF5B]/40 px-2.5 py-1 rounded-lg active:bg-green-50"
-                                  activeOpacity={0.7}
-                                >
-                                  <Ionicons
-                                    name="map"
-                                    size={12}
-                                    color="#72AF5B"
-                                  />
-                                  <Text className="text-[11px] font-bold text-[#72AF5B]">
-                                    Explore Map
-                                  </Text>
-                                </TouchableOpacity>
-                              </View>
-                              <TouchableOpacity
-                                activeOpacity={0.92}
-                                onPress={() =>
-                                  router.push("/user/ExploreMap" as any)
-                                }
-                                style={{ width: "100%", height: 180 }}
+                            <TouchableOpacity
+                              activeOpacity={0.7}
+                              onPress={() => {
+                                const coords = getPostLocationCoords(
+                                  post.location,
+                                  post.latitude,
+                                  post.longitude,
+                                );
+                                router.push({
+                                  pathname: "/user/ExploreMap",
+                                  params: {
+                                    location: post.location,
+                                    latitude: String(coords.latitude),
+                                    longitude: String(coords.longitude),
+                                  },
+                                } as any);
+                              }}
+                              className="flex-row items-center self-start gap-1.5 px-3 py-1.5 mb-3 rounded-full bg-emerald-50 border border-emerald-200/60 active:bg-emerald-100"
+                            >
+                              <Ionicons
+                                name="location-sharp"
+                                size={13}
+                                color="#237227"
+                              />
+                              <Text
+                                className="text-xs font-semibold text-[#237227]"
+                                numberOfLines={1}
                               >
-                                <View
-                                  style={{ width: "100%", height: "100%" }}
-                                  pointerEvents="none"
-                                >
-                                  <LeafletMap
-                                    latitude={
-                                      getPostLocationCoords(
-                                        post.location,
-                                        post.latitude,
-                                        post.longitude,
-                                      ).latitude
-                                    }
-                                    longitude={
-                                      getPostLocationCoords(
-                                        post.location,
-                                        post.latitude,
-                                        post.longitude,
-                                      ).longitude
-                                    }
-                                    zoom={14}
-                                    locationTitle={post.location}
-                                    interactive={false}
-                                  />
-                                </View>
-                              </TouchableOpacity>
-                            </View>
+                                {post.location}
+                              </Text>
+                              <Text className="text-[11px] font-medium text-emerald-600/80">
+                                • Explore Map
+                              </Text>
+                              <Ionicons
+                                name="chevron-forward"
+                                size={12}
+                                color="#72AF5B"
+                              />
+                            </TouchableOpacity>
                           )}
 
                           {/* Post Interaction Bar */}
@@ -2501,44 +2723,144 @@ export default function NewsFeed() {
                         {currentSubStory.privacy || "Public"}
                       </Text>
                     </View>
+                    {currentSubStory.musicTitle && !currentSubStory.overlays?.music ? (
+                      <View className="flex-row items-center mt-1 bg-white/20 px-2 py-0.5 rounded-full self-start">
+                        <Ionicons name="musical-notes" size={11} color="#A7F3D0" />
+                        <Text className="text-emerald-100 text-[10px] font-semibold ml-1">
+                          {currentSubStory.musicTitle}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
 
-                <TouchableOpacity
-                  onPress={handleCloseStoryViewer}
-                  className="w-10 h-10 rounded-full bg-black/40 items-center justify-center active:bg-black/60"
-                  accessibilityRole="button"
-                  accessibilityLabel="Close story viewer"
-                >
-                  <Ionicons name="close" size={24} color="white" />
-                </TouchableOpacity>
+                <View className="flex-row items-center gap-2">
+                  {Boolean(currentSubStory.musicTitle) && (
+                    <TouchableOpacity
+                      onPress={() => setIsStoryAudioMuted((prev) => !prev)}
+                      className="w-10 h-10 rounded-full bg-black/40 items-center justify-center active:bg-black/60"
+                      accessibilityRole="button"
+                      accessibilityLabel={isStoryAudioMuted ? "Unmute soundtrack" : "Mute soundtrack"}
+                    >
+                      <Ionicons
+                        name={isStoryAudioMuted ? "volume-mute" : "volume-high"}
+                        size={19}
+                        color={isStoryAudioMuted ? "#EF4444" : "#72AF5B"}
+                      />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    onPress={handleCloseStoryViewer}
+                    className="w-10 h-10 rounded-full bg-black/40 items-center justify-center active:bg-black/60"
+                    accessibilityRole="button"
+                    accessibilityLabel="Close story viewer"
+                  >
+                    <Ionicons name="close" size={24} color="white" />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
 
-            {/* Story Text Content: Centered bold typography for Text Stories, Bottom Caption for Image Stories */}
-            {Boolean(currentSubStory.content && currentSubStory.content.trim()) ? (
-              Boolean(currentSubStory.imageUrl && currentSubStory.imageUrl.trim()) ? (
-                /* 1. Image Story: Bottom Caption Overlay */
-                <View
-                  className="flex-1 justify-end items-center pb-24 px-5 z-10 w-full"
-                  pointerEvents="box-none"
-                >
-                  <Animated.View
+            {/* Story Text Content: Centered bold sticker for Image Stories + bottom caption, or Bold typography for Text Stories */}
+            {Boolean(currentSubStory.imageUrl && currentSubStory.imageUrl.trim()) ? (
+              <View className="flex-1 justify-between z-10 w-full relative" pointerEvents="box-none">
+                {/* Floating Story Stickers if placed */}
+                {currentSubStory.overlays?.stickers?.map((stk) => (
+                  <View
+                    key={stk.id}
                     style={{
-                      transform: [{ scale: cardScaleAnim }],
-                      opacity: cardOpacityAnim,
-                      width: "100%",
-                      maxWidth: 500,
+                      position: "absolute",
+                      left: stk.x,
+                      top: stk.y,
+                      zIndex: 15,
                     }}
-                    className="bg-black/65 px-5 py-3.5 rounded-2xl border border-white/15 shadow-lg"
+                    className="px-3.5 py-1.5 rounded-2xl bg-black/60 border border-white/30 shadow-lg pointer-events-none"
                   >
-                    <Text className="text-white text-base font-semibold text-center leading-6">
-                      {currentSubStory.content}
+                    <Text className="text-2xl">{stk.emoji}</Text>
+                  </View>
+                ))}
+
+                {/* Floating Sound/Music Badge if custom placed */}
+                {Boolean(currentSubStory.musicTitle && currentSubStory.overlays?.music) && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      left: Math.max(12, Math.min(currentSubStory.overlays!.music!.x, Dimensions.get("window").width - 190)),
+                      top: Math.max(70, Math.min(currentSubStory.overlays!.music!.y, Dimensions.get("window").height - 180)),
+                      zIndex: 15,
+                    }}
+                    className="flex-row items-center bg-black/75 px-3.5 py-2 rounded-full border border-white/20 shadow-xl pointer-events-none"
+                  >
+                    <Ionicons name="musical-notes" size={13} color="#72AF5B" />
+                    <Text className="text-white text-xs font-semibold ml-1.5 mr-1" numberOfLines={1}>
+                      {currentSubStory.musicTitle}
                     </Text>
-                  </Animated.View>
-                </View>
-              ) : (
-                /* 2. Text Story: Centered Bold Typography (Instagram/Facebook Style) */
+                  </View>
+                )}
+
+                {/* Text Sticker Overlay: custom placed or centered default */}
+                {Boolean(currentSubStory.content && currentSubStory.content.trim()) && (
+                  currentSubStory.overlays?.text ? (
+                    <Animated.View
+                      style={{
+                        position: "absolute",
+                        left: currentSubStory.overlays.text.x,
+                        top: currentSubStory.overlays.text.y,
+                        transform: [{ scale: cardScaleAnim }],
+                        opacity: cardOpacityAnim,
+                        maxWidth: 320,
+                        zIndex: 18,
+                      }}
+                      className="bg-white/95 px-5 py-3.5 rounded-2xl shadow-2xl border border-white/60 pointer-events-none"
+                    >
+                      <Text className="text-slate-900 font-extrabold text-base sm:text-lg text-center tracking-tight">
+                        {currentSubStory.content}
+                      </Text>
+                    </Animated.View>
+                  ) : (
+                    <View className="flex-1 justify-center items-center px-6" pointerEvents="box-none">
+                      <Animated.View
+                        style={{
+                          transform: [{ scale: cardScaleAnim }],
+                          opacity: cardOpacityAnim,
+                          maxWidth: 480,
+                        }}
+                        className="bg-white/95 px-5 py-3 rounded-2xl shadow-2xl border border-white/60"
+                      >
+                        <Text className="text-slate-900 font-extrabold text-base sm:text-lg text-center tracking-tight">
+                          {currentSubStory.content}
+                        </Text>
+                      </Animated.View>
+                    </View>
+                  )
+                )}
+
+                {/* Bottom: Caption Overlay (only if secondary caption exists and is distinct from content) */}
+                {Boolean(
+                  currentSubStory.caption &&
+                    currentSubStory.caption.trim() &&
+                    currentSubStory.caption.trim() !== currentSubStory.content?.trim(),
+                ) && (
+                  <View className="pb-24 px-5 items-center w-full" pointerEvents="box-none">
+                    <Animated.View
+                      style={{
+                        transform: [{ scale: cardScaleAnim }],
+                        opacity: cardOpacityAnim,
+                        width: "100%",
+                        maxWidth: 500,
+                      }}
+                      className="bg-black/65 px-5 py-3 rounded-2xl border border-white/15 shadow-lg"
+                    >
+                      <Text className="text-white text-sm font-semibold text-center leading-5">
+                        {currentSubStory.caption}
+                      </Text>
+                    </Animated.View>
+                  </View>
+                )}
+              </View>
+            ) : (
+              /* 2. Text Story: Centered Bold Typography (Instagram/Facebook Style) */
+              Boolean(currentSubStory.content && currentSubStory.content.trim()) ? (
                 <View
                   className="flex-1 justify-center items-center px-8 z-10 w-full"
                   pointerEvents="box-none"
@@ -2564,9 +2886,9 @@ export default function NewsFeed() {
                     </Text>
                   </Animated.View>
                 </View>
+              ) : (
+                <View className="flex-1" />
               )
-            ) : (
-              <View className="flex-1" />
             )}
 
             {/* Left & Right Tap Zones for Quick Navigation */}
@@ -2826,6 +3148,7 @@ export default function NewsFeed() {
           } else if (storyStep === "EDIT_STORY") {
             setStoryStep("SELECT_MEDIA");
           } else {
+            stopStorySoundtrack();
             setStoryModalVisible(false);
           }
         }}
@@ -2839,7 +3162,10 @@ export default function NewsFeed() {
                 Create story
               </Text>
               <TouchableOpacity
-                onPress={() => setStoryModalVisible(false)}
+                onPress={() => {
+                  stopStorySoundtrack();
+                  setStoryModalVisible(false);
+                }}
                 className="w-9 h-9 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200"
                 accessibilityRole="button"
                 accessibilityLabel="Close create story modal"
@@ -3194,15 +3520,146 @@ export default function NewsFeed() {
                   className="flex-1 w-full"
                   resizeMode="cover"
                 />
-                <View className="absolute bottom-24 left-4 right-4 bg-black/60 rounded-xl px-4 py-3 z-10 border border-white/20">
-                  <TextInput
-                    value={storyTextContent}
-                    onChangeText={setStoryTextContent}
-                    placeholder="Add a caption to your story..."
-                    placeholderTextColor="#CBD5E1"
-                    className="text-white text-sm"
-                  />
-                </View>
+
+                {/* Filter Overlays */}
+                {storyFilter === "warm" && (
+                  <View className="absolute inset-0 bg-amber-500/15 pointer-events-none" />
+                )}
+                {storyFilter === "fresh" && (
+                  <View className="absolute inset-0 bg-emerald-500/15 pointer-events-none" />
+                )}
+                {storyFilter === "vintage" && (
+                  <View className="absolute inset-0 bg-yellow-900/25 pointer-events-none" />
+                )}
+                {storyFilter === "sunset" && (
+                  <View className="absolute inset-0 bg-orange-600/20 pointer-events-none" />
+                )}
+
+                {/* Floating Draggable Music Track Badge */}
+                {storyMusicTitle && (
+                  <DraggableStoryElement
+                    initialPosition={musicBadgePos}
+                    onPositionChange={setMusicBadgePos}
+                  >
+                    <View className="flex-row items-center bg-black/80 px-3.5 py-2 rounded-full border border-white/25 shadow-xl">
+                      <View className="w-5 h-5 rounded-full bg-emerald-500/20 items-center justify-center mr-1.5">
+                        <Ionicons name="musical-notes" size={12} color="#72AF5B" />
+                      </View>
+                      <Text className="text-white text-xs font-semibold mr-2 max-w-[170px]" numberOfLines={1}>
+                        {storyMusicTitle}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setStoryMusicTitle(null);
+                          stopStorySoundtrack();
+                          showToast("Soundtrack removed", "info");
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        className="p-0.5 rounded-full bg-white/10 active:bg-white/20"
+                        accessibilityLabel="Remove soundtrack"
+                      >
+                        <Ionicons name="close-circle" size={16} color="#CBD5E1" />
+                      </TouchableOpacity>
+                    </View>
+                  </DraggableStoryElement>
+                )}
+
+                {/* Floating Draggable Stickers / Badges */}
+                {storyStickers.map((sticker) => (
+                  <DraggableStoryElement
+                    key={sticker.id}
+                    initialPosition={{ x: sticker.x, y: sticker.y }}
+                    onPositionChange={(pos) =>
+                      setStoryStickers((prev) =>
+                        prev.map((s) => (s.id === sticker.id ? { ...s, x: pos.x, y: pos.y } : s))
+                      )
+                    }
+                  >
+                    <View className="flex-row items-center bg-black/75 border border-white/30 px-3.5 py-1.5 rounded-2xl shadow-xl">
+                      <Text className="text-2xl">{sticker.emoji}</Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setStoryStickers((prev) => prev.filter((s) => s.id !== sticker.id));
+                          showToast("Sticker removed", "info");
+                        }}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        className="ml-2 p-0.5 rounded-full bg-white/15 active:bg-white/30"
+                        accessibilityLabel="Remove sticker"
+                      >
+                        <Ionicons name="close" size={12} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  </DraggableStoryElement>
+                ))}
+
+                {/* Center / Custom Placed Draggable Text Sticker Overlay */}
+                {Boolean(storyTextOverlay.trim()) ? (
+                  <DraggableStoryElement
+                    initialPosition={textOverlayPos}
+                    onPositionChange={setTextOverlayPos}
+                    onPress={() => setIsAddingTextOverlay(true)}
+                  >
+                    <View
+                      className="px-6 py-4 rounded-2xl shadow-2xl items-center justify-center max-w-[320px]"
+                      style={{
+                        backgroundColor:
+                          textOverlayBg === "white"
+                            ? "#FFFFFF"
+                            : textOverlayBg === "black"
+                              ? "#0F172A"
+                              : textOverlayBg === "emerald"
+                                ? "#15803D"
+                                : "rgba(0,0,0,0.65)",
+                        borderWidth: textOverlayBg === "transparent" ? 0 : 1.5,
+                        borderColor:
+                          textOverlayBg === "white"
+                            ? "rgba(226,232,240,0.9)"
+                            : "rgba(255,255,255,0.4)",
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 6 },
+                        shadowOpacity: 0.4,
+                        shadowRadius: 12,
+                        elevation: 10,
+                      }}
+                    >
+                      <Text
+                        className="font-extrabold text-base sm:text-lg text-center tracking-tight"
+                        style={{
+                          color: textOverlayBg === "white" ? "#0F172A" : "#FFFFFF",
+                        }}
+                      >
+                        {storyTextOverlay}
+                      </Text>
+                      <View className="flex-row items-center mt-1.5 opacity-70">
+                        <Ionicons
+                          name="move"
+                          size={11}
+                          color={textOverlayBg === "white" ? "#64748B" : "#CBD5E1"}
+                        />
+                        <Text
+                          className="text-[10px] ml-1 font-medium"
+                          style={{ color: textOverlayBg === "white" ? "#64748B" : "#CBD5E1" }}
+                        >
+                          Drag to move • Tap to edit
+                        </Text>
+                      </View>
+                    </View>
+                  </DraggableStoryElement>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => setIsAddingTextOverlay(true)}
+                    activeOpacity={0.7}
+                    className="absolute z-10 px-4 py-2 rounded-full bg-black/50 border border-white/20 items-center justify-center shadow-md"
+                    style={{ alignSelf: "center", top: "40%" }}
+                  >
+                    <View className="flex-row items-center">
+                      <Ionicons name="text-outline" size={14} color="#CBD5E1" />
+                      <Text className="text-white/90 text-xs font-semibold ml-1.5">
+                        Tap <Text className="font-extrabold text-white">Aa</Text> to add text sticker
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : (
               <LinearGradient
@@ -3211,6 +3668,63 @@ export default function NewsFeed() {
                 end={{ x: 1, y: 1 }}
                 className="flex-1 w-full items-center justify-center p-8 relative"
               >
+                {/* Floating Draggable Music Track Badge */}
+                {storyMusicTitle && (
+                  <DraggableStoryElement
+                    initialPosition={musicBadgePos}
+                    onPositionChange={setMusicBadgePos}
+                  >
+                    <View className="flex-row items-center bg-black/80 px-3.5 py-2 rounded-full border border-white/25 shadow-xl">
+                      <View className="w-5 h-5 rounded-full bg-emerald-500/20 items-center justify-center mr-1.5">
+                        <Ionicons name="musical-notes" size={12} color="#72AF5B" />
+                      </View>
+                      <Text className="text-white text-xs font-semibold ml-1.5 mr-2 max-w-[170px]" numberOfLines={1}>
+                        {storyMusicTitle}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setStoryMusicTitle(null);
+                          stopStorySoundtrack();
+                          showToast("Soundtrack removed", "info");
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        className="p-0.5 rounded-full bg-white/10 active:bg-white/20"
+                        accessibilityLabel="Remove soundtrack"
+                      >
+                        <Ionicons name="close-circle" size={16} color="#CBD5E1" />
+                      </TouchableOpacity>
+                    </View>
+                  </DraggableStoryElement>
+                )}
+
+                {/* Floating Draggable Stickers / Badges */}
+                {storyStickers.map((sticker) => (
+                  <DraggableStoryElement
+                    key={`gradient-${sticker.id}`}
+                    initialPosition={{ x: sticker.x, y: sticker.y }}
+                    onPositionChange={(pos) =>
+                      setStoryStickers((prev) =>
+                        prev.map((s) => (s.id === sticker.id ? { ...s, x: pos.x, y: pos.y } : s))
+                      )
+                    }
+                  >
+                    <View className="flex-row items-center bg-black/75 border border-white/30 px-3.5 py-1.5 rounded-2xl shadow-xl">
+                      <Text className="text-2xl">{sticker.emoji}</Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setStoryStickers((prev) => prev.filter((s) => s.id !== sticker.id));
+                          showToast("Sticker removed", "info");
+                        }}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        className="ml-2 p-0.5 rounded-full bg-white/15 active:bg-white/30"
+                        accessibilityLabel="Remove sticker"
+                      >
+                        <Ionicons name="close" size={12} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  </DraggableStoryElement>
+                ))}
+
                 <TextInput
                   value={storyTextContent}
                   onChangeText={setStoryTextContent}
@@ -3241,67 +3755,141 @@ export default function NewsFeed() {
               </LinearGradient>
             )}
 
-            {/* Top Controls (Absolute) */}
-            <View className="absolute top-6 left-4 right-4 flex-row justify-between items-center z-10">
+            {/* Top Controls Toolbar */}
+            <View className="absolute top-6 left-4 right-4 flex-row justify-between items-center z-20">
               {/* Left: Back Arrow */}
               <TouchableOpacity
-                onPress={() => setStoryStep("SELECT_MEDIA")}
-                className="w-10 h-10 rounded-full bg-black/40 items-center justify-center active:bg-black/60"
+                onPress={() => {
+                  stopStorySoundtrack();
+                  setStoryStep("SELECT_MEDIA");
+                }}
+                className="w-10 h-10 rounded-full bg-black/50 items-center justify-center active:bg-black/70 border border-white/20 shadow-md"
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityLabel="Back to gallery"
               >
-                <Ionicons name="arrow-back" size={28} color="white" />
+                <Ionicons name="arrow-back" size={24} color="white" />
               </TouchableOpacity>
 
               {/* Right: Edit Icons */}
-              <View className="flex-row items-center gap-4">
+              <View className="flex-row items-center gap-3">
+                {/* 1. Aa (Text Sticker) */}
                 <TouchableOpacity
-                  onPress={() => console.log("Text tool clicked")}
-                  className="w-10 h-10 rounded-full bg-black/40 items-center justify-center active:bg-black/60"
+                  onPress={() => setIsAddingTextOverlay(true)}
+                  className={`w-10 h-10 rounded-full items-center justify-center active:bg-black/70 border shadow-md ${
+                    Boolean(storyTextOverlay.trim())
+                      ? "bg-[#72AF5B] border-white"
+                      : "bg-black/50 border-white/20"
+                  }`}
                   activeOpacity={0.7}
+                  accessibilityLabel="Text Sticker Tool"
                 >
-                  <Text className="text-white text-lg font-bold font-serif">
+                  <Text className="text-white text-base font-extrabold font-serif">
                     Aa
                   </Text>
                 </TouchableOpacity>
 
+                {/* 2. Stickers / Emojis */}
                 <TouchableOpacity
-                  onPress={() => console.log("Stickers clicked")}
-                  className="w-10 h-10 rounded-full bg-black/40 items-center justify-center active:bg-black/60"
+                  onPress={() => setIsStickerPickerOpen(true)}
+                  className={`w-10 h-10 rounded-full items-center justify-center active:bg-black/70 border shadow-md ${
+                    storyStickers.length > 0
+                      ? "bg-[#72AF5B] border-white"
+                      : "bg-black/50 border-white/20"
+                  }`}
                   activeOpacity={0.7}
+                  accessibilityLabel="Stickers Tool"
                 >
-                  <Ionicons name="happy-outline" size={24} color="white" />
+                  <Ionicons name="happy-outline" size={22} color="white" />
                 </TouchableOpacity>
 
+                {/* 3. Photo Filters Tint */}
                 <TouchableOpacity
-                  onPress={() => console.log("Draw clicked")}
-                  className="w-10 h-10 rounded-full bg-black/40 items-center justify-center active:bg-black/60"
+                  onPress={() => {
+                    const filters: Array<"normal" | "warm" | "fresh" | "vintage" | "sunset"> = [
+                      "normal", "warm", "fresh", "vintage", "sunset"
+                    ];
+                    const nextIdx = (filters.indexOf(storyFilter) + 1) % filters.length;
+                    const nextFilter = filters[nextIdx];
+                    setStoryFilter(nextFilter);
+                    const labels: Record<string, string> = {
+                      normal: "Filter: Original",
+                      warm: "Filter: Warm Sunlight ☀️",
+                      fresh: "Filter: Fresh Greens 🌿",
+                      vintage: "Filter: Vintage Sepia 🌾",
+                      sunset: "Filter: Golden Sunset 🌅",
+                    };
+                    showToast(labels[nextFilter] || "Filter applied", "info");
+                  }}
+                  className={`w-10 h-10 rounded-full items-center justify-center active:bg-black/70 border shadow-md ${
+                    storyFilter !== "normal"
+                      ? "bg-[#72AF5B] border-white"
+                      : "bg-black/50 border-white/20"
+                  }`}
                   activeOpacity={0.7}
+                  accessibilityLabel="Filter Tool"
                 >
-                  <Ionicons name="pencil-outline" size={24} color="white" />
+                  <Ionicons name="pencil-outline" size={20} color="white" />
                 </TouchableOpacity>
 
+                {/* 4. Music Tool */}
                 <TouchableOpacity
-                  onPress={() => console.log("Music tool clicked")}
-                  className="w-10 h-10 rounded-full bg-black/40 items-center justify-center active:bg-black/60"
+                  onPress={() => setIsMusicPickerOpen(true)}
+                  className={`w-10 h-10 rounded-full items-center justify-center active:bg-black/70 border shadow-md ${
+                    storyMusicTitle
+                      ? "bg-[#72AF5B] border-white"
+                      : "bg-black/50 border-white/20"
+                  }`}
                   activeOpacity={0.7}
+                  accessibilityLabel="Music Sound Tool"
                 >
                   <Ionicons
                     name="musical-notes-outline"
-                    size={24}
+                    size={20}
                     color="white"
                   />
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Bottom Controls (Absolute) */}
-            <View className="absolute bottom-8 left-4 right-4 flex-row justify-between items-center z-10">
-              {/* Left: Who can see your story / Privacy button */}
+            {/* Quick Draggable Helper Hint */}
+            {(Boolean(storyTextOverlay.trim()) || storyMusicTitle || storyStickers.length > 0) && (
+              <View
+                style={{ top: 72 }}
+                className="absolute self-center z-20 bg-black/65 px-3.5 py-1.5 rounded-full border border-white/20 shadow-lg pointer-events-none flex-row items-center gap-1.5"
+              >
+                <Ionicons name="move" size={12} color="#72AF5B" />
+                <Text className="text-white/90 text-[11px] font-semibold">
+                  Touch & drag items anywhere on your story
+                </Text>
+              </View>
+            )}
+
+            {/* Bottom Controls Bar (Caption pill, Privacy selector, Share button) */}
+            <View className="absolute bottom-6 left-4 right-4 flex-row items-center z-20">
+              {/* Caption input pill (like "AP box" in user's screenshot) */}
+              <View className="flex-1 mr-2 bg-black/60 rounded-full px-3.5 py-2 border border-white/25 flex-row items-center shadow-md">
+                <TextInput
+                  value={storyTextContent}
+                  onChangeText={setStoryTextContent}
+                  placeholder="Add a caption..."
+                  placeholderTextColor="#94A3B8"
+                  className="flex-1 text-white text-xs sm:text-sm py-0.5"
+                />
+                {Boolean(storyTextContent) && (
+                  <TouchableOpacity
+                    onPress={() => setStoryTextContent("")}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Privacy pill */}
               <TouchableOpacity
                 onPress={() => setStoryStep("PRIVACY_SETTINGS")}
-                className="flex-row items-center bg-black/60 border border-white/20 px-3.5 py-2.5 rounded-full active:bg-black/80 shadow-md"
+                className="bg-black/60 border border-white/25 px-3 py-2.5 rounded-full flex-row items-center mr-2 shadow-md"
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityLabel="Who can see your story"
@@ -3314,52 +3902,475 @@ export default function NewsFeed() {
                         ? "people-outline"
                         : "lock-closed-outline"
                   }
-                  size={16}
-                  color="white"
-                />
-                <View className="ml-2">
-                  <Text className="text-white/70 text-[10px] uppercase font-semibold tracking-wider">
-                    Privacy
-                  </Text>
-                  <Text className="text-white text-xs font-bold">
-                    {storyPrivacy}
-                  </Text>
-                </View>
-                <Ionicons
-                  name="chevron-down"
                   size={14}
                   color="white"
-                  style={{ marginLeft: 6 }}
                 />
+                <Text className="text-white text-xs font-bold ml-1.5 mr-1">
+                  {storyPrivacy}
+                </Text>
+                <Ionicons name="chevron-down" size={12} color="white" />
               </TouchableOpacity>
 
-              {/* Right: Primary Share Button */}
+              {/* Green Share Button */}
               <TouchableOpacity
                 onPress={handleShareStory}
                 disabled={isSharingStory}
-                className="bg-[#72AF5B] px-6 py-3 rounded-full flex-row items-center active:bg-[#5e944b] shadow-lg"
+                className="bg-[#72AF5B] px-4 py-2.5 rounded-full flex-row items-center active:bg-[#5e944b] shadow-lg"
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Share story"
               >
                 {isSharingStory ? (
-                  <ActivityIndicator
-                    size="small"
-                    color="#FFFFFF"
-                    className="mr-2"
-                  />
+                  <ActivityIndicator size="small" color="#FFFFFF" className="mr-1" />
                 ) : (
                   <>
-                    <Text className="text-white font-bold text-base mr-2">
+                    <Text className="text-white font-bold text-xs sm:text-sm mr-1">
                       Share
                     </Text>
-                    <Ionicons name="arrow-forward" size={18} color="white" />
+                    <Ionicons name="arrow-forward" size={15} color="white" />
                   </>
                 )}
               </TouchableOpacity>
             </View>
           </View>
         )}
+      </Modal>
+
+      {/* Dynamic Story Sub-Modal 1: Text Sticker Overlay Modal */}
+      <Modal
+        visible={isAddingTextOverlay}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsAddingTextOverlay(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          className="flex-1 bg-black/80 items-center justify-center px-5"
+        >
+          <View className="w-full max-w-sm bg-gray-900 rounded-3xl p-5 border border-white/20 shadow-2xl">
+            <View className="flex-row justify-between items-center mb-4">
+              <View className="flex-row items-center">
+                <Ionicons name="text" size={20} color="#72AF5B" />
+                <Text className="text-white font-bold text-base ml-2">
+                  Text Sticker
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setIsAddingTextOverlay(false)}
+                className="w-8 h-8 rounded-full bg-white/10 items-center justify-center"
+              >
+                <Ionicons name="close" size={18} color="white" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Sticker Preview & Input */}
+            <View
+              className="w-full py-4 px-4 rounded-2xl items-center justify-center mb-4 border"
+              style={{
+                backgroundColor:
+                  textOverlayBg === "white"
+                    ? "#FFFFFF"
+                    : textOverlayBg === "black"
+                      ? "#0F172A"
+                      : textOverlayBg === "emerald"
+                        ? "#15803D"
+                        : "rgba(255,255,255,0.08)",
+                borderColor:
+                  textOverlayBg === "white"
+                    ? "#CBD5E1"
+                    : "rgba(255,255,255,0.2)",
+              }}
+            >
+              <TextInput
+                value={storyTextOverlay}
+                onChangeText={setStoryTextOverlay}
+                placeholder="Type your sticker text..."
+                placeholderTextColor={
+                  textOverlayBg === "white" ? "#94A3B8" : "rgba(255,255,255,0.5)"
+                }
+                multiline
+                className="w-full text-center font-extrabold text-base sm:text-lg"
+                style={{
+                  color: textOverlayBg === "white" ? "#0F172A" : "#FFFFFF",
+                }}
+                autoFocus
+              />
+            </View>
+
+            {/* Style Selector Pills */}
+            <Text className="text-gray-400 text-xs font-semibold mb-2">
+              Sticker Style:
+            </Text>
+            <View className="flex-row gap-2 mb-5">
+              {[
+                { id: "white", label: "White Pill", bg: "bg-white", text: "text-slate-900" },
+                { id: "black", label: "Dark Pill", bg: "bg-slate-900", text: "text-white" },
+                { id: "emerald", label: "Farm Green", bg: "bg-emerald-600", text: "text-white" },
+                { id: "transparent", label: "Glass", bg: "bg-white/10", text: "text-white" },
+              ].map((styleOpt) => (
+                <TouchableOpacity
+                  key={styleOpt.id}
+                  onPress={() => setTextOverlayBg(styleOpt.id as any)}
+                  className={`flex-1 py-2 rounded-xl items-center justify-center border ${
+                    textOverlayBg === styleOpt.id
+                      ? "border-[#72AF5B] bg-[#72AF5B]/20"
+                      : "border-white/15 bg-white/5"
+                  }`}
+                >
+                  <Text
+                    className={`text-[11px] font-bold ${
+                      textOverlayBg === styleOpt.id
+                        ? "text-[#72AF5B]"
+                        : "text-gray-300"
+                    }`}
+                  >
+                    {styleOpt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Action Buttons */}
+            <View className="flex-row gap-3">
+              {Boolean(storyTextOverlay) && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setStoryTextOverlay("");
+                    setIsAddingTextOverlay(false);
+                  }}
+                  className="flex-1 py-3 bg-red-500/20 rounded-xl items-center justify-center border border-red-500/30"
+                >
+                  <Text className="text-red-400 font-bold text-sm">Remove</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                onPress={() => setIsAddingTextOverlay(false)}
+                className="flex-1 py-3 bg-[#72AF5B] rounded-xl items-center justify-center shadow-md active:bg-[#5e944b]"
+              >
+                <Text className="text-white font-bold text-sm">Done</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Dynamic Story Sub-Modal 2: Sticker & Emoji Picker */}
+      <Modal
+        visible={isStickerPickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsStickerPickerOpen(false)}
+      >
+        <Pressable
+          onPress={() => setIsStickerPickerOpen(false)}
+          className="flex-1 bg-black/60 justify-end"
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            className="bg-gray-900 rounded-t-3xl p-5 border-t border-white/20 max-h-[70%]"
+          >
+            <View className="w-12 h-1 bg-white/20 rounded-full self-center mb-4" />
+            <View className="flex-row justify-between items-center mb-4">
+              <View className="flex-row items-center">
+                <Ionicons name="happy" size={20} color="#72AF5B" />
+                <Text className="text-white font-bold text-base ml-2">
+                  Farm Stickers & Emojis
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setIsStickerPickerOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 items-center justify-center"
+              >
+                <Ionicons name="close" size={18} color="white" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Badges Section */}
+              <Text className="text-gray-400 text-xs font-semibold mb-2 uppercase tracking-wider">
+                Farm Badges
+              </Text>
+              <View className="flex-row flex-wrap gap-2 mb-5">
+                {[
+                  "💚 Local Farm",
+                  "🌾 Fresh Harvest",
+                  "🚜 Farm Life",
+                  "🌱 100% Organic",
+                  "🏆 Premium Crop",
+                  "☀️ Sunny Day",
+                  "🏡 Farm to Table",
+                  "🌽 In Season",
+                ].map((badge) => (
+                  <TouchableOpacity
+                    key={badge}
+                    onPress={() => {
+                      const count = storyStickers.length;
+                      const newSticker: StoryStickerItem = {
+                        id: `stk-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                        emoji: badge,
+                        x: 36 + (count % 3) * 65,
+                        y: 160 + (count % 4) * 55,
+                      };
+                      setStoryStickers((prev) => [...prev, newSticker]);
+                      showToast(`Added ${badge}`, "info");
+                    }}
+                    className="bg-white/10 border border-white/20 px-3.5 py-2 rounded-full active:bg-[#72AF5B]/30"
+                  >
+                    <Text className="text-white text-xs font-bold">{badge}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Emoji Grid */}
+              <Text className="text-gray-400 text-xs font-semibold mb-2 uppercase tracking-wider">
+                Crop & Farm Emojis
+              </Text>
+              <View className="flex-row flex-wrap justify-between gap-y-3 mb-6">
+                {[
+                  "🌾", "🚜", "🍅", "🌽", "🥕", "🥬", "🌻", "🥑", "🌱", "🐔",
+                  "🐄", "🐖", "🐝", "🍓", "🥭", "🍎", "🌶️", "🥔", "🧅", "🏡",
+                  "🧺", "💧", "🪴", "💚"
+                ].map((emoji) => (
+                  <TouchableOpacity
+                    key={emoji}
+                    onPress={() => {
+                      const count = storyStickers.length;
+                      const newSticker: StoryStickerItem = {
+                        id: `stk-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                        emoji: emoji,
+                        x: 36 + (count % 3) * 65,
+                        y: 160 + (count % 4) * 55,
+                      };
+                      setStoryStickers((prev) => [...prev, newSticker]);
+                      showToast(`Added sticker`, "info");
+                    }}
+                    className="w-[14%] aspect-square bg-white/5 rounded-2xl items-center justify-center border border-white/10 active:scale-110 active:bg-white/15"
+                  >
+                    <Text className="text-2xl">{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Done button */}
+              <TouchableOpacity
+                onPress={() => setIsStickerPickerOpen(false)}
+                className="w-full bg-[#72AF5B] py-3.5 rounded-xl items-center justify-center mb-4"
+              >
+                <Text className="text-white font-bold text-sm">Done</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Dynamic Story Sub-Modal 3: Music Sound Tracker Picker */}
+      <Modal
+        visible={isMusicPickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setPreviewingTrack(null);
+          if (!storyMusicTitle) stopStorySoundtrack();
+          else playStorySoundtrack(storyMusicTitle);
+          setIsMusicPickerOpen(false);
+        }}
+      >
+        <Pressable
+          onPress={() => {
+            setPreviewingTrack(null);
+            if (!storyMusicTitle) stopStorySoundtrack();
+            else playStorySoundtrack(storyMusicTitle);
+            setIsMusicPickerOpen(false);
+          }}
+          className="flex-1 bg-black/60 justify-end"
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            className="bg-gray-900 rounded-t-3xl p-5 border-t border-white/20 max-h-[75%]"
+          >
+            <View className="w-12 h-1 bg-white/20 rounded-full self-center mb-4" />
+            <View className="flex-row justify-between items-center mb-4">
+              <View className="flex-row items-center">
+                <Ionicons name="musical-notes" size={20} color="#72AF5B" />
+                <Text className="text-white font-bold text-base ml-2">
+                  Select Story Soundtrack
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setPreviewingTrack(null);
+                  if (!storyMusicTitle) stopStorySoundtrack();
+                  else playStorySoundtrack(storyMusicTitle);
+                  setIsMusicPickerOpen(false);
+                }}
+                className="w-8 h-8 rounded-full bg-white/10 items-center justify-center"
+              >
+                <Ionicons name="close" size={18} color="white" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View className="gap-2.5 mb-5">
+                {[
+                  {
+                    title: "Morning Harvest Birds",
+                    duration: "0:30",
+                    genre: "Nature & Ambience",
+                    icon: "sunny-outline" as const,
+                  },
+                  {
+                    title: "Country Road Acoustic",
+                    duration: "0:45",
+                    genre: "Acoustic Folk",
+                    icon: "musical-note" as const,
+                  },
+                  {
+                    title: "Golden Hour Sunrise",
+                    duration: "0:30",
+                    genre: "Chill Farm Melody",
+                    icon: "partly-sunny-outline" as const,
+                  },
+                  {
+                    title: "Greenhouse Rain Melodies",
+                    duration: "0:40",
+                    genre: "Relaxing Rain",
+                    icon: "rainy-outline" as const,
+                  },
+                  {
+                    title: "Farm Rooster Morning Call",
+                    duration: "0:15",
+                    genre: "Morning Ambience",
+                    icon: "alarm-outline" as const,
+                  },
+                  {
+                    title: "Soft Breeze over Fields",
+                    duration: "0:35",
+                    genre: "Calm Wind",
+                    icon: "leaf-outline" as const,
+                  },
+                ].map((track) => {
+                  const isSelected = storyMusicTitle === track.title;
+                  const isPreviewing = previewingTrack === track.title;
+                  return (
+                    <TouchableOpacity
+                      key={track.title}
+                      onPress={() => {
+                        setStoryMusicTitle(track.title);
+                        setPreviewingTrack(null);
+                        playStorySoundtrack(track.title);
+                        showToast(`Soundtrack playing: ${track.title}`, "info");
+                        setIsMusicPickerOpen(false);
+                      }}
+                      className={`flex-row items-center justify-between p-3.5 rounded-2xl border ${
+                        isSelected
+                          ? "bg-[#72AF5B]/20 border-[#72AF5B]"
+                          : "bg-white/5 border-white/10 active:bg-white/10"
+                      }`}
+                    >
+                      <View className="flex-row items-center flex-1 mr-2">
+                        <View
+                          className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
+                            isSelected ? "bg-[#72AF5B]" : "bg-white/10"
+                          }`}
+                        >
+                          <Ionicons
+                            name={track.icon}
+                            size={18}
+                            color={isSelected ? "white" : "#94A3B8"}
+                          />
+                        </View>
+                        <View className="flex-1">
+                          <Text
+                            className={`font-bold text-sm ${
+                              isSelected ? "text-[#72AF5B]" : "text-white"
+                            }`}
+                            numberOfLines={1}
+                          >
+                            {track.title}
+                          </Text>
+                          <Text className="text-gray-400 text-xs mt-0.5">
+                            {track.genre} • {track.duration}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View className="flex-row items-center gap-2.5">
+                        <TouchableOpacity
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            if (isPreviewing) {
+                              setPreviewingTrack(null);
+                              stopStorySoundtrack();
+                            } else {
+                              setPreviewingTrack(track.title);
+                              playStorySoundtrack(track.title);
+                            }
+                          }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          className={`w-8 h-8 rounded-full items-center justify-center border ${
+                            isPreviewing
+                              ? "bg-[#72AF5B] border-[#72AF5B]"
+                              : "bg-white/10 border-white/20 active:bg-white/20"
+                          }`}
+                          accessibilityLabel={isPreviewing ? "Pause track" : "Preview track sound"}
+                        >
+                          <Ionicons
+                            name={isPreviewing ? "pause" : "play"}
+                            size={14}
+                            color="#FFFFFF"
+                          />
+                        </TouchableOpacity>
+
+                        {isSelected ? (
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={22}
+                            color="#72AF5B"
+                          />
+                        ) : (
+                          <Ionicons
+                            name="add-circle-outline"
+                            size={22}
+                            color="#94A3B8"
+                          />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {storyMusicTitle && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setStoryMusicTitle(null);
+                    setPreviewingTrack(null);
+                    stopStorySoundtrack();
+                    setIsMusicPickerOpen(false);
+                    showToast("Soundtrack removed (muted)", "info");
+                  }}
+                  className="w-full py-3 bg-red-500/20 border border-red-500/30 rounded-xl items-center justify-center mb-3"
+                >
+                  <Text className="text-red-400 font-bold text-sm">
+                    Remove Soundtrack (Mute)
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                onPress={() => {
+                  setPreviewingTrack(null);
+                  if (!storyMusicTitle) stopStorySoundtrack();
+                  else playStorySoundtrack(storyMusicTitle);
+                  setIsMusicPickerOpen(false);
+                }}
+                className="w-full bg-[#72AF5B] py-3.5 rounded-xl items-center justify-center mb-4"
+              >
+                <Text className="text-white font-bold text-sm">Done</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* 1. Post Options Action Sheet Modal */}
@@ -3845,17 +4856,20 @@ export default function NewsFeed() {
                   shadowOpacity: 0.35,
                   shadowRadius: 16,
                   transform: [{ translateY: standaloneCommentsTranslateY }],
+                  backgroundColor: "#FFFFFF",
                 }}
                 className="bg-white rounded-t-3xl flex-col overflow-hidden w-full"
               >
                 <KeyboardAvoidingView
                   behavior={Platform.OS === "ios" ? "padding" : undefined}
                   keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
-                  className="flex-1 flex-col"
+                  style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+                  className="flex-1 flex-col bg-white"
                 >
                   {/* Drawer Drag Handle & Header (Swipe down to close) */}
                   <View
                     {...standaloneCommentsPanResponder.panHandlers}
+                    style={{ backgroundColor: "#FFFFFF" }}
                     className="pt-3 pb-2.5 px-5 border-b border-gray-100 bg-white"
                   >
                     <View className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-2" />
@@ -3866,10 +4880,11 @@ export default function NewsFeed() {
 
                   {/* Comments List */}
                   <ScrollView
-                    className="flex-1 px-4 py-3"
+                    style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+                    className="flex-1 px-4 py-3 bg-white"
                     showsVerticalScrollIndicator={true}
                     keyboardShouldPersistTaps="handled"
-                    contentContainerStyle={{ paddingBottom: 24 }}
+                    contentContainerStyle={{ paddingBottom: 24, backgroundColor: "#FFFFFF" }}
                   >
                     {loadingComments[activeCommentsPostId] ? (
                       <View className="py-16 items-center justify-center">
@@ -4165,7 +5180,7 @@ export default function NewsFeed() {
 
                   {/* Bottom Pinned Comment Input Section */}
                   <View
-                    style={{ paddingBottom: Math.max(insets.bottom, 16) + 6 }}
+                    style={{ paddingBottom: Math.max(insets.bottom, 16) + 6, backgroundColor: "#FFFFFF" }}
                     className="px-4 pt-2.5 border-t border-gray-200 bg-white"
                   >
                     {replyingTo && (
@@ -4265,7 +5280,7 @@ export default function NewsFeed() {
       {/* 6. Fullscreen Image Lightbox Modal */}
       <Modal
         visible={!!previewImage}
-        transparent={true}
+        transparent={false}
         animationType="fade"
         statusBarTranslucent={true}
         onRequestClose={handleCloseLightbox}
@@ -4281,90 +5296,251 @@ export default function NewsFeed() {
                   ? [previewImage.source]
                   : [];
 
+          const currentIdx = previewImage.currentIndex ?? 0;
+
           return (
-            <View className="flex-1 bg-black/95 justify-between relative">
-              {/* Top Bar with Pagination Counter & Close Button */}
+            <SafeAreaView
+              style={{
+                flex: 1,
+                width: "100%",
+                height: "100%",
+                backgroundColor: "#000000",
+              }}
+              className="flex-1 bg-black justify-between relative"
+            >
+              {/* Top Bar with Author Info, Pagination Counter & Close Button */}
               <View
-                style={{ paddingTop: Math.max(insets.top, 16) + 8 }}
-                className="px-4 pb-3 flex-row items-center justify-between z-20"
+                style={{
+                  paddingTop: Math.max(insets.top, 16) + 4,
+                  paddingHorizontal: 16,
+                  paddingBottom: 12,
+                  backgroundColor: "rgba(0,0,0,0.75)",
+                }}
+                className="flex-row items-center justify-between z-30"
               >
-                {imagesList.length > 1 ? (
-                  <View className="bg-white/20 px-3 py-1 rounded-full">
-                    <Text className="text-white text-xs font-semibold">
-                      {(previewImage.currentIndex ?? 0) + 1} / {imagesList.length}
-                    </Text>
+                {/* Author Information */}
+                {previewImage.authorName ? (
+                  <View className="flex-row items-center flex-1 mr-3">
+                    <View className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden mr-3 border border-white/20">
+                      {previewImage.avatarUri ? (
+                        <Image
+                          source={{ uri: previewImage.avatarUri }}
+                          style={{ width: "100%", height: "100%" }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View className="w-full h-full items-center justify-center bg-gray-700">
+                          <Ionicons name="person" size={20} color="#FFFFFF" />
+                        </View>
+                      )}
+                    </View>
+                    <View className="flex-1">
+                      <View className="flex-row items-center">
+                        <Text className="text-white font-bold text-sm" numberOfLines={1}>
+                          {previewImage.authorName}
+                        </Text>
+                        {previewImage.isVerified ? (
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={14}
+                            color="#72AF5B"
+                            style={{ marginLeft: 4 }}
+                          />
+                        ) : null}
+                      </View>
+                      <Text className="text-white/60 text-xs">
+                        {previewImage.timeAgo || "Just now"}
+                      </Text>
+                    </View>
                   </View>
                 ) : (
-                  <View className="w-10" />
+                  <View className="flex-1" />
                 )}
 
-                <TouchableOpacity
-                  onPress={handleCloseLightbox}
-                  className="w-10 h-10 rounded-full bg-white/20 items-center justify-center active:bg-white/30"
-                  accessibilityRole="button"
-                  accessibilityLabel="Close image preview"
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                >
-                  <Ionicons name="close" size={24} color="#FFFFFF" />
-                </TouchableOpacity>
+                {/* Counter & Close Action */}
+                <View className="flex-row items-center gap-2">
+                  {imagesList.length > 1 ? (
+                    <View className="bg-white/20 px-3 py-1 rounded-full">
+                      <Text className="text-white text-xs font-semibold">
+                        {currentIdx + 1} / {imagesList.length}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  <TouchableOpacity
+                    onPress={handleCloseLightbox}
+                    className="w-10 h-10 rounded-full bg-white/20 items-center justify-center active:bg-white/30"
+                    accessibilityRole="button"
+                    accessibilityLabel="Close image preview"
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  >
+                    <Ionicons name="close" size={24} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
               </View>
 
-              {/* Horizontal Swipeable Image Gallery (Slide Left / Right) */}
-              <View className="flex-1 justify-center relative">
-                <FlatList
-                  ref={lightboxListRef}
-                  data={imagesList}
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  initialScrollIndex={
-                    previewImage.currentIndex &&
-                    previewImage.currentIndex >= 0 &&
-                    previewImage.currentIndex < imagesList.length
-                      ? previewImage.currentIndex
-                      : 0
-                  }
-                  getItemLayout={(_, index) => ({
-                    length: screenWidth,
-                    offset: screenWidth * index,
-                    index,
-                  })}
-                  onScrollToIndexFailed={(info) => {
-                    setTimeout(() => {
-                      lightboxListRef.current?.scrollToOffset({
-                        offset: info.index * screenWidth,
-                        animated: false,
-                      });
-                    }, 50);
-                  }}
-                  onMomentumScrollEnd={(e) => {
-                    const offsetX = e.nativeEvent.contentOffset.x;
-                    const newIdx = Math.round(offsetX / screenWidth);
-                    if (
-                      newIdx >= 0 &&
-                      newIdx < imagesList.length &&
-                      newIdx !== previewImage.currentIndex
-                    ) {
-                      setPreviewImage((prev) =>
-                        prev ? { ...prev, currentIndex: newIdx } : null,
-                      );
-                    }
-                  }}
-                  keyExtractor={(_, idx) => `lightbox-feed-img-${idx}`}
-                  renderItem={({ item }) => (
-                    <Pressable
-                      style={{ width: screenWidth }}
-                      className="flex-1 items-center justify-center px-2"
-                      onPress={handleCloseLightbox}
-                    >
-                      <Image
-                        source={typeof item === "string" ? { uri: item } : item}
-                        style={{ width: "100%", height: "100%" }}
-                        resizeMode="contain"
-                      />
-                    </Pressable>
-                  )}
-                />
+              {/* Main Image Display Area */}
+              <View
+                style={{
+                  flex: 1,
+                  width: "100%",
+                  height: "100%",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  backgroundColor: "#000000",
+                }}
+              >
+                {imagesList.length === 1 ? (
+                  <Pressable
+                    style={{
+                      flex: 1,
+                      width: "100%",
+                      height: "100%",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      paddingHorizontal: 8,
+                    }}
+                    onPress={handleCloseLightbox}
+                  >
+                    <Image
+                      source={typeof imagesList[0] === "string" ? { uri: imagesList[0] } : imagesList[0]}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        maxWidth: windowWidth,
+                        maxHeight: windowHeight - 160,
+                      }}
+                      resizeMode="contain"
+                    />
+                  </Pressable>
+                ) : (
+                  <View style={{ flex: 1, width: "100%", height: "100%", justifyContent: "center", alignItems: "center" }}>
+                    <FlatList
+                      ref={lightboxListRef}
+                      data={imagesList}
+                      horizontal
+                      pagingEnabled
+                      showsHorizontalScrollIndicator={false}
+                      initialScrollIndex={
+                        currentIdx >= 0 && currentIdx < imagesList.length
+                          ? currentIdx
+                          : 0
+                      }
+                      getItemLayout={(_, index) => ({
+                        length: windowWidth,
+                        offset: windowWidth * index,
+                        index,
+                      })}
+                      onScrollToIndexFailed={(info) => {
+                        setTimeout(() => {
+                          lightboxListRef.current?.scrollToOffset({
+                            offset: info.index * windowWidth,
+                            animated: false,
+                          });
+                        }, 50);
+                      }}
+                      onMomentumScrollEnd={(e) => {
+                        const offsetX = e.nativeEvent.contentOffset.x;
+                        const newIdx = Math.round(offsetX / windowWidth);
+                        if (
+                          newIdx >= 0 &&
+                          newIdx < imagesList.length &&
+                          newIdx !== currentIdx
+                        ) {
+                          setPreviewImage((prev) =>
+                            prev ? { ...prev, currentIndex: newIdx } : null,
+                          );
+                        }
+                      }}
+                      keyExtractor={(_, idx) => `lightbox-feed-img-${idx}`}
+                      style={{ flex: 1, width: "100%" }}
+                      contentContainerStyle={{ flexGrow: 1, alignItems: "center" }}
+                      renderItem={({ item }) => (
+                        <Pressable
+                          style={{
+                            width: windowWidth,
+                            height: "100%",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            paddingHorizontal: 8,
+                          }}
+                          onPress={handleCloseLightbox}
+                        >
+                          <Image
+                            source={typeof item === "string" ? { uri: item } : item}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              maxWidth: windowWidth,
+                              maxHeight: windowHeight - 160,
+                            }}
+                            resizeMode="contain"
+                          />
+                        </Pressable>
+                      )}
+                    />
+
+                    {/* Previous Button for Multi-image */}
+                    {currentIdx > 0 && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          const nextIdx = Math.max(0, currentIdx - 1);
+                          setPreviewImage((prev) => (prev ? { ...prev, currentIndex: nextIdx } : null));
+                          lightboxListRef.current?.scrollToOffset({
+                            offset: nextIdx * windowWidth,
+                            animated: true,
+                          });
+                        }}
+                        style={{
+                          position: "absolute",
+                          left: 16,
+                          top: "50%",
+                          marginTop: -22,
+                          width: 44,
+                          height: 44,
+                          borderRadius: 22,
+                          backgroundColor: "rgba(0,0,0,0.65)",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          zIndex: 35,
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="chevron-back" size={26} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Next Button for Multi-image */}
+                    {currentIdx < imagesList.length - 1 && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          const nextIdx = Math.min(imagesList.length - 1, currentIdx + 1);
+                          setPreviewImage((prev) => (prev ? { ...prev, currentIndex: nextIdx } : null));
+                          lightboxListRef.current?.scrollToOffset({
+                            offset: nextIdx * windowWidth,
+                            animated: true,
+                          });
+                        }}
+                        style={{
+                          position: "absolute",
+                          right: 16,
+                          top: "50%",
+                          marginTop: -22,
+                          width: 44,
+                          height: 44,
+                          borderRadius: 22,
+                          backgroundColor: "rgba(0,0,0,0.65)",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          zIndex: 35,
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="chevron-forward" size={26} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
               </View>
 
               {/* Dot Indicators for multi-image gallery */}
@@ -4374,7 +5550,7 @@ export default function NewsFeed() {
                     <View
                       key={dotIdx}
                       className={`h-1.5 rounded-full ${
-                        dotIdx === (previewImage.currentIndex ?? 0)
+                        dotIdx === currentIdx
                           ? "w-5 bg-white"
                           : "w-1.5 bg-white/40"
                       }`}
@@ -4386,8 +5562,11 @@ export default function NewsFeed() {
               {/* Bottom Caption (if available) */}
               {previewImage?.caption ? (
                 <View
-                  style={{ paddingBottom: Math.max(insets.bottom, 12) + 8 }}
-                  className="bg-black/75 border-t border-white/10 z-10 px-5 pt-3 pb-2"
+                  style={{
+                    paddingBottom: Math.max(insets.bottom, 12) + 8,
+                    backgroundColor: "rgba(0,0,0,0.8)",
+                  }}
+                  className="border-t border-white/10 z-20 px-5 pt-3 pb-2"
                 >
                   <ScrollView
                     style={{ maxHeight: 90 }}
@@ -4399,7 +5578,7 @@ export default function NewsFeed() {
                   </ScrollView>
                 </View>
               ) : null}
-            </View>
+            </SafeAreaView>
           );
         })()}
       </Modal>
@@ -4420,6 +5599,35 @@ export default function NewsFeed() {
         streamTitle={liveViewerData.streamTitle}
         location={liveViewerData.location}
         isReplay={liveViewerData.isReplay}
+      />
+
+      {/* 1. Pre-Harvest Advance Reservation Modal */}
+      <PreHarvestReserveModal
+        visible={!!reserveModalPost}
+        onClose={() => setReserveModalPost(null)}
+        post={reserveModalPost}
+        onSuccess={(reservation) => {
+          setActiveReceipt(reservation);
+        }}
+      />
+
+      {/* 2. Digital Pickup Receipt Modal */}
+      <DigitalReceiptModal
+        visible={!!activeReceipt}
+        onClose={() => setActiveReceipt(null)}
+        reservation={activeReceipt}
+        isSeller={user?.id ? Number(user.id) === Number(activeReceipt?.seller_id) : false}
+        onOpenWeighIn={(res) => setWeighInReservation(res)}
+      />
+
+      {/* 3. Physical Weigh-in & Scale Verification Modal */}
+      <WeighInVerificationModal
+        visible={!!weighInReservation}
+        onClose={() => setWeighInReservation(null)}
+        reservation={weighInReservation}
+        onSuccess={(completedReceipt) => {
+          setActiveReceipt(completedReceipt);
+        }}
       />
 
       {/* Bottom Navigation Bar */}

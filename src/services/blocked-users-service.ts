@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { apiFetch } from "../lib/api";
 
 export interface BlockedUserItem {
   id: string;
@@ -10,31 +11,27 @@ export interface BlockedUserItem {
 
 const BLOCKED_STORAGE_KEY = "localfarm_blocked_users_list";
 
-const DEFAULT_BLOCKED_USERS: BlockedUserItem[] = [
-  {
-    id: "blocked-sample-1",
-    name: "Alex Rivera",
-    username: "arivera_farms",
-    avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80",
-    blockedAt: "Yesterday",
-  },
-];
-
 export async function getBlockedUsers(): Promise<BlockedUserItem[]> {
+  // First try dynamic backend API
+  try {
+    const res = await apiFetch<{ blockedUsers: BlockedUserItem[] }>("/users/blocked");
+    if (res && Array.isArray(res.blockedUsers)) {
+      await AsyncStorage.setItem(BLOCKED_STORAGE_KEY, JSON.stringify(res.blockedUsers));
+      return res.blockedUsers;
+    }
+  } catch (err) {
+    // Offline / unauthenticated fallback
+  }
+
   try {
     const data = await AsyncStorage.getItem(BLOCKED_STORAGE_KEY);
     if (data !== null) {
       return JSON.parse(data);
     }
-    // Seed with default list on first launch
-    await AsyncStorage.setItem(
-      BLOCKED_STORAGE_KEY,
-      JSON.stringify(DEFAULT_BLOCKED_USERS)
-    );
-    return DEFAULT_BLOCKED_USERS;
+    return [];
   } catch (err) {
     console.warn("Failed to load blocked users:", err);
-    return DEFAULT_BLOCKED_USERS;
+    return [];
   }
 }
 
@@ -44,9 +41,10 @@ export async function blockUser(user: {
   username?: string;
   avatarUrl?: string;
 }): Promise<BlockedUserItem[]> {
+  // Optimistic update
+  let updatedList: BlockedUserItem[] = [];
   try {
     const current = await getBlockedUsers();
-    // Avoid duplicate
     const filtered = current.filter((u) => u.id !== user.id);
     const newEntry: BlockedUserItem = {
       id: user.id,
@@ -55,25 +53,46 @@ export async function blockUser(user: {
       avatarUrl: user.avatarUrl,
       blockedAt: "Just now",
     };
-    const updated = [newEntry, ...filtered];
-    await AsyncStorage.setItem(BLOCKED_STORAGE_KEY, JSON.stringify(updated));
-    return updated;
+    updatedList = [newEntry, ...filtered];
+    await AsyncStorage.setItem(BLOCKED_STORAGE_KEY, JSON.stringify(updatedList));
   } catch (err) {
-    console.warn("Failed to block user:", err);
-    return [];
+    console.warn("Failed to cache blocked user locally:", err);
   }
+
+  // Persist to server & MySQL
+  try {
+    await apiFetch("/users/block", {
+      method: "POST",
+      body: JSON.stringify({ blockedUserId: user.id }),
+    });
+  } catch (err) {
+    console.warn("Failed to sync block to server:", err);
+  }
+
+  return updatedList;
 }
 
 export async function unblockUser(userId: string): Promise<BlockedUserItem[]> {
+  // Optimistic local update
+  let updatedList: BlockedUserItem[] = [];
   try {
     const current = await getBlockedUsers();
-    const updated = current.filter((u) => u.id !== userId);
-    await AsyncStorage.setItem(BLOCKED_STORAGE_KEY, JSON.stringify(updated));
-    return updated;
+    updatedList = current.filter((u) => u.id !== userId);
+    await AsyncStorage.setItem(BLOCKED_STORAGE_KEY, JSON.stringify(updatedList));
   } catch (err) {
-    console.warn("Failed to unblock user:", err);
-    return [];
+    console.warn("Failed to update unblock locally:", err);
   }
+
+  // Persist to server & MySQL
+  try {
+    await apiFetch(`/users/unblock/${userId}`, {
+      method: "DELETE",
+    });
+  } catch (err) {
+    console.warn("Failed to sync unblock to server:", err);
+  }
+
+  return updatedList;
 }
 
 export async function isUserBlocked(userId: string): Promise<boolean> {
@@ -84,3 +103,4 @@ export async function isUserBlocked(userId: string): Promise<boolean> {
     return false;
   }
 }
+

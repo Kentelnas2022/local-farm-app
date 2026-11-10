@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Image,
   ScrollView,
@@ -50,37 +51,45 @@ export default function MenuProfile() {
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to log out of your account?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await signOut();
-          } catch {
-            router.replace("/auth/Login" as any);
-          }
-        },
-      },
-    ]);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isSwitching, setIsSwitching] = useState(false);
+
+  const handleLogout = async () => {
+    if (isLoggingOut || isSwitching) return;
+    setIsLoggingOut(true);
+    try {
+      await signOut();
+    } catch (err) {
+      console.warn("[MenuProfile] Logout error:", err);
+    } finally {
+      try {
+        router.replace("/auth/Login" as any);
+      } catch {
+        if (typeof window !== "undefined" && window.location) {
+          window.location.href = "/auth/Login";
+        }
+      }
+      setIsLoggingOut(false);
+    }
   };
 
-  const handleSwitchAccount = () => {
-    Alert.alert("Switch Account", "Do you want to switch accounts?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Switch",
-        onPress: async () => {
-          try {
-            await signOut();
-          } catch {
-            router.replace("/auth/Login" as any);
-          }
-        },
-      },
-    ]);
+  const handleSwitchAccount = async () => {
+    if (isSwitching || isLoggingOut) return;
+    setIsSwitching(true);
+    try {
+      await signOut();
+    } catch (err) {
+      console.warn("[MenuProfile] Switch account error:", err);
+    } finally {
+      try {
+        router.replace("/auth/Login" as any);
+      } catch {
+        if (typeof window !== "undefined" && window.location) {
+          window.location.href = "/auth/Login";
+        }
+      }
+      setIsSwitching(false);
+    }
   };
 
   return (
@@ -315,28 +324,44 @@ export default function MenuProfile() {
           <View className="gap-3 mt-4 mb-2">
             {/* Switch Account Button */}
             <TouchableOpacity
-              className="w-full bg-[#77af5c] rounded-xl py-3.5 items-center justify-center active:bg-[#689d50] shadow-sm flex-row gap-2"
+              className={`w-full bg-[#77af5c] rounded-xl py-3.5 items-center justify-center active:bg-[#689d50] shadow-sm flex-row gap-2 ${
+                isSwitching || isLoggingOut ? "opacity-75" : ""
+              }`}
               activeOpacity={0.8}
               onPress={handleSwitchAccount}
+              disabled={isSwitching || isLoggingOut}
               accessibilityRole="button"
               accessibilityLabel="Switch account"
             >
-              <Ionicons name="swap-horizontal" size={19} color="#FFFFFF" />
+              {isSwitching ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="swap-horizontal" size={19} color="#FFFFFF" />
+              )}
               <Text className="text-base font-bold text-white">
-                Switch account
+                {isSwitching ? "Switching..." : "Switch account"}
               </Text>
             </TouchableOpacity>
 
             {/* Logout Button */}
             <TouchableOpacity
-              className="w-full bg-[#a3a3a3] rounded-xl py-3.5 items-center justify-center active:bg-[#8e8e8e] shadow-sm flex-row gap-2  hover:bg-[#E73F1E]"
+              className={`w-full bg-[#a3a3a3] rounded-xl py-3.5 items-center justify-center active:bg-[#8e8e8e] shadow-sm flex-row gap-2 hover:bg-[#E73F1E] ${
+                isLoggingOut || isSwitching ? "opacity-75" : ""
+              }`}
               activeOpacity={0.8}
               onPress={handleLogout}
+              disabled={isLoggingOut || isSwitching}
               accessibilityRole="button"
               accessibilityLabel="Logout"
             >
-              <Ionicons name="log-out-outline" size={19} color="#FFFFFF" />
-              <Text className="text-base font-bold text-white">Logout</Text>
+              {isLoggingOut ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="log-out-outline" size={19} color="#FFFFFF" />
+              )}
+              <Text className="text-base font-bold text-white">
+                {isLoggingOut ? "Logging out..." : "Logout"}
+              </Text>
             </TouchableOpacity>
 
             {/* Footer */}

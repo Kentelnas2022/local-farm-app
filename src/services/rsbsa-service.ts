@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { apiFetch } from "../lib/api";
 
 export type VerificationStatus = "unverified" | "pending" | "verified" | "rejected";
 
@@ -26,6 +27,17 @@ export const DEFAULT_RSBSA_STATE: RSBSAApplication = {
 };
 
 export async function getRSBSAApplication(): Promise<RSBSAApplication> {
+  // First try to load from backend dynamically
+  try {
+    const res = await apiFetch<{ application: RSBSAApplication | null }>("/farmers/me/verification");
+    if (res && res.application) {
+      await AsyncStorage.setItem(RSBSA_STORAGE_KEY, JSON.stringify(res.application));
+      return res.application;
+    }
+  } catch (err) {
+    // Offline or network error: fall back to AsyncStorage
+  }
+
   try {
     const data = await AsyncStorage.getItem(RSBSA_STORAGE_KEY);
     if (data !== null) {
@@ -41,22 +53,38 @@ export async function getRSBSAApplication(): Promise<RSBSAApplication> {
 export async function submitRSBSAApplication(
   data: Omit<RSBSAApplication, "status" | "submittedAt">
 ): Promise<RSBSAApplication> {
+  const newApp: RSBSAApplication = {
+    ...data,
+    status: "pending",
+    submittedAt: new Date().toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+  };
+
+  // Cache locally first for instant optimistic response
   try {
-    const newApp: RSBSAApplication = {
-      ...data,
-      status: "pending",
-      submittedAt: new Date().toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }),
-    };
     await AsyncStorage.setItem(RSBSA_STORAGE_KEY, JSON.stringify(newApp));
-    return newApp;
   } catch (err) {
-    console.warn("Failed to save RSBSA application:", err);
-    return { ...DEFAULT_RSBSA_STATE, status: "pending" };
+    console.warn("Failed to cache RSBSA application locally:", err);
   }
+
+  // Persist dynamically to backend & MySQL database
+  try {
+    const res = await apiFetch<{ application: RSBSAApplication }>("/farmers/apply-verification", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    if (res && res.application) {
+      await AsyncStorage.setItem(RSBSA_STORAGE_KEY, JSON.stringify(res.application));
+      return res.application;
+    }
+  } catch (err) {
+    console.warn("Remote RSBSA sync failed, saved locally:", err);
+  }
+
+  return newApp;
 }
 
 export async function setRSBSAStatus(
@@ -91,3 +119,4 @@ export async function resetRSBSAApplication(): Promise<void> {
     console.warn("Failed to reset RSBSA application:", err);
   }
 }
+

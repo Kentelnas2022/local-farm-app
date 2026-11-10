@@ -1,5 +1,4 @@
 const path = require("path");
-const nodemailer = require("nodemailer");
 require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 require("dotenv").config();
 
@@ -10,14 +9,33 @@ const emailPass = (
   ""
 ).replace(/\s+/g, "");
 
-// Create Gmail transporter
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: emailUser,
-    pass: emailPass,
-  },
-});
+let nodemailer;
+try {
+  nodemailer = require("nodemailer");
+} catch {
+  nodemailer = null;
+}
+
+// Create Gmail transporter if credentials and module are available
+let transporter = null;
+if (nodemailer && emailUser && emailPass) {
+  try {
+    transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: emailUser,
+        pass: emailPass,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+  } catch (err) {
+    console.warn("[Mailer Warning] Failed to initialize nodemailer transport:", err.message);
+  }
+}
 
 /**
  * Send Signup Verification OTP Email
@@ -25,11 +43,9 @@ const transporter = nodemailer.createTransport({
  * @param {string} otp - 6-digit verification code
  */
 async function sendSignupOtpEmail(toEmail, otp) {
-  if (!emailUser || !emailPass) {
-    console.warn(
-      "[Mailer Warning] EMAIL_USER or EMAIL_PASS not set in .env. Email was not sent."
-    );
-    return null;
+  if (!transporter) {
+    console.log(`[Dev Mailer] Signup OTP for ${toEmail}: ${otp}`);
+    return { devOtp: otp };
   }
 
   const html = `
@@ -78,11 +94,9 @@ async function sendSignupOtpEmail(toEmail, otp) {
  * @param {string} purpose - 'login' | 'setup'
  */
 async function send2FAOtpEmail(toEmail, otp, purpose = "login") {
-  if (!emailUser || !emailPass) {
-    console.warn(
-      "[Mailer Warning] EMAIL_USER or EMAIL_PASS not set in .env. Email was not sent."
-    );
-    return null;
+  if (!transporter) {
+    console.log(`[Dev Mailer] 2FA OTP for ${toEmail} (${purpose}): ${otp}`);
+    return { devOtp: otp };
   }
 
   const isSetup = purpose === "setup";
@@ -133,10 +147,7 @@ async function send2FAOtpEmail(toEmail, otp, purpose = "login") {
 }
 
 async function sendPasswordChangedEmail(toEmail, userName = "User") {
-  if (!emailUser || !emailPass) {
-    console.warn(
-      "[Mailer Warning] EMAIL_USER or EMAIL_PASS not set in .env. Password changed notification email was not sent."
-    );
+  if (!transporter) {
     return null;
   }
 

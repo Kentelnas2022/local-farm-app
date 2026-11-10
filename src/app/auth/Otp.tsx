@@ -60,21 +60,22 @@ export default function OTPScreen() {
 
     const newOtp = [...otp];
 
-    if (cleanText.length > 1) {
+    if (cleanText.length >= 4) {
       // Handle pasted multi-digit OTP string
       const pastedDigits = cleanText.slice(0, 6).split("");
       for (let i = 0; i < 6; i++) {
         newOtp[i] = pastedDigits[i] || "";
       }
       setOtp(newOtp);
-      const nextIndex = Math.min(pastedDigits.length, 5);
+      const nextIndex = Math.min(pastedDigits.length - 1, 5);
       inputRefs.current[nextIndex]?.focus();
     } else {
-      // Handle single digit typing
-      newOtp[index] = cleanText;
+      // Handle single digit typing or overwriting existing digit
+      const digit = cleanText.slice(-1);
+      newOtp[index] = digit;
       setOtp(newOtp);
 
-      if (cleanText && index < 5) {
+      if (digit && index < 5) {
         inputRefs.current[index + 1]?.focus();
       }
     }
@@ -175,7 +176,13 @@ export default function OTPScreen() {
       >
         <TouchableOpacity
           className="p-2 self-start rounded-full active:opacity-70"
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/auth/Signup");
+            }
+          }}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back-outline" size={26} color="#4B5563" />

@@ -95,15 +95,13 @@ export default function UserProfile() {
   const screenWidth = Dimensions.get("window").width;
   const [rsbsaApp, setRsbsaApp] = useState<RSBSAApplication | null>(null);
 
-  const isOwnProfile =
-    !params.userId ||
-    (Boolean(user?.id) && String(params.userId) === String(user?.id)) ||
-    (Boolean(user?.name) && params.userName === user?.name) ||
-    (Boolean(user?.username) && params.userName === user?.username) ||
-    (Boolean(rsbsaApp?.fullName) && params.userName === rsbsaApp?.fullName);
+  const isOwnProfile = params.userId
+    ? Boolean(user?.id) && String(params.userId) === String(user?.id)
+    : true;
 
-  const profileName =
-    params.userName || user?.name || user?.username || rsbsaApp?.fullName || "Juan Dela Cruz";
+  const profileName = isOwnProfile
+    ? user?.name || user?.username || rsbsaApp?.fullName || params.userName || "Juan Dela Cruz"
+    : params.userName || "Juan Dela Cruz";
 
   const [farmDetails, setFarmDetails] = useState<{
     farmName?: string;
@@ -174,14 +172,12 @@ export default function UserProfile() {
     profileName === "Paulbert Landicho" ||
     profileName === "Juan Dela Cruz" ||
     (isOwnProfile && Boolean((user as any)?.isVerified));
-  const profileAvatar =
-    params.userAvatar ||
-    (isOwnProfile ? user?.avatarUrl : undefined) ||
-    undefined;
-  const profileRole =
-    params.userRole ||
-    (isOwnProfile ? (user as any)?.role : undefined) ||
-    "Field";
+  const profileAvatar = isOwnProfile
+    ? user?.avatarUrl || params.userAvatar || undefined
+    : params.userAvatar || undefined;
+  const profileRole = isOwnProfile
+    ? (user as any)?.role || params.userRole || "Field"
+    : params.userRole || "Field";
   const profileHandle =
     isOwnProfile && user?.email
       ? user.email
@@ -567,13 +563,16 @@ export default function UserProfile() {
   const loadUserPosts = useCallback(async () => {
     setIsLoadingPosts(true);
     try {
-      const all = await getPostsApi();
-      const targetUserId = params.userId || user?.id;
+      const targetUserId = isOwnProfile ? user?.id : (params.userId || user?.id);
       const targetName = profileName;
 
+      // Request posts specifically for this target user from the server
+      const all = await getPostsApi(undefined, targetUserId || undefined);
+
       const userPosts = all.filter((p) => {
-        if (targetUserId && p.userId && String(p.userId) === String(targetUserId)) {
-          return true;
+        if (targetUserId) {
+          // Strictly match by author's userId
+          return Boolean(p.userId && String(p.userId) === String(targetUserId));
         }
         if (
           targetName &&
@@ -864,6 +863,7 @@ export default function UserProfile() {
                   await deletePostApi(post.id);
                 } catch {}
                 setPosts((prev) => prev.filter((p) => p.id !== post.id));
+                setGridPostsData((prev) => prev.filter((g) => g.basePostId !== String(post.id)));
                 showToast("Post deleted.", "info");
               },
             },
@@ -1832,10 +1832,9 @@ export default function UserProfile() {
               ) : (
                 posts.map((post) => {
                   const isBookmarked = Boolean(post.isSaved);
-                  const isCurrentUser =
-                    Boolean(user?.id && post.userId === String(user.id)) ||
-                    post.authorName === user?.name ||
-                    post.authorName === user?.username;
+                  const isCurrentUser = Boolean(
+                    user?.id && post.userId && String(post.userId) === String(user.id)
+                  );
                   const isVerifiedUser =
                     Boolean(post.isVerified) || (isCurrentUser && isRSBSAVerified);
 
@@ -2346,17 +2345,20 @@ export default function UserProfile() {
                   shadowOpacity: 0.35,
                   shadowRadius: 16,
                   transform: [{ translateY: standaloneCommentsTranslateY }],
+                  backgroundColor: "#FFFFFF",
                 }}
                 className="bg-white rounded-t-3xl flex-col overflow-hidden w-full"
               >
                 <KeyboardAvoidingView
                   behavior={Platform.OS === "ios" ? "padding" : undefined}
                   keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
-                  className="flex-1 flex-col"
+                  style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+                  className="flex-1 flex-col bg-white"
                 >
                   {/* Drawer Drag Handle & Header (Swipe down to close) */}
                   <View
                     {...standaloneCommentsPanResponder.panHandlers}
+                    style={{ backgroundColor: "#FFFFFF" }}
                     className="pt-3 pb-2.5 px-5 border-b border-gray-100 bg-white"
                   >
                     <View className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-2" />
@@ -2367,10 +2369,11 @@ export default function UserProfile() {
 
                 {/* Comments List */}
                 <ScrollView
-                  className="flex-1 px-4 py-3"
+                  style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+                  className="flex-1 px-4 py-3 bg-white"
                   showsVerticalScrollIndicator={true}
                   keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={{ paddingBottom: 24 }}
+                  contentContainerStyle={{ paddingBottom: 24, backgroundColor: "#FFFFFF" }}
                 >
                   {loadingComments[activeCommentsPostId] ? (
                     <View className="py-16 items-center justify-center">
@@ -2654,6 +2657,7 @@ export default function UserProfile() {
                 <View
                   style={{
                     paddingBottom: Math.max(insets.bottom, 12) + 6,
+                    backgroundColor: "#FFFFFF",
                   }}
                   className="px-4 pt-2.5 border-t border-gray-200 bg-white"
                 >
@@ -3157,7 +3161,7 @@ export default function UserProfile() {
           enableDynamicSizing={true}
           enablePanDownToClose={true}
           onClose={() => setIsOptionsOpen(false)}
-          onChange={(index) => {
+          onChange={(index: number) => {
             if (index === -1) {
               setIsOptionsOpen(false);
             }

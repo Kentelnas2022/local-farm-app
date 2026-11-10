@@ -20,7 +20,7 @@ function getDynamicHost(): string {
 
   // Physical mobile device fallback (PC's current local Wi-Fi IP)
   if (Device.isDevice) {
-    return "http://192.168.111.16:5000/api";
+    return "http://192.168.110.229:5000/api";
   }
 
   // Android emulator loopback alias
@@ -68,6 +68,12 @@ export async function removeAuthToken(): Promise<void> {
     await AsyncStorage.removeItem(TOKEN_STORAGE_KEY);
   } catch (err) {
     console.error("Failed to remove auth token", err);
+  }
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+      window.localStorage.removeItem("localfarm_cached_user");
+    } catch {}
   }
 }
 

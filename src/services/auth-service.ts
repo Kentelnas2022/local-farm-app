@@ -136,7 +136,13 @@ export async function getCurrentUserApi(): Promise<User | null> {
 
 export async function logoutApi(): Promise<void> {
   try {
-    await apiFetch("/auth/logout", { method: "POST" });
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 2000) : null;
+    await apiFetch("/auth/logout", {
+      method: "POST",
+      signal: controller?.signal,
+    });
+    if (timeoutId) clearTimeout(timeoutId);
   } catch {}
   await removeAuthToken();
 }

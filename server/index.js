@@ -223,6 +223,7 @@ app.post("/api/auth/register", async (req, res) => {
 
     const fName = (firstName || name?.split(" ")[0] || "").trim();
     const lName = (lastName || name?.split(" ").slice(1).join(" ") || "").trim();
+    const fullName = `${fName} ${lName}`.trim() || username?.trim() || "User";
     const userRole =
       role === "admin" || email.toLowerCase().includes("admin")
         ? "admin"
@@ -231,15 +232,17 @@ app.post("/api/auth/register", async (req, res) => {
 
     const { rows: result } = await pool.query(
       `INSERT INTO users (
-        first_name, last_name, username, email, password_hash, 
+        first_name, last_name, full_name, username, email, password, password_hash, 
         phone_number, gender, role, role_id, eula_accepted_at
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()) RETURNING id`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW()) RETURNING id`,
       [
         fName,
         lName,
+        fullName,
         username ? username.trim() : null,
         email.trim().toLowerCase(),
+        hashedPassword,
         hashedPassword,
         phoneNumber ? phoneNumber.trim() : null,
         gender || null,
@@ -306,15 +309,16 @@ app.post("/api/auth/login", async (req, res) => {
 
     // Check password (supports bcrypt and plain text fallback for dev seeds)
     let isMatch = false;
+    const userPass = userRow.password || userRow.password_hash;
     if (
-      userRow.password_hash &&
-      (userRow.password_hash.startsWith("$2a$") ||
-        userRow.password_hash.startsWith("$2b$") ||
-        userRow.password_hash.startsWith("$2y$"))
+      userPass &&
+      (userPass.startsWith("$2a$") ||
+        userPass.startsWith("$2b$") ||
+        userPass.startsWith("$2y$"))
     ) {
-      isMatch = await bcrypt.compare(password, userRow.password_hash);
+      isMatch = await bcrypt.compare(password, userPass);
     } else {
-      isMatch = password === userRow.password_hash;
+      isMatch = password === userPass;
     }
 
     if (!isMatch) {
@@ -1149,12 +1153,20 @@ app.post("/api/auth/send-signup-otp", async (req, res) => {
       }
     }
 
+    // Invalidate previous unverified signup OTPs for this email
+    try {
+      await pool.query(
+        "UPDATE otps SET is_used = 1 WHERE email = $1 AND type = 'signup' AND is_used = 0",
+        [email.trim().toLowerCase()]
+      );
+    } catch (e) {}
+
     // Generate 6-digit random code
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins expiry
 
     await pool.query(
-      "INSERT INTO otps (email, otp, type, expires_at) VALUES ($1, $2, 'signup', $3)",
+      "INSERT INTO otps (email, otp, type, expires_at, is_used) VALUES ($1, $2, 'signup', $3, 0)",
       [email.trim().toLowerCase(), otp, expiresAt],
     );
 
@@ -1202,19 +1214,37 @@ app.post("/api/auth/forgot-password", async (req, res) => {
         .json({ message: "No account found with this email." });
     }
 
+    // Invalidate previous recovery OTPs for this email
+    try {
+      await pool.query(
+        "UPDATE otps SET is_used = 1 WHERE email = $1 AND type = 'recovery' AND is_used = 0",
+        [email.trim().toLowerCase()]
+      );
+    } catch (e) {}
+
     // Generate 6-digit random code
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins expiry
 
     await pool.query(
-      "INSERT INTO otps (email, otp, type, expires_at) VALUES ($1, $2, 'recovery', $3)",
+      "INSERT INTO otps (email, otp, type, expires_at, is_used) VALUES ($1, $2, 'recovery', $3, 0)",
       [email.trim().toLowerCase(), otp, expiresAt],
     );
 
-    console.log(`[OTP Generated] Email: ${email}, OTP: ${otp}`);
+    console.log(`[Recovery OTP Generated] Email: ${email}, OTP: ${otp}`);
+
+    // Send password reset verification email via Gmail
+    try {
+      await sendSignupOtpEmail(email.trim().toLowerCase(), otp);
+    } catch (mailErr) {
+      console.error(
+        "[Mailer Error] Could not deliver recovery OTP email:",
+        mailErr.message,
+      );
+    }
 
     res.json({
-      message: "OTP code sent successfully.",
+      message: "OTP code sent to your email.",
       devOtp: otp,
     });
   } catch (err) {
@@ -1235,16 +1265,27 @@ app.post("/api/auth/verify-otp", async (req, res) => {
         .json({ message: "Email and OTP code are required." });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanOtp = otp.toString().trim();
+
     const pool = getPool();
     const { rows } = await pool.query(
-      "SELECT * FROM otps WHERE email = $1 AND otp = $2 AND expires_at > NOW() ORDER BY id DESC LIMIT 1",
-      [email.trim().toLowerCase(), otp.trim()],
+      "SELECT id, expires_at FROM otps WHERE email = $1 AND otp = $2 AND is_used = 0 AND expires_at > NOW() ORDER BY id DESC LIMIT 1",
+      [cleanEmail, cleanOtp],
     );
 
-    if (rows.length === 0) {
+    if (!rows || rows.length === 0) {
       return res.status(400).json({ message: "Invalid or expired OTP code." });
     }
 
+    // Mark OTP as used to prevent replay
+    try {
+      await pool.query("UPDATE otps SET is_used = 1 WHERE id = $1", [rows[0].id]);
+    } catch (uErr) {
+      console.warn("Could not mark OTP as used:", uErr.message);
+    }
+
+    console.log(`[OTP Verified Successfully] Email: ${cleanEmail}`);
     res.json({ message: "OTP verified successfully." });
   } catch (err) {
     console.error("[Verify OTP Error]", err);
@@ -1267,7 +1308,7 @@ app.post("/api/auth/reset-password", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const result = await pool.query(
-      "UPDATE users SET password_hash = $1 WHERE email = $2",
+      "UPDATE users SET password = $1, password_hash = $1 WHERE email = $2",
       [hashedPassword, email.trim().toLowerCase()],
     );
 
@@ -1396,15 +1437,16 @@ const changePasswordHandler = async (req, res) => {
 
     // Check previous password
     let isMatch = false;
+    const currentStoredPass = userRow.password || userRow.password_hash;
     if (
-      userRow.password_hash &&
-      (userRow.password_hash.startsWith("$2a$") ||
-        userRow.password_hash.startsWith("$2b$") ||
-        userRow.password_hash.startsWith("$2y$"))
+      currentStoredPass &&
+      (currentStoredPass.startsWith("$2a$") ||
+        currentStoredPass.startsWith("$2b$") ||
+        currentStoredPass.startsWith("$2y$"))
     ) {
-      isMatch = await bcrypt.compare(currentPass, userRow.password_hash);
+      isMatch = await bcrypt.compare(currentPass, currentStoredPass);
     } else {
-      isMatch = currentPass === userRow.password_hash;
+      isMatch = currentPass === currentStoredPass;
     }
 
     if (!isMatch) {
@@ -1417,7 +1459,7 @@ const changePasswordHandler = async (req, res) => {
     const hashedPassword = await bcrypt.hash(targetPassword, salt);
 
     await pool.query(
-      "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2",
+      "UPDATE users SET password = $1, password_hash = $1, updated_at = NOW() WHERE id = $2",
       [hashedPassword, userId],
     );
 
@@ -1563,17 +1605,14 @@ app.get(
         `SELECT c.id AS connection_id, c.status, c.created_at,
                 u.id AS user_id, u.first_name, u.last_name, u.username, u.avatar_url, u.role,
                 (
-                  SELECT COUNT(DISTINCT m.friend_id)
-                  FROM (
-                    SELECT CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END AS friend_id
-                    FROM connections
-                    WHERE (sender_id = $1 OR receiver_id = $1) AND status = 'accepted'
-                  ) m
-                  JOIN (
-                    SELECT CASE WHEN sender_id = u.id THEN receiver_id ELSE sender_id END AS friend_id
-                    FROM connections
-                    WHERE (sender_id = u.id OR receiver_id = u.id) AND status = 'accepted'
-                  ) f ON m.friend_id = f.friend_id
+                  SELECT COUNT(*)
+                  FROM connections c1
+                  JOIN connections c2 ON (
+                    (CASE WHEN c1.sender_id = $1 THEN c1.receiver_id ELSE c1.sender_id END) =
+                    (CASE WHEN c2.sender_id = u.id THEN c2.receiver_id ELSE c2.sender_id END)
+                  )
+                  WHERE (c1.sender_id = $1 OR c1.receiver_id = $1) AND c1.status = 'accepted'
+                    AND (c2.sender_id = u.id OR c2.receiver_id = u.id) AND c2.status = 'accepted'
                 ) AS mutual_count
          FROM connections c
          JOIN users u ON c.sender_id = u.id
@@ -1624,17 +1663,14 @@ app.get(
       const { rows } = await pool.query(
         `SELECT u.id, u.first_name, u.last_name, u.username, u.avatar_url, u.role,
                 (
-                  SELECT COUNT(DISTINCT m.friend_id)
-                  FROM (
-                    SELECT CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END AS friend_id
-                    FROM connections
-                    WHERE (sender_id = $1 OR receiver_id = $1) AND status = 'accepted'
-                  ) m
-                  JOIN (
-                    SELECT CASE WHEN sender_id = u.id THEN receiver_id ELSE sender_id END AS friend_id
-                    FROM connections
-                    WHERE (sender_id = u.id OR receiver_id = u.id) AND status = 'accepted'
-                  ) f ON m.friend_id = f.friend_id
+                  SELECT COUNT(*)
+                  FROM connections c1
+                  JOIN connections c2 ON (
+                    (CASE WHEN c1.sender_id = $1 THEN c1.receiver_id ELSE c1.sender_id END) =
+                    (CASE WHEN c2.sender_id = u.id THEN c2.receiver_id ELSE c2.sender_id END)
+                  )
+                  WHERE (c1.sender_id = $1 OR c1.receiver_id = $1) AND c1.status = 'accepted'
+                    AND (c2.sender_id = u.id OR c2.receiver_id = u.id) AND c2.status = 'accepted'
                 ) AS mutual_count
          FROM users u
          WHERE u.id != $1
@@ -3558,10 +3594,25 @@ app.get(
       );
       const notifRes = notifRows[0];
 
+      // Add unread official announcements and scam alerts
+      const { rows: announcementRows } = await pool.query(
+        `SELECT COUNT(*) AS count FROM announcements a
+         WHERE a.is_archived = 0
+           AND NOT EXISTS (
+             SELECT 1 FROM announcement_reads ar
+             WHERE ar.announcement_id = a.id AND ar.user_id = $1
+           )`,
+        [userId],
+      );
+      const announcementRes = announcementRows[0];
+
+      const totalUnreadNotifs =
+        (Number(notifRes?.count) || 0) + (Number(announcementRes?.count) || 0);
+
       res.json({
         requestsCount: Number(connRes?.count) || 0,
         unreadMessagesCount: Number(msgRes?.count) || 0,
-        unreadNotificationsCount: Number(notifRes?.count) || 0,
+        unreadNotificationsCount: totalUnreadNotifs,
       });
     } catch (err) {
       console.error("[Badge Counts Error]", err);
@@ -3583,8 +3634,9 @@ app.get("/api/notifications", authenticateToken, async (req, res) => {
       .query("DELETE FROM notifications WHERE user_id = actor_id")
       .catch(() => {});
 
-    const { rows } = await pool.query(
-      `SELECT n.id, n.user_id, n.actor_id, n.actor_type, n.type, n.title, n.content,
+    // Fetch personal user notifications
+    const { rows: userNotifRows } = await pool.query(
+      `SELECT n.id, n.user_id, n.actor_id, n.type, n.title, n.content,
               n.entity_name, n.target_id, n.is_read, n.created_at,
               u.first_name, u.last_name, u.username, u.avatar_url
        FROM notifications n
@@ -3595,7 +3647,7 @@ app.get("/api/notifications", authenticateToken, async (req, res) => {
       [userId],
     );
 
-    const notifications = rows.map((r) => {
+    const personalNotifications = userNotifRows.map((r) => {
       const actorName = r.actor_id
         ? `${r.first_name || ""} ${r.last_name || ""}`.trim() ||
           r.username ||
@@ -3622,8 +3674,72 @@ app.get("/api/notifications", authenticateToken, async (req, res) => {
       };
     });
 
-    const unreadCount = notifications.filter((n) => n.isUnread).length;
-    res.json({ notifications, count: notifications.length, unreadCount });
+    // Fetch active official bulletins & scam alerts
+    const { rows: announcementRows } = await pool.query(
+      `SELECT a.id, a.slug, a.title, a.content, a.category, a.priority,
+              a.target_audience, a.is_pinned, a.author, a.created_at,
+              (CASE WHEN ar.id IS NOT NULL THEN 1 ELSE 0 END) AS is_read
+       FROM announcements a
+       LEFT JOIN announcement_reads ar ON ar.announcement_id = a.id AND ar.user_id = $1
+       WHERE a.is_archived = 0
+       ORDER BY a.is_pinned DESC, a.created_at DESC
+       LIMIT 20`,
+      [userId],
+    );
+
+    const announcementNotifications = announcementRows.map((a) => {
+      const notifType =
+        a.category === "Scam Alert"
+          ? "scam_alert"
+          : a.priority === "Urgent"
+          ? "emergency"
+          : "announcement";
+
+      return {
+        id: `announcement_${a.id}`,
+        type: notifType,
+        title: a.title,
+        content: a.content || "",
+        entityName: a.category || "Official Notice",
+        targetId: a.id,
+        time: formatTimeAgo(a.created_at),
+        createdAt: a.created_at,
+        isUnread: !Boolean(a.is_read),
+        hasActionButtons: false,
+        user: {
+          id: "admin",
+          name: a.author || "Local Farm Admin",
+          avatarUrl: "",
+        },
+        announcement: {
+          id: String(a.id),
+          title: a.title,
+          content: a.content,
+          category: a.category,
+          priority: a.priority,
+          targetAudience: a.target_audience,
+          isPinned: Boolean(a.is_pinned),
+          createdAt: a.created_at,
+          author: a.author || "Local Farm Admin",
+        },
+      };
+    });
+
+    // Merge and sort combined notifications with newest first
+    const allNotifications = [
+      ...announcementNotifications,
+      ...personalNotifications,
+    ].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+
+    const unreadCount = allNotifications.filter((n) => n.isUnread).length;
+    res.json({
+      notifications: allNotifications,
+      count: allNotifications.length,
+      unreadCount,
+    });
   } catch (err) {
     console.error("[Get Notifications Error]", err);
     res
@@ -3642,10 +3758,24 @@ app.put(
       const userId = req.user.id;
       const notificationId = req.params.id;
 
-      await pool.query(
-        "UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2",
-        [notificationId, userId],
-      );
+      if (String(notificationId).startsWith("announcement_")) {
+        const announcementId = parseInt(
+          String(notificationId).replace("announcement_", ""),
+          10,
+        );
+        if (!isNaN(announcementId)) {
+          await pool.query(
+            `INSERT IGNORE INTO announcement_reads (announcement_id, user_id, read_at)
+             VALUES ($1, $2, NOW())`,
+            [announcementId, userId],
+          );
+        }
+      } else {
+        await pool.query(
+          "UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2",
+          [notificationId, userId],
+        );
+      }
 
       res.json({
         message: "Notification marked as read.",
@@ -3675,6 +3805,15 @@ app.put(
         [userId],
       );
 
+      // Also mark all active announcements as read for this user
+      await pool.query(
+        `INSERT IGNORE INTO announcement_reads (announcement_id, user_id, read_at)
+         SELECT a.id, $1, NOW()
+         FROM announcements a
+         WHERE a.is_archived = 0`,
+        [userId],
+      );
+
       res.json({ message: "All notifications marked as read." });
     } catch (err) {
       console.error("[Mark All Notifications Read Error]", err);
@@ -3695,10 +3834,24 @@ app.delete(
       const userId = req.user.id;
       const notificationId = req.params.id;
 
-      await pool.query(
-        "DELETE FROM notifications WHERE id = $1 AND user_id = $2",
-        [notificationId, userId],
-      );
+      if (String(notificationId).startsWith("announcement_")) {
+        const announcementId = parseInt(
+          String(notificationId).replace("announcement_", ""),
+          10,
+        );
+        if (!isNaN(announcementId)) {
+          await pool.query(
+            `INSERT IGNORE INTO announcement_reads (announcement_id, user_id, read_at)
+             VALUES ($1, $2, NOW())`,
+            [announcementId, userId],
+          );
+        }
+      } else {
+        await pool.query(
+          "DELETE FROM notifications WHERE id = $1 AND user_id = $2",
+          [notificationId, userId],
+        );
+      }
 
       res.json({
         message: "Notification deleted.",
@@ -4189,6 +4342,7 @@ app.get(
         SELECT p.id, p.user_id, p.original_post_id, p.content, p.image_url, p.images, p.category, p.privacy, p.location,
                p.latitude, p.longitude, p.duration_label,
                p.expires_at,
+               p.is_pre_harvest, p.expected_harvest_date, p.available_quantity, p.reserved_quantity, p.crop_name, p.unit, p.price_per_unit, p.pickup_hub,
                (SELECT COUNT(*)::int FROM post_likes pl WHERE pl.post_id = p.id) AS likes_count,
                (SELECT COUNT(*)::int FROM post_comments pc WHERE pc.post_id = p.id) AS comments_count,
                (SELECT COUNT(*)::int FROM post_shares ps WHERE ps.post_id = p.id) AS shares_count,
@@ -4261,16 +4415,33 @@ app.get(
         category.toLowerCase() !== "all" &&
         category.toLowerCase() !== "general"
       ) {
-        whereClauses.push(`p.category = $${paramCounter}`);
+        whereClauses.push("p.category = $" + paramCounter);
         params.push(category);
         paramCounter++;
+      }
+
+      const filterUserId = req.query.userId;
+      if (filterUserId) {
+        whereClauses.push("p.user_id = $" + paramCounter);
+        params.push(filterUserId);
+        paramCounter++;
+      }
+
+      const searchKeyword = (req.query.search || req.query.q || "").trim();
+      if (searchKeyword) {
+        const pattern = "%" + searchKeyword + "%";
+        whereClauses.push(
+          "(p.content LIKE $" + paramCounter + " OR p.crop_name LIKE $" + (paramCounter + 1) + " OR p.location LIKE $" + (paramCounter + 2) + " OR u.first_name LIKE $" + (paramCounter + 3) + " OR u.last_name LIKE $" + (paramCounter + 4) + " OR u.username LIKE $" + (paramCounter + 5) + ")"
+        );
+        params.push(pattern, pattern, pattern, pattern, pattern, pattern);
+        paramCounter += 6;
       }
 
       if (whereClauses.length > 0) {
         query += " WHERE " + whereClauses.join(" AND ");
       }
 
-      query += " ORDER BY p.created_at DESC LIMIT 50";
+      query += ` ORDER BY p.created_at DESC ${filterUserId ? "LIMIT 100" : "LIMIT 50"}`;
 
       const { rows } = await pool.query(query, params);
 
@@ -4317,6 +4488,14 @@ app.get(
           privacy: r.privacy,
           durationLabel: r.duration_label || undefined,
           expiresAt: r.expires_at ? new Date(r.expires_at).toISOString() : null,
+          isPreHarvest: Boolean(r.is_pre_harvest),
+          expectedHarvestDate: r.expected_harvest_date ? new Date(r.expected_harvest_date).toISOString().split('T')[0] : null,
+          availableQuantity: r.available_quantity != null ? Number(r.available_quantity) : null,
+          reservedQuantity: Number(r.reserved_quantity) || 0,
+          cropName: r.crop_name || null,
+          unit: r.unit || 'kg',
+          pricePerUnit: r.price_per_unit != null ? Number(r.price_per_unit) : null,
+          pickupHub: r.pickup_hub || null,
           taggedUsers: taggedList,
           likes: Number(r.likes_count) || 0,
           comments: Number(r.comments_count) || 0,
@@ -5538,14 +5717,16 @@ app.get("/api/stories", optionalAuthenticateToken, async (req, res) => {
     await ensureSampleStories(pool);
 
     const query = `
-      SELECT s.id, s.user_id, s.media_type, s.media_url, s.text_content, s.background_color,
-             s.music_title, s.privacy, s.created_at, s.expired_at,
-             u.first_name, u.last_name, u.username, u.avatar_url,
+      SELECT s.id, s.user_id, s.media_type, s.media_url,
+             s.text_content, s.caption,
+             s.background_color, s.music_title, s.privacy, s.overlays_json, s.created_at,
+             COALESCE(s.expired_at, s.expires_at) AS expired_at,
+             u.first_name, u.last_name, u.full_name, u.username, u.avatar_url,
              EXISTS(SELECT 1 FROM story_views sv WHERE sv.story_id = s.id AND sv.viewer_id = $1) AS is_seen,
              COALESCE((SELECT COUNT(*) FROM story_views sv WHERE sv.story_id = s.id AND sv.viewer_id != s.user_id), 0) AS views_count
       FROM stories s
       JOIN users u ON s.user_id = u.id
-      WHERE s.expired_at > NOW()
+      WHERE COALESCE(s.expired_at, s.expires_at) > NOW()
         AND (
           s.privacy = 'Public'
           OR s.user_id = $1
@@ -5573,28 +5754,51 @@ app.get("/api/stories", optionalAuthenticateToken, async (req, res) => {
       const uId = String(r.user_id);
       if (!userStoryMap.has(uId)) {
         const userName =
+          r.full_name ||
           `${r.first_name || ""} ${r.last_name || ""}`.trim() ||
           r.username ||
           "Local Farmer";
+        const isSelf = Boolean(
+          currentUserId && String(r.user_id) === String(currentUserId),
+        );
         userStoryMap.set(uId, {
           userId: uId,
           userName,
           userAvatar: r.avatar_url || "",
           color: r.background_color || "#72AF5B",
+          isSelf,
           stories: [],
         });
       }
 
+      let parsedOverlays = null;
+      if (r.overlays_json) {
+        try {
+          parsedOverlays =
+            typeof r.overlays_json === "string"
+              ? JSON.parse(r.overlays_json)
+              : r.overlays_json;
+        } catch (_) {}
+      }
+
+      const rawContent = (r.text_content || "").trim();
+      const rawCaption = (r.caption || "").trim();
+      const displayCaption =
+        rawCaption && rawCaption !== rawContent ? rawCaption : "";
+
       userStoryMap.get(uId).stories.push({
         id: String(r.id),
         imageUrl: r.media_url || "",
-        content: r.text_content || "",
+        content: rawContent || (!r.media_url ? rawCaption : ""),
+        caption: displayCaption,
         isSeen: Boolean(r.is_seen),
         timeAgo: formatTimeAgo(r.created_at),
         backgroundColor: r.background_color,
         mediaType: r.media_type,
+        musicTitle: r.music_title || null,
         privacy: r.privacy || "Public",
         viewsCount: parseInt(r.views_count, 10) || 0,
+        overlays: parsedOverlays,
       });
     }
 
@@ -5609,43 +5813,67 @@ app.get("/api/stories", optionalAuthenticateToken, async (req, res) => {
 // 15.2 Create Story
 app.post("/api/stories", authenticateToken, async (req, res) => {
   try {
-    const { mediaUrl, textContent, backgroundColor, musicTitle, privacy, mediaType } = req.body;
+    const {
+      mediaUrl,
+      textContent,
+      caption,
+      backgroundColor,
+      musicTitle,
+      privacy,
+      mediaType,
+      overlays,
+    } = req.body;
     const userId = req.user.id;
 
-    if (!mediaUrl && !textContent) {
+    if (!mediaUrl && !textContent && !caption) {
       return res.status(400).json({ message: "Photo or story text is required." });
     }
 
     const pool = getPool();
     const validPrivacy = ["Public", "Friends", "Only me"].includes(privacy) ? privacy : "Public";
     const storyMediaType = mediaType || (mediaUrl ? "image" : "text");
+    const storyText = textContent || (!mediaUrl ? caption : null) || null;
+    const storyCaption =
+      caption && caption.trim() !== (textContent || "").trim()
+        ? caption.trim()
+        : null;
+    const overlaysJson = overlays ? JSON.stringify(overlays) : null;
 
     const { rows: insertRes } = await pool.query(
-      `INSERT INTO stories (user_id, media_type, media_url, text_content, background_color, music_title, privacy, created_at, expired_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW() + INTERVAL '24 hours')
+      `INSERT INTO stories (user_id, media_type, media_url, text_content, caption, background_color, music_title, privacy, overlays_json, created_at, expired_at, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), DATE_ADD(NOW(), INTERVAL 24 HOUR), DATE_ADD(NOW(), INTERVAL 24 HOUR))
        RETURNING id, created_at, expired_at`,
       [
         userId,
         storyMediaType,
         mediaUrl || null,
-        textContent || null,
+        storyText,
+        storyCaption ? String(storyCaption).slice(0, 255) : null,
         backgroundColor || "#72AF5B",
         musicTitle || null,
         validPrivacy,
-      ]
+        overlaysJson,
+      ],
     );
 
-    const newStory = insertRes[0];
+    const newStory = insertRes[0] || {};
+    const storyId = newStory.id || insertRes.insertId;
 
     res.status(201).json({
       message: "Story created successfully!",
       story: {
-        id: String(newStory.id),
+        id: String(storyId),
         imageUrl: mediaUrl || "",
-        content: textContent || "",
+        content: storyText || "",
+        caption: storyCaption || "",
         isSeen: false,
         timeAgo: "Just now",
         backgroundColor: backgroundColor || "#72AF5B",
+        musicTitle: musicTitle || null,
+        privacy: validPrivacy,
+        mediaType: storyMediaType,
+        viewsCount: 0,
+        overlays: overlays || null,
       },
     });
   } catch (err) {
@@ -5671,11 +5899,18 @@ app.post("/api/stories/:id/view", authenticateToken, async (req, res) => {
     }
 
     await pool.query(
-      `INSERT INTO story_views (story_id, viewer_id, view_at)
-       VALUES ($1, $2, NOW())
-       ON CONFLICT (story_id, viewer_id) DO NOTHING`,
-      [storyId, viewerId]
+      `INSERT IGNORE INTO story_views (story_id, viewer_id, viewed_at)
+       VALUES ($1, $2, NOW())`,
+      [storyId, viewerId],
     );
+
+    await pool
+      .query(
+        `UPDATE stories SET views_count = (SELECT COUNT(DISTINCT viewer_id) FROM story_views WHERE story_id = $1)
+         WHERE id = $1`,
+        [storyId],
+      )
+      .catch(() => {});
 
     res.json({ message: "Story view recorded." });
   } catch (err) {
@@ -5695,7 +5930,7 @@ app.patch("/api/stories/:id/privacy", authenticateToken, async (req, res) => {
 
     const { rowCount } = await pool.query(
       `UPDATE stories SET privacy = $1 WHERE id = $2 AND user_id = $3`,
-      [validPrivacy, storyId, userId]
+      [validPrivacy, storyId, userId],
     );
 
     if (rowCount === 0) {
@@ -5719,7 +5954,7 @@ app.get("/api/stories/:id/viewers", authenticateToken, async (req, res) => {
     // Verify user owns the story
     const { rows: storyRows } = await pool.query(
       `SELECT user_id FROM stories WHERE id = $1`,
-      [storyId]
+      [storyId],
     );
 
     if (storyRows.length === 0) {
@@ -5735,13 +5970,13 @@ app.get("/api/stories/:id/viewers", authenticateToken, async (req, res) => {
     }
 
     const { rows: viewers } = await pool.query(
-      `SELECT sv.viewer_id, sv.view_at,
+      `SELECT sv.viewer_id, sv.viewed_at,
               u.first_name, u.last_name, u.username, u.avatar_url, u.role
        FROM story_views sv
        JOIN users u ON sv.viewer_id = u.id
        WHERE sv.story_id = $1 AND sv.viewer_id != $2
-       ORDER BY sv.view_at DESC`,
-      [storyId, currentUserId]
+       ORDER BY sv.viewed_at DESC`,
+      [storyId, currentUserId],
     );
 
     const formattedViewers = viewers.map((v) => ({
@@ -5750,7 +5985,7 @@ app.get("/api/stories/:id/viewers", authenticateToken, async (req, res) => {
       username: v.username || "",
       avatarUrl: v.avatar_url || "",
       role: v.role || "Farmer",
-      viewedAt: formatTimeAgo(v.view_at),
+      viewedAt: formatTimeAgo(v.viewed_at),
     }));
 
     res.json({
@@ -5763,32 +5998,804 @@ app.get("/api/stories/:id/viewers", authenticateToken, async (req, res) => {
   }
 });
 
-// Start server
-initDB().then(async () => {
-  const pool = getPool();
+// 15.6 Delete Story
+app.delete("/api/stories/:id", authenticateToken, async (req, res) => {
   try {
-    await pool.query(`
-      ALTER TABLE users 
-      ADD COLUMN IF NOT EXISTS bio TEXT,
-      ADD COLUMN IF NOT EXISTS cover_photo_url TEXT,
-      ADD COLUMN IF NOT EXISTS farm_name VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS farm_location VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS primary_crops TEXT,
-      ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE,
-      ADD COLUMN IF NOT EXISTS two_factor_method VARCHAR(50) DEFAULT 'none',
-      ADD COLUMN IF NOT EXISTS two_factor_secret TEXT;
-    `);
-    console.log("[PostgreSQL] Users table verified with bio, farm, and 2FA columns.");
-  } catch (migErr) {
-    console.warn("[PostgreSQL Migration Warning]", migErr.message);
-  }
+    const storyId = req.params.id;
+    const userId = req.user.id;
+    const pool = getPool();
 
-  app.listen(PORT, "0.0.0.0", () => {
+    const { rowCount } = await pool.query(
+      `DELETE FROM stories WHERE id = $1 AND (user_id = $2 OR $3 = 'admin')`,
+      [storyId, userId, req.user.role || "farmer"],
+    );
+
+    if (rowCount === 0) {
+      return res.status(404).json({ message: "Story not found or unauthorized." });
+    }
+
+    await pool.query("DELETE FROM story_views WHERE story_id = $1", [storyId]).catch(() => {});
+    await pool.query("DELETE FROM story_reactions WHERE story_id = $1", [storyId]).catch(() => {});
+
+    res.json({ message: "Story deleted successfully.", id: String(storyId) });
+  } catch (err) {
+    console.error("[Delete Story Error]", err);
+    res.status(500).json({ message: err.message || "Failed to delete story." });
+  }
+});
+
+// 15.7 React to Story
+app.post("/api/stories/:id/react", authenticateToken, async (req, res) => {
+  try {
+    const storyId = req.params.id;
+    const userId = req.user.id;
+    const { reactionType = "like" } = req.body;
+    const pool = getPool();
+
+    await pool.query(
+      `INSERT INTO story_reactions (story_id, user_id, reaction_type)
+       VALUES ($1, $2, $3)
+       ON DUPLICATE KEY UPDATE reaction_type = $3`,
+      [storyId, userId, reactionType],
+    );
+
+    res.json({ message: "Story reaction saved.", reaction: reactionType });
+  } catch (err) {
+    console.error("[Story Reaction Error]", err);
+    res.status(500).json({ message: err.message || "Failed to save story reaction." });
+  }
+});
+
+// -----------------------------------------------------------------------------
+// DYNAMIC FEATURE ENDPOINTS: RSBSA, BLOCKED USERS, PRIVACY, REPORTS, ANNOUNCEMENTS, PRICES
+// -----------------------------------------------------------------------------
+
+// RSBSA 1. Get current user's RSBSA accreditation application
+app.get("/api/farmers/me/verification", authenticateToken, async (req, res) => {
+  try {
+    const pool = getPool();
+    const userId = req.user.id;
+    const { rows } = await pool.query(
+      `SELECT fp.*, u.full_name, u.first_name, u.last_name, u.is_verified 
+       FROM users u 
+       LEFT JOIN farmer_profiles fp ON fp.user_id = u.id 
+       WHERE u.id = $1 LIMIT 1`,
+      [userId]
+    );
+
+    if (!rows || rows.length === 0 || !rows[0].farm_name) {
+      return res.json({ application: null });
+    }
+
+    const r = rows[0];
+    res.json({
+      application: {
+        fullName: r.full_name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || "Farmer",
+        rsbsaNumber: r.rsbsa_number || r.farmer_code || "",
+        farmName: r.farm_name || "",
+        location: r.farm_location || "",
+        crops: r.crops || "",
+        documentUri: r.document_uri || r.certifications || "",
+        status: r.verification_status || (r.is_verified ? "verified" : "unverified"),
+        submittedAt: r.created_at ? new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : undefined,
+        verifiedAt: r.verification_status === "verified" ? new Date(r.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : undefined,
+      },
+    });
+  } catch (err) {
+    console.error("[GET /api/farmers/me/verification Error]", err);
+    res.status(500).json({ message: "Failed to load verification status" });
+  }
+});
+
+// RSBSA 2. Submit new or update RSBSA verification application
+app.post("/api/farmers/apply-verification", authenticateToken, async (req, res) => {
+  try {
+    const pool = getPool();
+    const userId = req.user.id;
+    const { fullName, rsbsaNumber, farmName, location, crops, documentUri } = req.body;
+
+    if (!rsbsaNumber || !farmName || !location || !crops) {
+      return res.status(400).json({ message: "Please complete all required fields." });
+    }
+
+    const farmerCode = `FAR-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    await pool.query(
+      `INSERT INTO farmer_profiles (
+         user_id, farmer_code, rsbsa_number, farm_name, crops, farm_location, document_uri, verification_status
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
+       ON DUPLICATE KEY UPDATE 
+         rsbsa_number = VALUES(rsbsa_number),
+         farm_name = VALUES(farm_name),
+         crops = VALUES(crops),
+         farm_location = VALUES(farm_location),
+         document_uri = VALUES(document_uri),
+         verification_status = 'pending',
+         updated_at = NOW()`,
+      [userId, farmerCode, rsbsaNumber, farmName, crops, location, documentUri || null]
+    );
+
+    // Record audit event in admin logs
+    try {
+      await pool.query(
+        `INSERT INTO admin_activity_logs (action, detail, type, user, ip, status)
+         VALUES ('RSBSA Application Submitted', $1, 'security', $2, '127.0.0.1', 'success')`,
+        [`Farmer ${fullName || 'User'} (#${userId}) applied for PhilGAP accreditation with RSBSA #${rsbsaNumber}`, req.user.email || 'user@localfarm.com']
+      );
+    } catch (e) {}
+
+    res.json({
+      message: "RSBSA verification application submitted successfully.",
+      application: {
+        fullName: fullName || req.user.name,
+        rsbsaNumber,
+        farmName,
+        location,
+        crops,
+        documentUri,
+        status: "pending",
+        submittedAt: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      },
+    });
+  } catch (err) {
+    console.error("[POST /api/farmers/apply-verification Error]", err);
+    res.status(500).json({ message: "Failed to submit verification application" });
+  }
+});
+
+// MAP 1. Get live registered farmer locations
+app.get("/api/farmers/locations", async (req, res) => {
+  try {
+    const pool = getPool();
+    const { rows } = await pool.query(
+      `SELECT u.id, u.full_name, u.first_name, u.last_name, u.username, u.avatar_url, u.is_verified,
+              fp.farm_name, fp.crops, fp.farm_location, fp.verification_status
+       FROM users u
+       JOIN farmer_profiles fp ON fp.user_id = u.id
+       WHERE fp.verification_status IN ('verified', 'pending')`
+    );
+
+    const locations = rows.map((r) => {
+      const baseLat = 8.2250 + (((r.id * 17) % 30) - 15) * 0.0015;
+      const baseLng = 124.2450 + (((r.id * 23) % 30) - 15) * 0.0015;
+      return {
+        id: `db-farmer-${r.id}`,
+        latitude: parseFloat(baseLat.toFixed(4)),
+        longitude: parseFloat(baseLng.toFixed(4)),
+        title: r.farm_name || `${r.full_name || "Farmer"}'s Farm`,
+        farmerName: r.full_name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || r.username || "Producer",
+        type: "Farm",
+        produce: r.crops || "Fresh Farm Produce",
+        priceRange: "₱45 - ₱95/kg",
+        distance: `${(1.2 + (r.id % 5) * 0.4).toFixed(1)}km away • ${r.farm_location || "Iligan City"}`,
+        rating: parseFloat((4.7 + (r.id % 3) * 0.1).toFixed(1)),
+        description: `Accredited local producer cultivating ${r.crops || "fresh produce"} in ${r.farm_location || "local region"}. Verification status: ${r.verification_status}.`,
+        imageUrl: r.avatar_url || "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=400&q=80",
+      };
+    });
+
+    res.json({ locations, farmers: rows });
+  } catch (err) {
+    console.error("[GET /api/farmers/locations Error]", err);
+    res.status(500).json({ message: "Failed to load farm locations" });
+  }
+});
+
+// BLOCKED USERS 1. Get blocked users list
+app.get("/api/users/blocked", authenticateToken, async (req, res) => {
+  try {
+    const pool = getPool();
+    const userId = req.user.id;
+    const { rows } = await pool.query(
+      `SELECT bu.id as block_id, bu.created_at as blocked_at, u.id, u.full_name, u.first_name, u.last_name, u.username, u.avatar_url
+       FROM blocked_users bu
+       JOIN users u ON u.id = bu.blocked_user_id
+       WHERE bu.user_id = $1
+       ORDER BY bu.created_at DESC`,
+      [userId]
+    );
+
+    const blockedUsers = rows.map((r) => ({
+      id: String(r.id),
+      name: r.full_name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || r.username || "User",
+      username: r.username || "",
+      avatarUrl: r.avatar_url || "",
+      blockedAt: formatRelativeTime(r.blocked_at),
+    }));
+
+    res.json({ blockedUsers });
+  } catch (err) {
+    console.error("[GET /api/users/blocked Error]", err);
+    res.status(500).json({ message: "Failed to fetch blocked users" });
+  }
+});
+
+// BLOCKED USERS 2. Block a user
+app.post("/api/users/block", authenticateToken, async (req, res) => {
+  try {
+    const pool = getPool();
+    const userId = req.user.id;
+    const { blockedUserId } = req.body;
+    if (!blockedUserId || Number(blockedUserId) === Number(userId)) {
+      return res.status(400).json({ message: "Invalid target user." });
+    }
+    await pool.query(
+      `INSERT IGNORE INTO blocked_users (user_id, blocked_user_id) VALUES ($1, $2)`,
+      [userId, blockedUserId]
+    );
+    await pool.query(
+      `UPDATE connections SET status = 'blocked' 
+       WHERE (sender_id = $1 AND receiver_id = $2) OR (sender_id = $2 AND receiver_id = $1)`,
+      [userId, blockedUserId]
+    );
+    res.json({ message: "User blocked successfully." });
+  } catch (err) {
+    console.error("[POST /api/users/block Error]", err);
+    res.status(500).json({ message: "Failed to block user" });
+  }
+});
+
+// BLOCKED USERS 3. Unblock a user
+app.delete("/api/users/unblock/:blockedUserId", authenticateToken, async (req, res) => {
+  try {
+    const pool = getPool();
+    const userId = req.user.id;
+    const { blockedUserId } = req.params;
+    await pool.query(
+      `DELETE FROM blocked_users WHERE user_id = $1 AND blocked_user_id = $2`,
+      [userId, blockedUserId]
+    );
+    res.json({ message: "User unblocked successfully." });
+  } catch (err) {
+    console.error("[DELETE /api/users/unblock Error]", err);
+    res.status(500).json({ message: "Failed to unblock user" });
+  }
+});
+
+// PRIVACY 1. Get privacy settings
+app.get("/api/user/privacy", authenticateToken, async (req, res) => {
+  try {
+    const pool = getPool();
+    const userId = req.user.id;
+    const { rows } = await pool.query(
+      `SELECT * FROM user_privacy_settings WHERE user_id = $1 LIMIT 1`,
+      [userId]
+    );
+
+    if (!rows || rows.length === 0) {
+      return res.json({
+        settings: {
+          profileVisibility: "Public",
+          postAudience: "Public",
+          storyAudience: "Public",
+          taggingPermission: "Everyone",
+          connectionsListVisibility: "Public",
+          pricingVisibility: "Public",
+          preciseLocation: true,
+          mapDiscovery: true,
+          messagingScope: "everyone",
+          showOnlineStatus: true,
+        },
+      });
+    }
+
+    const r = rows[0];
+    res.json({
+      settings: {
+        profileVisibility: r.profile_visibility || "Public",
+        postAudience: r.post_audience || "Public",
+        storyAudience: r.story_audience || "Public",
+        taggingPermission: r.tagging_permission || "Everyone",
+        connectionsListVisibility: r.connections_list_visibility || "Public",
+        pricingVisibility: r.pricing_visibility || "Public",
+        preciseLocation: Boolean(r.precise_location),
+        mapDiscovery: Boolean(r.map_discovery),
+        messagingScope: r.messaging_scope || "everyone",
+        showOnlineStatus: Boolean(r.show_online_status),
+      },
+    });
+  } catch (err) {
+    console.error("[GET /api/user/privacy Error]", err);
+    res.status(500).json({ message: "Failed to load privacy settings" });
+  }
+});
+
+// PRIVACY 2. Update privacy settings
+app.put("/api/user/privacy", authenticateToken, async (req, res) => {
+  try {
+    const pool = getPool();
+    const userId = req.user.id;
+    const s = req.body;
+    await pool.query(
+      `INSERT INTO user_privacy_settings (
+         user_id, profile_visibility, post_audience, story_audience, tagging_permission,
+         connections_list_visibility, pricing_visibility, precise_location, map_discovery,
+         messaging_scope, show_online_status
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       ON DUPLICATE KEY UPDATE
+         profile_visibility = VALUES(profile_visibility),
+         post_audience = VALUES(post_audience),
+         story_audience = VALUES(story_audience),
+         tagging_permission = VALUES(tagging_permission),
+         connections_list_visibility = VALUES(connections_list_visibility),
+         pricing_visibility = VALUES(pricing_visibility),
+         precise_location = VALUES(precise_location),
+         map_discovery = VALUES(map_discovery),
+         messaging_scope = VALUES(messaging_scope),
+         show_online_status = VALUES(show_online_status),
+         updated_at = NOW()`,
+      [
+        userId,
+        s.profileVisibility || "Public",
+        s.postAudience || "Public",
+        s.storyAudience || "Public",
+        s.taggingPermission || "Everyone",
+        s.connectionsListVisibility || "Public",
+        s.pricingVisibility || "Public",
+        s.preciseLocation !== undefined ? (s.preciseLocation ? 1 : 0) : 1,
+        s.mapDiscovery !== undefined ? (s.mapDiscovery ? 1 : 0) : 1,
+        s.messagingScope || "everyone",
+        s.showOnlineStatus !== undefined ? (s.showOnlineStatus ? 1 : 0) : 1,
+      ]
+    );
+    res.json({ message: "Privacy settings updated successfully." });
+  } catch (err) {
+    console.error("[PUT /api/user/privacy Error]", err);
+    res.status(500).json({ message: "Failed to update privacy settings" });
+  }
+});
+
+// REPORTS 1. Create a support dispute / violation report
+app.post("/api/reports", authenticateToken, async (req, res) => {
+  try {
+    const pool = getPool();
+    const reporterId = req.user.id;
+    const { reason, statement, severity = "medium", reportedUserId, conversationId, attachmentUrl } = req.body;
+
+    const reportCode = `RPT-${Math.floor(1000 + Math.random() * 9000)}`;
+    const reporterName = req.user.name || req.user.email || "Local Farm User";
+
+    let reportedUserName = "Unspecified User";
+    if (reportedUserId) {
+      const { rows: uRows } = await pool.query(`SELECT full_name, username FROM users WHERE id = $1`, [reportedUserId]);
+      if (uRows.length > 0) reportedUserName = uRows[0].full_name || uRows[0].username || "User";
+    }
+
+    const dateReported = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+    await pool.query(
+      `INSERT INTO reports (
+         report_code, reporter_id, reporter_name, reported_user_id, reported_user_name,
+         report_type, reason, statement, date_reported, severity, status, conversation_id, attachment_url
+       ) VALUES ($1, $2, $3, $4, $5, 'user', $6, $7, $8, $9, 'pending', $10, $11)`,
+      [
+        reportCode, reporterId, reporterName, reportedUserId || null, reportedUserName,
+        reason || "Community Dispute", statement || "", dateReported, severity,
+        conversationId || null, attachmentUrl || null
+      ]
+    );
+
+    res.json({
+      message: "Ticket created successfully and escalated to admin moderation queue.",
+      ticket: {
+        id: reportCode,
+        category: reason,
+        subject: statement ? statement.split("\n")[0] : reason,
+        description: statement,
+        status: "Under Review",
+        date: dateReported,
+      },
+    });
+  } catch (err) {
+    console.error("[POST /api/reports Error]", err);
+    res.status(500).json({ message: "Failed to file report" });
+  }
+});
+
+// REPORTS 2. Get my submitted reports / tickets
+app.get("/api/reports/my-tickets", authenticateToken, async (req, res) => {
+  try {
+    const pool = getPool();
+    const reporterId = req.user.id;
+    const { rows } = await pool.query(
+      `SELECT * FROM reports WHERE reporter_id = $1 ORDER BY created_at DESC`,
+      [reporterId]
+    );
+    const tickets = rows.map((r) => ({
+      id: r.report_code,
+      category: r.reason,
+      subject: r.statement ? r.statement.split("\n")[0] : r.reason,
+      description: r.statement,
+      status: r.status === "resolved" ? "Resolved" : r.status === "dismissed" ? "Rejected" : "Under Review",
+      priority: r.severity === "high" || r.severity === "critical" ? "Urgent" : "Normal",
+      date: r.date_reported || new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    }));
+    res.json({ tickets });
+  } catch (err) {
+    console.error("[GET /api/reports/my-tickets Error]", err);
+    res.status(500).json({ message: "Failed to fetch user tickets" });
+  }
+});
+
+// ANNOUNCEMENTS 1. Get active official announcements
+app.get("/api/announcements", async (req, res) => {
+  try {
+    const pool = getPool();
+    const { rows } = await pool.query(
+      `SELECT * FROM announcements 
+       WHERE is_archived = 0 
+       ORDER BY is_pinned DESC, created_at DESC 
+       LIMIT 10`
+    );
+    const announcements = rows.map((r) => ({
+      id: String(r.id),
+      title: r.title,
+      content: r.content,
+      category: r.category,
+      priority: r.priority,
+      targetAudience: r.target_audience,
+      isPinned: Boolean(r.is_pinned),
+      createdAt: r.created_at,
+      author: r.author || "System Admin",
+    }));
+    res.json({ announcements });
+  } catch (err) {
+    console.error("[GET /api/announcements Error]", err);
+    res.status(500).json({ message: "Failed to fetch announcements" });
+  }
+});
+
+// COMMODITY PRICES 1. Get SRP benchmarks
+app.get("/api/prices", async (req, res) => {
+  try {
+    const pool = getPool();
+    const { rows } = await pool.query(
+      `SELECT * FROM commodity_prices ORDER BY category ASC, commodity_name ASC`
+    );
+    res.json({ commodities: rows, prices: rows });
+  } catch (err) {
+    console.error("[GET /api/prices Error]", err);
+    res.status(500).json({ message: "Failed to fetch prices" });
+  }
+});
+
+// =============================================================================
+// HARVEST RESERVATIONS & DIGITAL PICKUP RECEIPTS API
+// =============================================================================
+
+// 1. Get user's reservations (as buyer, seller, or both)
+app.get("/api/reservations/my-reservations", authenticateToken, async (req, res) => {
+  try {
+    const pool = getPool();
+    const userId = req.user.id;
+    const role = req.query.role || "all"; // 'buyer' | 'seller' | 'all'
+    const status = req.query.status || "all";
+
+    let filterClause = "(hr.buyer_id = $1 OR hr.seller_id = $1)";
+    const params = [userId];
+
+    if (role === "buyer") {
+      filterClause = "hr.buyer_id = $1";
+    } else if (role === "seller") {
+      filterClause = "hr.seller_id = $1";
+    }
+
+    if (status && status !== "all") {
+      params.push(status);
+      filterClause += ` AND hr.status = $${params.length}`;
+    }
+
+    const { rows } = await pool.query(
+      `SELECT 
+        hr.*,
+        buyer.full_name as buyer_name,
+        buyer.username as buyer_username,
+        buyer.email as buyer_email,
+        buyer.phone_number as buyer_phone,
+        buyer.avatar_url as buyer_avatar,
+        seller.full_name as seller_name,
+        seller.username as seller_username,
+        seller.email as seller_email,
+        seller.phone_number as seller_phone,
+        seller.avatar_url as seller_avatar,
+        fp.farm_name,
+        fp.farmer_code
+       FROM harvest_reservations hr
+       LEFT JOIN users buyer ON hr.buyer_id = buyer.id
+       LEFT JOIN users seller ON hr.seller_id = seller.id
+       LEFT JOIN farmer_profiles fp ON hr.seller_id = fp.user_id
+       WHERE ${filterClause}
+       ORDER BY hr.created_at DESC`,
+      params
+    );
+
+    res.json({ success: true, reservations: rows });
+  } catch (err) {
+    console.error("[GET /api/reservations/my-reservations Error]", err);
+    res.status(500).json({ message: "Failed to fetch reservations." });
+  }
+});
+
+// 2. Create pre-harvest reservation
+app.post("/api/reservations", authenticateToken, async (req, res) => {
+  try {
+    const pool = getPool();
+    const buyerId = req.user.id;
+    const { postId, quantity, buyerNotes } = req.body;
+
+    if (!postId || !quantity || Number(quantity) <= 0) {
+      return res.status(400).json({ message: "Valid post ID and quantity are required." });
+    }
+
+    // Verify post
+    const { rows: postRows } = await pool.query(
+      `SELECT p.*, u.full_name as seller_name, fp.farm_name 
+       FROM posts p 
+       LEFT JOIN users u ON p.user_id = u.id 
+       LEFT JOIN farmer_profiles fp ON u.id = fp.user_id 
+       WHERE p.id = $1`,
+      [postId]
+    );
+
+    if (postRows.length === 0) {
+      return res.status(404).json({ message: "Produce post not found." });
+    }
+
+    const post = postRows[0];
+    const sellerId = post.user_id;
+
+    if (buyerId === sellerId) {
+      return res.status(400).json({ message: "You cannot reserve your own harvest post." });
+    }
+
+    const cropName = post.crop_name || post.content.split("\n")[0].substring(0, 50) || "Farm Fresh Produce";
+    const unit = post.unit || "kg";
+    const pricePerUnit = Number(post.price_per_unit) || 40.00;
+    const reservedQty = Number(quantity);
+    const totalEstAmount = reservedQty * pricePerUnit;
+    const harvestDate = post.expected_harvest_date || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
+    const pickupLoc = post.pickup_hub || post.location || "Bogo City Public Market Hub";
+
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const reservationCode = `LF-RES-${randomSuffix}`;
+    const qrToken = `QR_LF_${randomSuffix}_${Date.now()}`;
+
+    const { rows: inserted } = await pool.query(
+      `INSERT INTO harvest_reservations (
+        reservation_code, post_id, seller_id, buyer_id, crop_name, quantity,
+        unit, price_per_unit, total_estimated_amount, harvest_date, pickup_location,
+        status, qr_token, buyer_notes, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', $12, $13, NOW())
+      RETURNING *`,
+      [
+        reservationCode,
+        postId,
+        sellerId,
+        buyerId,
+        cropName,
+        reservedQty,
+        unit,
+        pricePerUnit,
+        totalEstAmount,
+        harvestDate,
+        pickupLoc,
+        qrToken,
+        buyerNotes || null,
+      ]
+    );
+
+    // Update reserved_quantity on post
+    try {
+      await pool.query(
+        `UPDATE posts 
+         SET reserved_quantity = COALESCE(reserved_quantity, 0) + $1 
+         WHERE id = $2`,
+        [reservedQty, postId]
+      );
+    } catch {}
+
+    // Dispatch notification to seller
+    try {
+      const { rows: buyerRows } = await pool.query(`SELECT full_name FROM users WHERE id = $1`, [buyerId]);
+      const buyerName = buyerRows[0]?.full_name || "A buyer";
+      await pool.query(
+        `INSERT INTO notifications (user_id, actor_id, type, title, message, reference_id, is_read, created_at)
+         VALUES ($1, $2, 'order', 'New Harvest Reservation', $3, $4, 0, NOW())`,
+        [
+          sellerId,
+          buyerId,
+          `${buyerName} placed an advance reservation of ${reservedQty} ${unit} for ${cropName} (${reservationCode}).`,
+          inserted[0]?.id || null,
+        ]
+      );
+    } catch (notifErr) {
+      console.warn("[Reservation Notif Warning]", notifErr.message);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Harvest reservation created successfully!",
+      reservation: inserted[0]
+    });
+  } catch (err) {
+    console.error("[POST /api/reservations Error]", err);
+    res.status(500).json({ message: "Failed to create harvest reservation." });
+  }
+});
+
+// 3. Verify pickup & weigh-in (Farmer or Hub Officer)
+app.post("/api/reservations/verify-pickup", authenticateToken, async (req, res) => {
+  try {
+    const pool = getPool();
+    const verifierId = req.user.id;
+    const { qrToken, reservationCode, actualWeighedQuantity, sellerNotes } = req.body;
+
+    if (!qrToken && !reservationCode) {
+      return res.status(400).json({ message: "QR token or reservation code is required." });
+    }
+
+    let searchSql = "qr_token = $1";
+    let searchParam = qrToken;
+    if (!qrToken && reservationCode) {
+      searchSql = "reservation_code = $1";
+      searchParam = reservationCode.trim().toUpperCase();
+    }
+
+    const { rows } = await pool.query(
+      `SELECT hr.*, buyer.full_name as buyer_name, seller.full_name as seller_name
+       FROM harvest_reservations hr
+       LEFT JOIN users buyer ON hr.buyer_id = buyer.id
+       LEFT JOIN users seller ON hr.seller_id = seller.id
+       WHERE ${searchSql}`,
+      [searchParam]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Invalid or unrecognized reservation code/QR token." });
+    }
+
+    const reservation = rows[0];
+
+    if (reservation.status === "completed") {
+      return res.status(400).json({ 
+        message: `This reservation (${reservation.reservation_code}) was already completed on ${new Date(reservation.completed_at).toLocaleString()}.`,
+        alreadyCompleted: true,
+        reservation 
+      });
+    }
+
+    const weighed = Number(actualWeighedQuantity) > 0 ? Number(actualWeighedQuantity) : Number(reservation.quantity);
+    const finalAmount = weighed * Number(reservation.price_per_unit);
+
+    const { rows: updatedRows } = await pool.query(
+      `UPDATE harvest_reservations
+       SET status = 'completed',
+           actual_weighed_quantity = $1,
+           final_settled_amount = $2,
+           seller_notes = COALESCE($3, seller_notes),
+           weighed_at = NOW(),
+           completed_at = NOW()
+       WHERE id = $4
+       RETURNING *`,
+      [weighed, finalAmount, sellerNotes || null, reservation.id]
+    );
+
+    // Notify buyer that pickup is stamped
+    try {
+      await pool.query(
+        `INSERT INTO notifications (user_id, actor_id, type, title, message, reference_id, is_read, created_at)
+         VALUES ($1, $2, 'order', 'Pickup & Weigh-in Verified', $3, $4, 0, NOW())`,
+        [
+          reservation.buyer_id,
+          verifierId,
+          `Your order for ${reservation.crop_name} (${reservation.reservation_code}) has been weighed (${weighed} ${reservation.unit}) and marked Completed at ₱${finalAmount.toFixed(2)}.`,
+          reservation.id,
+        ]
+      );
+    } catch {}
+
+    res.json({
+      success: true,
+      message: `Pickup verified! Weighed: ${weighed} ${reservation.unit} • Final: ₱${finalAmount.toFixed(2)}`,
+      receipt: {
+        ...updatedRows[0],
+        buyer_name: reservation.buyer_name,
+        seller_name: reservation.seller_name
+      }
+    });
+  } catch (err) {
+    console.error("[POST /api/reservations/verify-pickup Error]", err);
+    res.status(500).json({ message: "Failed to verify reservation pickup." });
+  }
+});
+
+// 4. Update reservation status (Confirm, Mark Ready, Cancel)
+app.patch("/api/reservations/:id/status", authenticateToken, async (req, res) => {
+  try {
+    const pool = getPool();
+    const userId = req.user.id;
+    const reservationId = req.params.id;
+    const { status, sellerNotes } = req.body;
+
+    const validStatuses = ["confirmed", "ready_for_pickup", "cancelled"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status update." });
+    }
+
+    const { rows: current } = await pool.query(
+      `SELECT * FROM harvest_reservations WHERE id = $1`,
+      [reservationId]
+    );
+
+    if (current.length === 0) {
+      return res.status(404).json({ message: "Reservation not found." });
+    }
+
+    const reservation = current[0];
+    if (reservation.buyer_id !== userId && reservation.seller_id !== userId && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Unauthorized to update this reservation." });
+    }
+
+    const { rows: updated } = await pool.query(
+      `UPDATE harvest_reservations
+       SET status = $1,
+           seller_notes = COALESCE($2, seller_notes)
+       WHERE id = $3
+       RETURNING *`,
+      [status, sellerNotes || null, reservationId]
+    );
+
+    // Notify counterpart
+    const targetUserId = userId === reservation.seller_id ? reservation.buyer_id : reservation.seller_id;
+    let notifTitle = "Reservation Status Updated";
+    let notifMsg = `Reservation ${reservation.reservation_code} status updated to: ${status.replace(/_/g, " ")}.`;
+
+    if (status === "ready_for_pickup") {
+      notifTitle = "Harvest Ready for Pickup! 🌾";
+      notifMsg = `Good news! Your pre-harvest batch of ${reservation.crop_name} is ready for pickup at ${reservation.pickup_location}.`;
+    }
+
+    try {
+      await pool.query(
+        `INSERT INTO notifications (user_id, actor_id, type, title, message, reference_id, is_read, created_at)
+         VALUES ($1, $2, 'order', $3, $4, $5, 0, NOW())`,
+        [targetUserId, userId, notifTitle, notifMsg, reservation.id]
+      );
+    } catch {}
+
+    res.json({
+      success: true,
+      message: `Reservation status updated to ${status}.`,
+      reservation: updated[0]
+    });
+  } catch (err) {
+    console.error("[PATCH /api/reservations/:id/status Error]", err);
+    res.status(500).json({ message: "Failed to update reservation status." });
+  }
+});
+
+// Start server
+initDB().then(() => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`=======================================================`);
     console.log(`Local Farm API Server running on port ${PORT}`);
+    console.log(`Database: Connected to MySQL localfarm on 127.0.0.1:3306`);
     console.log(`Local:    http://localhost:${PORT}/api`);
     console.log(`Health:   http://localhost:${PORT}/api/health`);
     console.log(`=======================================================`);
   });
+
+  server.on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(`\n[Server Error] Port ${PORT} is already in use by another running process.`);
+      console.error(`To free port ${PORT}, run: npm run server:kill`);
+      console.error(`Or run: Stop-Process -Id (Get-NetTCPConnection -LocalPort ${PORT}).OwningProcess -Force\n`);
+      process.exit(1);
+    } else {
+      console.error("[Server Error]", err);
+      process.exit(1);
+    }
+  });
 });
+
 

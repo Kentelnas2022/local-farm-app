@@ -6,6 +6,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
+  Platform,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -57,6 +58,23 @@ export default function CurrentDeviceDetails() {
   };
 
   const handleLogoutThisDevice = () => {
+    const doLogout = async () => {
+      try {
+        await signOut();
+        router.replace("/auth/Login" as any);
+      } catch (e) {
+        console.warn("Logout error:", e);
+        router.replace("/auth/Login" as any);
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined" && window.confirm("Are you sure you want to log out of this device?")) {
+        doLogout();
+      }
+      return;
+    }
+
     Alert.alert(
       "Log Out of This Device",
       "Are you sure you want to log out? You will need your email and password to sign back in.",
@@ -65,15 +83,7 @@ export default function CurrentDeviceDetails() {
         {
           text: "Log Out",
           style: "destructive",
-          onPress: async () => {
-            try {
-              await signOut();
-              router.replace("/auth/Login" as any);
-            } catch (e) {
-              console.warn("Logout error:", e);
-              router.replace("/auth/Login" as any);
-            }
-          },
+          onPress: doLogout,
         },
       ],
     );

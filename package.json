@@ -50,9 +50,10 @@
   },
   "scripts": {
     "start": "expo start",
-    "dev": "node --watch server/index.js",
+    "dev": "node --watch-path=server server/index.js",
     "server": "node server/index.js",
-    "server:dev": "node --watch server/index.js",
+    "server:dev": "node --watch-path=server server/index.js",
+    "server:kill": "powershell -Command \"$conn = Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue; if ($conn) { Stop-Process -Id $conn.OwningProcess -Force; Write-Host 'Port 5000 freed successfully.' } else { Write-Host 'Port 5000 is already free.' }\"",
     "mysql:start": "powershell -Command \"Start-Process 'C:\\xampp\\mysql\\bin\\mysqld.exe' -ArgumentList '--defaults-file=C:\\xampp\\mysql\\bin\\my.ini --standalone' -WindowStyle Hidden\"",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
