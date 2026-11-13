@@ -1,9 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
+  ScrollView,
   Linking,
   Platform,
   StyleSheet,
@@ -16,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { apiFetch } from "@/lib/api";
 
-import Navigation from "../../components/Navigation";
+import Navigation, { BOTTOM_NAV_BAR_BASE_HEIGHT } from "../../components/Navigation";
 import { STATIC_POST_LOCATIONS } from "../../components/CreatePostModal";
 
 const openDirections = (lat: number, lng: number, label: string) => {
@@ -373,6 +375,57 @@ export const MOCK_LOCAL_FARMS: FarmLocationItem[] = [
   },
 ];
 
+function NearbyCarousel({ children }: { children: ReactNode }) {
+  const drag = useRef({ startX: 0, scrollLeft: 0, active: false, moved: false });
+  if (Platform.OS !== 'web') {
+    return <ScrollView horizontal nestedScrollEnabled directionalLockEnabled showsHorizontalScrollIndicator={false} snapToInterval={180} decelerationRate="fast" keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 22, gap: 12, paddingBottom: 12 }}>{children}</ScrollView>;
+  }
+  return <div
+    role="region" aria-label="Nearby listings, scroll horizontally" tabIndex={0}
+    style={{ display: 'flex', flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'hidden', cursor: 'grab', touchAction: 'pan-x', userSelect: 'none', overscrollBehaviorX: 'contain', scrollbarWidth: 'thin', scrollbarColor: '#c3cebb transparent' }}
+    onPointerDown={event => {
+      if (event.pointerType !== 'mouse' || event.button !== 0) return;
+      drag.current = { startX: event.clientX, scrollLeft: event.currentTarget.scrollLeft, active: true, moved: false };
+    }}
+    onPointerMove={event => {
+      if (!drag.current.active) return;
+      const delta = event.clientX - drag.current.startX;
+      if (Math.abs(delta) > 5 && !drag.current.moved) {
+        drag.current.moved = true;
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }
+      if (drag.current.moved) {
+        event.preventDefault();
+        event.currentTarget.style.cursor = 'grabbing';
+        event.currentTarget.scrollLeft = drag.current.scrollLeft - delta;
+      }
+    }}
+    onPointerUp={event => {
+      drag.current.active = false;
+      event.currentTarget.style.cursor = 'grab';
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    }}
+    onPointerCancel={event => { drag.current.active = false; event.currentTarget.style.cursor = 'grab'; }}
+    onPointerLeave={event => { if (!drag.current.moved) drag.current.active = false; }}
+    onClickCapture={event => { if (drag.current.moved) { event.preventDefault(); event.stopPropagation(); drag.current.moved = false; } }}
+    onDragStart={event => event.preventDefault()}
+    onKeyDown={event => {
+      if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+        event.preventDefault(); event.currentTarget.scrollBy({ left: event.key === 'ArrowRight' ? 180 : -180 });
+      }
+    }}>
+    <div style={{ display: 'flex', flexShrink: 0, gap: 12, padding: '0 22px 12px', width: 'max-content' }}>{children}</div>
+  </div>;
+}
+
+function NearbyPhoto({ uri }: { uri: string }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [uri]);
+  return <View style={{ height: 90, width: '100%', backgroundColor: '#e8eee1', alignItems: 'center', justifyContent: 'center' }}>
+    {uri && !failed ? <Image source={{ uri }} onError={() => setFailed(true)} style={{ width: '100%', height: '100%' }} resizeMode="cover"/> : <><Ionicons name="leaf-outline" size={26} color="#85967b"/><Text style={{ color: '#6b7c62', fontSize: 10, marginTop: 5 }}>From the farm</Text></>}
+  </View>;
+}
+
 export default function ExploreMap() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -498,6 +551,17 @@ export default function ExploreMap() {
       `);
     }
   };
+
+  const focusSelectedFarm = () => {
+    if (!selectedLocation || activeRouteLocation) return;
+    sendMapMessage({ type: "FOCUS_FARM", farmId: selectedLocation.id, latitude: selectedLocation.latitude, longitude: selectedLocation.longitude });
+  };
+
+  useEffect(() => {
+    // Wait for the details panel to resize the map before centering the pin.
+    const frame = requestAnimationFrame(focusSelectedFarm);
+    return () => cancelAnimationFrame(frame);
+  }, [selectedLocation, activeRouteLocation]);
 
   // Toggle or activate route to target farm
   const handleToggleRoute = (farm: FarmLocationItem) => {
@@ -646,15 +710,17 @@ export default function ExploreMap() {
   }, []);
 
   // Filter farms by search keyword or single location target
+  const [discoveryFilter, setDiscoveryFilter] = useState("All");
   const filteredFarms = useMemo(() => {
     if (filterLocationName && targetLocationItem) {
       return [targetLocationItem];
     }
+    const categoryFarms = allFarms.filter(farm => discoveryFilter === "All" || (discoveryFilter === "Fields" ? farm.type === "Farm" : farm.type === "Wholesaler"));
     if (!searchText.trim()) {
-      return allFarms;
+      return categoryFarms;
     }
     const query = searchText.toLowerCase();
-    return allFarms.filter(
+    return categoryFarms.filter(
       (farm) =>
         farm.title.toLowerCase().includes(query) ||
         farm.type.toLowerCase().includes(query) ||
@@ -663,7 +729,12 @@ export default function ExploreMap() {
         farm.distance.toLowerCase().includes(query) ||
         farm.description.toLowerCase().includes(query),
     );
-  }, [allFarms, searchText, filterLocationName, targetLocationItem]);
+  }, [allFarms, searchText, filterLocationName, targetLocationItem, discoveryFilter]);
+
+  const handleCloseSelectedLocation = useCallback(() => {
+    setSelectedLocation(null);
+    sendMapMessage({ type: "ZOOM_OUT" });
+  }, []);
 
   // Unified message handler from Leaflet map
   const handleMapIncomingMessage = useCallback(
@@ -672,7 +743,11 @@ export default function ExploreMap() {
         const data = typeof raw === "string" ? JSON.parse(raw) : raw;
         if (!data) return;
 
-        if (data.type === "PIN_CLICKED" || (data.id && data.title)) {
+        if (data.type === "MAP_BG_CLICK") {
+          if (selectedLocation) {
+            handleCloseSelectedLocation();
+          }
+        } else if (data.type === "PIN_CLICKED" || (data.id && data.title)) {
           const farm =
             data.farm ||
             filteredFarms.find((f) => f.id === data.id) ||
@@ -929,6 +1004,10 @@ export default function ExploreMap() {
           font-size: 9px !important;
           background: rgba(255, 255, 255, 0.75) !important;
         }
+        .custom-location-marker, .marker-wrapper { width:28px!important; height:34px!important; transform-origin:14px 32px; }
+        .marker-image-container { display:none; }
+        .marker-pin-svg { width:26px; height:32px; margin:0; filter:drop-shadow(0 2px 3px #30433325); }
+        .leaflet-tile-pane { filter:saturate(.65); }
       </style>
     </head>
     <body>
@@ -978,11 +1057,12 @@ export default function ExploreMap() {
         });
 
         // 2. Add Farm / Wholesaler Markers with Custom Popups
+        var farmMarkers = {};
         locations.forEach(function(locationData) {
           var isWholesaler = locationData.type === 'Wholesaler';
           var badgeText = isWholesaler ? '📦 Wholesaler' : '🌿 Field';
           var badgeBg = isWholesaler ? 'rgba(217, 119, 6, 0.95)' : 'rgba(22, 101, 52, 0.92)';
-          var pinColor = isWholesaler ? '#d97706' : '#16a34a';
+          var pinColor = isWholesaler ? '#a18b59' : '#486343';
 
           var markerHtml = 
             '<div class="marker-wrapper">' +
@@ -998,13 +1078,15 @@ export default function ExploreMap() {
           var customIcon = L.divIcon({
             className: 'custom-location-marker',
             html: markerHtml,
-            iconSize: [80, 84],
-            iconAnchor: [40, 82]
+            iconSize: [28, 34],
+            iconAnchor: [14, 32]
           });
 
           var marker = L.marker([locationData.latitude, locationData.longitude], {
             icon: customIcon
           }).addTo(map);
+
+          farmMarkers[locationData.id] = marker;
 
           // Popup on the pin with "Directions" button
           var popupContent =
@@ -1021,7 +1103,7 @@ export default function ExploreMap() {
             '</div>';
 
           marker.bindPopup(popupContent, {
-            offset: [0, -78],
+            offset: [0, -24],
             closeButton: true
           });
 
@@ -1039,6 +1121,11 @@ export default function ExploreMap() {
             var payload = JSON.stringify({ type: 'PIN_CLICKED', id: locationData.id, farm: locationData });
             postToParent(payload);
           });
+        });
+
+        // Background map tap closes open farm card and zooms out
+        map.on('click', function() {
+          postToParent(JSON.stringify({ type: 'MAP_BG_CLICK' }));
         });
 
         function postToParent(payload) {
@@ -1172,6 +1259,24 @@ export default function ExploreMap() {
             window.drawRoute(msg.waypoints, msg.farmId, msg.destLat, msg.destLng);
           } else if (msg.type === 'CLEAR_ROUTE') {
             window.clearRoute();
+          } else if (msg.type === 'ZOOM_OUT') {
+            map.closePopup();
+            var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            setTimeout(function() {
+              map.invalidateSize({ pan: false });
+              map.flyTo([userLat, userLng], 13, { animate: !reduceMotion, duration: 0.75 });
+            }, 100);
+          } else if (msg.type === 'FOCUS_FARM') {
+            if (!Number.isFinite(msg.latitude) || !Number.isFinite(msg.longitude)) return;
+            requestAnimationFrame(function() {
+              map.invalidateSize({ pan: false });
+              map.closePopup();
+              var pin = farmMarkers[msg.farmId];
+              var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+              map.flyTo([msg.latitude, msg.longitude], 16, { animate: !reduceMotion, duration: 0.75 });
+              // The native details panel displays the listing; keep its pin unobstructed.
+              if (pin) pin.setZIndexOffset(1000);
+            });
           } else if (msg.type === 'RECENTER') {
             map.flyTo([userLat, userLng], 15, { animate: true });
           } else if (msg.type === 'UPDATE_USER_LOCATION') {
@@ -1203,33 +1308,33 @@ export default function ExploreMap() {
   `;
 
   const topInset = Math.max(insets.top, 14);
+  const headerHeight = topInset + 172;
+  const navigationHeight = BOTTOM_NAV_BAR_BASE_HEIGHT + Math.max(insets.bottom, 0);
+  const nearbyHeight = 248;
+  const showNearby = !selectedLocation && !activeRouteLocation;
+  const mapBottom = navigationHeight + (showNearby ? nearbyHeight : 0);
 
   return (
     <View
-      className="flex-1 bg-white relative w-full h-full"
       style={styles.rootContainer}
     >
       {/* 1. Full-Screen Leaflet Map Background */}
       <View
-        style={StyleSheet.absoluteFill}
-        className="w-full h-full bg-gray-200"
+        style={{ position: "absolute", top: headerHeight, bottom: mapBottom, left: 0, right: 0, overflow: "hidden", backgroundColor: "#e8eee3", zIndex: 0 }}
       >
         {Platform.OS === "web" ? (
           <iframe
             ref={iframeRef}
+            onLoad={focusSelectedFarm}
             key={`${searchText}-${filterLocationName || "all"}`}
             srcDoc={leafletHtml}
             style={{
               width: "100%",
               height: "100%",
-              minHeight: "100%",
               border: "none",
               display: "block",
               position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
+              inset: 0,
             }}
             title="Local Farm & Wholesaler Map"
           />
@@ -1240,6 +1345,7 @@ export default function ExploreMap() {
             originWhitelist={["*"]}
             source={{ html: leafletHtml }}
             onMessage={handleWebViewMessage}
+            onLoadEnd={focusSelectedFarm}
             style={{
               flex: 1,
               width: "100%",
@@ -1255,75 +1361,150 @@ export default function ExploreMap() {
         )}
       </View>
 
-      {/* 2. Top Floating Row: Chevron Back Button + Search Bar */}
+      {/* 2. Top Header: Discover Nearby, Full-Width Search & Clean Categories */}
       <View
         style={{
           position: "absolute",
-          top: topInset,
-          left: 16,
-          right: 16,
-          zIndex: 30,
+          top: 0,
+          left: 0,
+          right: 0,
+          paddingTop: topInset + 6,
+          paddingBottom: 14,
+          paddingHorizontal: 20,
+          backgroundColor: "#faf9f5",
+          borderBottomWidth: 1,
+          borderBottomColor: "#e6ece0",
+          zIndex: 20,
+          ...(Platform.OS === "web"
+            ? { boxShadow: "0 2px 12px rgba(45, 65, 48, 0.04)" }
+            : {}),
         }}
-        className="flex-row items-center gap-2.5"
       >
-        {/* Chevron Back Button */}
-        <TouchableOpacity
-          onPress={() => {
-            if (activeRouteLocation) {
-              setActiveRouteLocation(null);
-              sendMapMessage({ type: "CLEAR_ROUTE" });
-            } else if (filterLocationName) {
-              setFilterLocationName(null);
-              setSelectedLocation(null);
-            } else if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.push("/user/NewsFeed" as any);
-            }
-          }}
-          activeOpacity={0.7}
-          className="w-11 h-11 rounded-full bg-white items-center justify-center shadow-lg elevation-5 border border-gray-100"
-          style={{
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.18)",
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Ionicons name="chevron-back" size={26} color="black" />
-        </TouchableOpacity>
+        {/* Brand & Section Indicator */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Ionicons name="leaf" size={17} color="#41634f" />
+            <Text style={{ color: "#304a3c", fontSize: 15, fontWeight: "600", letterSpacing: -0.5 }}>localfarm</Text>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Ionicons name="compass-outline" size={13} color="#819080" />
+            <Text style={{ fontSize: 9, letterSpacing: 1.6, color: "#819080", fontWeight: "500" }}>EXPLORE</Text>
+          </View>
+        </View>
 
-        {/* Search Bar Input with Location Pin Icon & Gray Border */}
+        {/* Title */}
+        <Text style={{ fontSize: 24, fontWeight: "700", color: "#263e32", letterSpacing: -0.8, marginBottom: 10 }}>
+          Discover nearby
+        </Text>
+
+        {/* Search Bar - Full Width, Comfortable to See */}
         <View
-          className="flex-1 bg-white rounded-full border border-gray-200 flex-row items-center px-4 h-11 shadow-lg elevation-5"
           style={{
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: "#f0f3eb",
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: "#e1e7dc",
+            paddingHorizontal: 14,
+            height: 44,
+            marginBottom: 10,
           }}
         >
-          <Ionicons name="location-sharp" size={20} color="#16a34a" />
+          <Ionicons name="search" size={18} color="#60725c" />
           <TextInput
-            placeholder="Search field, wholesaler, produce..."
-            placeholderTextColor="#9CA3AF"
+            placeholder="Search farms & fresh produce"
+            placeholderTextColor="#8a9985"
             value={searchText}
             onChangeText={setSearchText}
-            className="flex-1 text-sm text-gray-800 ml-2 py-0.5 h-full"
+            style={{
+              flex: 1,
+              fontSize: 14,
+              color: "#243b2c",
+              marginLeft: 10,
+              paddingVertical: 0,
+              height: "100%",
+            }}
           />
           {searchText.length > 0 && (
             <TouchableOpacity
               onPress={() => setSearchText("")}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
             >
-              <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+              <Ionicons name="close-circle" size={18} color="#8a9985" />
             </TouchableOpacity>
           )}
         </View>
-      </View>
 
+        {/* Category Filter Pills - Clean & Comfortable */}
+        <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+          {["All", "Fields", "Wholesalers"].map((category) => {
+            const isSelected = discoveryFilter === category;
+            return (
+              <TouchableOpacity
+                key={category}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
+                onPress={() => {
+                  setDiscoveryFilter(category);
+                  setSelectedLocation(null);
+                }}
+                activeOpacity={0.7}
+                style={{
+                  height: 34,
+                  paddingHorizontal: 16,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  borderRadius: 18,
+                  borderWidth: 1,
+                  borderColor: isSelected ? "#33533c" : "#dfe5da",
+                  backgroundColor: isSelected ? "#33533c" : "#ffffff",
+                  ...(isSelected
+                    ? {
+                        shadowColor: "#243b2c",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 2,
+                        elevation: 2,
+                      }
+                    : {}),
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: isSelected ? "600" : "500",
+                    color: isSelected ? "#ffffff" : "#576b53",
+                  }}
+                >
+                  {category}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+      {showNearby && <View style={{ position: 'absolute', zIndex: 20, bottom: navigationHeight, left: 0, right: 0, height: nearbyHeight, backgroundColor: '#faf9f5', paddingTop: 16, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderColor: '#e3e9dd', boxShadow: '0 -5px 24px rgba(40, 60, 45, .06)' }}>
+        <View style={{ marginHorizontal: 22, marginBottom: 13, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View><Text style={{ fontSize: 9, letterSpacing: 1.8, color: '#819080', marginBottom: 5 }}>FROM YOUR COMMUNITY</Text><Text style={{ fontSize: 19, fontWeight: '600', color: '#293f34', letterSpacing: -.6 }}>Fresh finds near you</Text></View>
+          <View style={{ backgroundColor: '#eef2e9', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 }}><Text style={{ color: '#61745b', fontSize: 10 }}>{filteredFarms.length} places</Text></View>
+        </View>
+        <NearbyCarousel>
+          {filteredFarms.slice(0, 12).map(farm => <TouchableOpacity key={farm.id} accessibilityRole="button" accessibilityLabel={'View ' + farm.title} onPress={() => setSelectedLocation(farm)} style={{ width: 168, flexShrink: 0, borderRadius: 16, backgroundColor: '#fff', overflow: 'hidden', borderWidth: 1, borderColor: '#e5e9df' }}>
+            <NearbyPhoto uri={farm.imageUrl}/>
+            <View style={{ padding: 11 }}><Text numberOfLines={1} style={{ fontSize: 12, color: '#2d4433', fontWeight: '600' }}>{farm.title}</Text><Text numberOfLines={1} style={{ fontSize: 11, marginTop: 5, color: '#71806b' }}>{farm.priceRange || farm.produce}</Text><View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}><Ionicons name={farm.type === 'Farm' ? 'leaf-outline' : 'storefront-outline'} size={10} color="#809077"/><Text style={{ fontSize: 9, color: '#809077' }}>{farm.type === 'Farm' ? 'Local grower' : 'Wholesale partner'}</Text></View></View>
+          </TouchableOpacity>)}
+          {filteredFarms.length === 0 && <Text style={{ color: '#71806b', paddingTop: 24 }}>No nearby listings match your search.</Text>}
+        </NearbyCarousel>
+      </View>}
       {/* 2.5 Filtered Single Location Floating Banner */}
       {filterLocationName && (
         <View
           style={{
             position: "absolute",
-            top: topInset + 54,
+            top: headerHeight + 12,
             left: 16,
             right: 16,
             zIndex: 35,
@@ -1350,7 +1531,7 @@ export default function ExploreMap() {
           <TouchableOpacity
             onPress={() => {
               setFilterLocationName(null);
-              setSelectedLocation(null);
+              handleCloseSelectedLocation();
             }}
             className="bg-[#72AF5B] px-3 py-1.5 rounded-full flex-row items-center gap-1 active:bg-[#5e944a]"
           >
@@ -1365,7 +1546,7 @@ export default function ExploreMap() {
         <View
           style={{
             position: "absolute",
-            top: filterLocationName ? topInset + 116 : topInset + 54,
+            top: filterLocationName ? headerHeight + 74 : headerHeight + 12,
             left: 16,
             right: 16,
             zIndex: 35,
@@ -1402,6 +1583,7 @@ export default function ExploreMap() {
                 setActiveRouteLocation(null);
                 setLiveRoadStats(null);
                 sendMapMessage({ type: "CLEAR_ROUTE" });
+                sendMapMessage({ type: "ZOOM_OUT" });
               }}
               className="w-7 h-7 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200"
               activeOpacity={0.7}
@@ -1462,9 +1644,9 @@ export default function ExploreMap() {
         style={{
           position: "absolute",
           right: 16,
-          bottom: selectedLocation ? 245 : 90,
+          bottom: selectedLocation ? navigationHeight + 195 : mapBottom + 14,
           zIndex: 25,
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.18)",
+          boxShadow: "0 2px 8px rgba(48, 67, 51, 0.06)",
         }}
         accessibilityRole="button"
         accessibilityLabel="Recenter to my location"
@@ -1478,6 +1660,7 @@ export default function ExploreMap() {
           className="absolute bottom-20 left-4 right-4 bg-white rounded-2xl p-4 shadow-xl elevation-6 z-30 border border-gray-100"
           style={{
             zIndex: 30,
+            bottom: navigationHeight + 12,
             ...(Platform.OS === "web"
               ? { boxShadow: "0 12px 28px -4px rgba(0, 0, 0, 0.25)" }
               : {}),
@@ -1564,7 +1747,7 @@ export default function ExploreMap() {
 
             {/* Right: Close Button ('X' icon) */}
             <TouchableOpacity
-              onPress={() => setSelectedLocation(null)}
+              onPress={handleCloseSelectedLocation}
               className="w-7 h-7 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200"
               activeOpacity={0.7}
               accessibilityRole="button"
@@ -1640,7 +1823,7 @@ export default function ExploreMap() {
       )}
 
       {/* 6. Bottom Navigation Bar */}
-      <Navigation showFab={false} activeTabName="explore" />
+      <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: navigationHeight, backgroundColor: "#fff", zIndex: 50 }}><Navigation showFab={false} activeTabName="explore" /></View>
     </View>
   );
 }
@@ -1649,9 +1832,9 @@ const styles = StyleSheet.create({
   rootContainer: {
     flex: 1,
     width: "100%",
-    height: "100%",
-    minHeight: "100%",
+    minHeight: 0,
     position: "relative",
     overflow: "hidden",
+    backgroundColor: "#faf9f5",
   },
 });

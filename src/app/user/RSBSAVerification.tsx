@@ -182,24 +182,54 @@ export default function RSBSAVerificationScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-[#F8F9FA] relative h-full"
-      style={{ flex: 1, backgroundColor: "#F8F9FA" }}
+      style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+      edges={["top", "left", "right"]}
     >
-      {/* Top Header */}
-      <View className="relative items-center justify-center pt-3 pb-4 px-4 bg-white border-b border-gray-100">
+      {/* Top Header matching Reservations & Saved */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 16,
+          paddingTop: 8,
+          paddingBottom: 10,
+          backgroundColor: "#FFFFFF",
+          borderBottomWidth: 1,
+          borderBottomColor: "#EDF1EB",
+        }}
+      >
         <TouchableOpacity
           onPress={handleBack}
           activeOpacity={0.7}
-          className="absolute left-4 top-3 p-1"
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 12,
+            backgroundColor: "#F5F7F5",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-undo" size={28} color="#000000" />
+          <Ionicons name="chevron-back" size={20} color="#293E33" />
         </TouchableOpacity>
-        <Text className="text-xl font-bold text-gray-900">
-          RSBSA Verification
-        </Text>
+
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "700",
+              letterSpacing: -0.4,
+              color: "#293E33",
+              textAlign: "center",
+            }}
+          >
+            RSBSA Verification
+          </Text>
+        </View>
+
+        <View style={{ width: 36 }} />
       </View>
 
       <KeyboardAvoidingView
@@ -222,13 +252,13 @@ export default function RSBSAVerificationScreen() {
             <>
               {/* Hero Status Banner */}
               <View
-                className="bg-[#2D4F28] rounded-2xl p-5 mb-5 overflow-hidden relative shadow-sm"
                 style={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 4,
-                  elevation: 3,
+                  backgroundColor: "#34594A",
+                  borderRadius: 20,
+                  padding: 18,
+                  marginBottom: 16,
+                  overflow: "hidden",
+                  position: "relative",
                 }}
               >
                 {/* Background Icon */}
@@ -263,28 +293,46 @@ export default function RSBSAVerificationScreen() {
               </View>
 
               {/* Real-World Guidance Box */}
-              <View className="bg-gray-100 border border-[#72AF5B] rounded-2xl p-4 mb-5">
+              <View
+                style={{
+                  backgroundColor: "#F4F7F3",
+                  borderWidth: 1,
+                  borderColor: "#E5ECE6",
+                  borderRadius: 16,
+                  padding: 14,
+                  marginBottom: 18,
+                }}
+              >
                 <View className="flex-row items-center gap-2 mb-1.5">
                   <Ionicons
                     name="information-circle"
                     size={20}
-                    color="#059669"
+                    color="#34594A"
                   />
-                  <Text className="text-xs font-bold text-emerald-900 uppercase tracking-wider">
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: "700",
+                      letterSpacing: 0.8,
+                      color: "#34594A",
+                      textTransform: "uppercase",
+                    }}
+                  >
                     Where to apply in real life?
                   </Text>
                 </View>
-                <Text className="text-xs text-emerald-800 leading-5">
+                <Text style={{ fontSize: 12, lineHeight: 18, color: "#607267" }}>
                   Visit your local{" "}
-                  <Text className="font-bold">
+                  <Text style={{ fontWeight: "700", color: "#293E33" }}>
                     Municipal Agriculture Office (MAO)
                   </Text>{" "}
                   or{" "}
-                  <Text className="font-bold">
+                  <Text style={{ fontWeight: "700", color: "#293E33" }}>
                     City Agriculture Office (CAO)
                   </Text>{" "}
                   at your municipal or city hall. Enrollment with the Department
-                  of Agriculture is <Text className="font-bold">100% FREE</Text>
+                  of Agriculture is{" "}
+                  <Text style={{ fontWeight: "700", color: "#34594A" }}>100% FREE</Text>
                   .
                 </Text>
               </View>
@@ -555,9 +603,17 @@ export default function RSBSAVerificationScreen() {
                     onPress={handleSubmit}
                     disabled={isSubmitting}
                     activeOpacity={0.85}
-                    className="w-full bg-[#72AF5B] py-4 rounded-xl items-center justify-center active:bg-[#62974e] shadow-sm mb-2"
+                    style={{
+                      width: "100%",
+                      backgroundColor: "#34594A",
+                      paddingVertical: 14,
+                      borderRadius: 14,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 10,
+                    }}
                   >
-                    <Text className="text-base font-bold text-white">
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF" }}>
                       {isSubmitting
                         ? "Submitting Application..."
                         : "Submit RSBSA Verification"}

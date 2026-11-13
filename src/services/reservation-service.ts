@@ -52,9 +52,14 @@ export interface VerifyPickupParams {
 // 1. Fetch user reservations (as buyer, seller, or both)
 export async function getMyReservationsApi(
   role: 'buyer' | 'seller' | 'all' = 'all',
-  status: string = 'all'
+  status: string = 'all',
+  postId?: string | number
 ): Promise<{ success: boolean; reservations: HarvestReservation[] }> {
-  const query = new URLSearchParams({ role, status }).toString();
+  const queryParams: Record<string, string> = { role, status };
+  if (postId) {
+    queryParams.postId = String(postId);
+  }
+  const query = new URLSearchParams(queryParams).toString();
   return apiFetch<{ success: boolean; reservations: HarvestReservation[] }>(
     `/reservations/my-reservations?${query}`
   );

@@ -1561,7 +1561,7 @@ export default function NewsFeed() {
   return (
     <SafeAreaView
       className="flex-1 bg-white relative h-full"
-      style={{ flex: 1, position: "relative", minHeight: "100%" }}
+      style={{ flex: 1, position: "relative", minHeight: "100%", backgroundColor: "#faf9f5" }}
     >
       <Pressable
         className="flex-1"
@@ -1572,11 +1572,11 @@ export default function NewsFeed() {
       >
         <View className="flex-1">
           {/* UserHeader Component */}
-          <UserHeader />
+          <UserHeader premium />
 
           {/* Main Content */}
           <ScrollView
-            className="flex-1 bg-gray-100"
+            className="flex-1" style={{ backgroundColor: "#faf9f5" }}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 120 }}
             keyboardShouldPersistTaps="handled"
@@ -1597,8 +1597,14 @@ export default function NewsFeed() {
               if (activeReactionCommentId) setActiveReactionCommentId(null);
             }}
           >
+            <View style={{ paddingHorizontal: 22, paddingTop: 6, paddingBottom: 7 }}>
+              <Text style={{ color: '#283e32', fontSize: 25, fontWeight: '600', letterSpacing: -.9 }}>
+                {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}{user?.name ? ', ' + user.name.trim().split(/\s+/)[0] : ''}
+              </Text>
+              <Text style={{ color: '#7b897b', fontSize: 12, marginTop: 5, lineHeight: 18 }}>See what’s growing around you.</Text>
+            </View>
             {/* Stories Section */}
-            <View className="bg-white py-4 border-b border-gray-200">
+            <View className="py-4" style={{ backgroundColor: "#faf9f5" }}>
               <ScrollView
                 ref={storyScrollViewRef}
                 horizontal
@@ -1638,7 +1644,7 @@ export default function NewsFeed() {
                   return (
                     <>
                       {/* Item 1: Profile bubble with '+' icon & green circle line when story is active */}
-                      <View className="items-center mr-4 ml-4">
+                      <View className="items-center mr-4 ml-1">
                         <View className="relative">
                           <TouchableOpacity
                             onPress={() => {
@@ -1751,13 +1757,34 @@ export default function NewsFeed() {
             </View>
 
             {/* Quick Advance Harvest Reservations Bar */}
-            <View className="px-4 py-2 bg-white border-b border-gray-100 flex-row items-center justify-between">
-              <View className="flex-row items-center gap-2">
-                <View className="w-7 h-7 rounded-lg bg-emerald-50 items-center justify-center">
-                  <Ionicons name="leaf" size={15} color="#237227" />
+            <View
+              className="px-4 py-2.5 flex-row items-center justify-between"
+              style={{
+                marginHorizontal: 16,
+                marginBottom: 14,
+                borderRadius: 16,
+                backgroundColor: "#ffffff",
+                borderWidth: 1,
+                borderColor: "#eae7df",
+                shadowColor: "#1e2a22",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.04,
+                shadowRadius: 8,
+                elevation: 2,
+              }}
+            >
+              <View className="flex-row items-center gap-2.5">
+                <View
+                  className="w-7 h-7 rounded-lg items-center justify-center"
+                  style={{ backgroundColor: "#f2f5f1" }}
+                >
+                  <Ionicons name="leaf" size={14} color="#355842" />
                 </View>
-                <Text className="text-xs font-bold text-slate-800">
-                  Pre-Harvest Advance Trade
+                <Text
+                  className="text-xs font-semibold tracking-tight"
+                  style={{ color: "#1f2b23" }}
+                >
+                  Pre-harvest reservations
                 </Text>
               </View>
 
@@ -1775,10 +1802,18 @@ export default function NewsFeed() {
                     showToast('Browse batches below to reserve.', 'error');
                   }
                 }}
-                className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 flex-row items-center gap-1 active:bg-emerald-100"
+                className="px-3 py-1.5 rounded-full flex-row items-center gap-1.5 active:opacity-75"
+                style={{
+                  backgroundColor: "#f5f7f3",
+                  borderWidth: 1,
+                  borderColor: "#e1e7de",
+                }}
               >
-                <Ionicons name="qr-code-outline" size={13} color="#237227" />
-                <Text className="text-[11px] font-bold text-[#237227]">
+                <Ionicons name="qr-code-outline" size={13} color="#2d4a37" />
+                <Text
+                  className="text-[11px] font-semibold"
+                  style={{ color: "#2d4a37" }}
+                >
                   My QR Receipts
                 </Text>
               </TouchableOpacity>
@@ -1833,12 +1868,19 @@ export default function NewsFeed() {
                     return (
                       <View
                         key={post.id}
-                        className={`bg-white mx-2 mb-4 rounded-xl shadow-sm border border-gray-100 relative ${
+                        className={`mx-4 mb-4 rounded-2xl border relative ${
                           isCardElevated ? "z-50" : "z-0"
                         }`}
                         style={{
                           zIndex: isCardElevated ? 50 : 1,
-                          elevation: isCardElevated ? 10 : 1,
+                          backgroundColor: "#ffffff",
+                          borderColor: "#eae7df",
+                          borderRadius: 20,
+                          shadowColor: "#1e2a22",
+                          shadowOffset: { width: 0, height: 3 },
+                          shadowOpacity: 0.04,
+                          shadowRadius: 10,
+                          elevation: isCardElevated ? 10 : 2,
                         }}
                       >
                         {/* Inline Reaction Popover (Absolute Positioning) */}
@@ -1983,7 +2025,7 @@ export default function NewsFeed() {
                               }}
                               className="flex-row items-center flex-1 pr-2"
                             >
-                              <View className="h-10 w-10 rounded-full border border-green-500 items-center justify-center bg-gray-100 mr-3 overflow-hidden">
+                              <View className="h-10 w-10 rounded-full border items-center justify-center mr-3 overflow-hidden" style={{ borderColor: "#ecefe9", backgroundColor: "#f4f6f3" }}>
                                 {Boolean(post.avatarUri && post.avatarUri.trim()) ? (
                                   <Image
                                     source={{ uri: post.avatarUri.trim() }}
@@ -2000,7 +2042,7 @@ export default function NewsFeed() {
                               </View>
                               <View className="flex-1">
                                 <View className="flex-row items-center flex-wrap">
-                                  <Text className="font-bold text-gray-900 mr-1.5 text-base">
+                                  <Text className="font-semibold mr-1.5 text-sm" style={{ color: "#19281f" }}>
                                     {post.authorName}
                                   </Text>
                                   {Boolean(
@@ -2026,11 +2068,12 @@ export default function NewsFeed() {
                                     />
                                   )}
                                   <Text
-                                    className={`text-xs font-bold px-1.5 py-0.5 rounded ${
+                                    className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                                    style={
                                       Boolean(user?.id && post.userId && String(post.userId) === String(user.id)) && isRSBSAVerified
-                                        ? "text-emerald-700 bg-emerald-50"
-                                        : "text-green-600 bg-green-50"
-                                    }`}
+                                        ? { color: "#235338", backgroundColor: "#eaf3ec" }
+                                        : { color: "#2d6342", backgroundColor: "#edf5ef" }
+                                    }
                                   >
                                     {Boolean(user?.id && post.userId && String(post.userId) === String(user.id)) && isRSBSAVerified
                                       ? "RSBSA Verified Farmer"
@@ -2109,53 +2152,6 @@ export default function NewsFeed() {
                             <Text className="text-gray-800 text-sm mb-3 leading-5">
                               {post.content}
                             </Text>
-                          )}
-
-                          {/* Pre-Harvest Advance Reservation Card */}
-                          {(post.isPreHarvest || !!post.expectedHarvestDate) && (
-                            <View className="mb-3 p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 shadow-2xs">
-                              <View className="flex-row items-center justify-between mb-2.5">
-                                <View className="flex-row items-center gap-2 flex-1 pr-2">
-                                  <View className="w-8 h-8 rounded-xl bg-[#237227] items-center justify-center">
-                                    <Ionicons name="leaf" size={16} color="#ffffff" />
-                                  </View>
-                                  <View className="flex-1">
-                                    <Text className="text-xs font-bold text-slate-900" numberOfLines={1}>
-                                      {post.cropName || "Advance Harvest Batch"}
-                                    </Text>
-                                    <Text className="text-[10px] text-emerald-800 font-medium">
-                                      {post.expectedHarvestDate
-                                        ? `Expected Harvest: ${new Date(post.expectedHarvestDate).toLocaleDateString()}`
-                                        : "Direct Farm Advance Booking"}
-                                    </Text>
-                                  </View>
-                                </View>
-
-                                <TouchableOpacity
-                                  onPress={() => setReserveModalPost(post)}
-                                  className="px-3 py-1.5 rounded-xl bg-[#237227] flex-row items-center gap-1 shadow-2xs active:bg-[#1c5c1f]"
-                                >
-                                  <Ionicons name="bag-add-outline" size={13} color="#ffffff" />
-                                  <Text className="text-[11px] font-bold text-white">Reserve</Text>
-                                </TouchableOpacity>
-                              </View>
-
-                              {/* Quota & Pricing Row */}
-                              <View className="pt-2 border-t border-emerald-200/60 flex-row items-center justify-between">
-                                <Text className="text-xs font-medium text-slate-700">
-                                  Price: <Text className="font-extrabold text-[#237227]">₱{(post.pricePerUnit || 35).toFixed(2)} / {post.unit || "kg"}</Text>
-                                </Text>
-                                {post.availableQuantity ? (
-                                  <Text className="text-[10px] font-semibold text-emerald-900">
-                                    {post.reservedQuantity || 0} / {post.availableQuantity} {post.unit || "kg"} booked
-                                  </Text>
-                                ) : (
-                                  <Text className="text-[10px] font-medium text-slate-500">
-                                    Hub: {post.pickupHub || "Bogo Public Market"}
-                                  </Text>
-                                )}
-                              </View>
-                            </View>
                           )}
 
                           {/* Shared Post: Embedded Original Post Card */}
@@ -2436,7 +2432,7 @@ export default function NewsFeed() {
                           )}
 
                           {/* Post Interaction Bar */}
-                          <View className="flex-row justify-between items-center pt-1 border-t border-gray-100">
+                          <View className="flex-row justify-between items-center pt-2.5 border-t" style={{ borderColor: "#f1f0ec" }}>
                             <View className="flex-row gap-6">
                               {/* Like / Reaction Button Trigger */}
                               <TouchableOpacity
@@ -2524,6 +2520,19 @@ export default function NewsFeed() {
                               </TouchableOpacity>
                             </View>
 
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              {(post.isPreHarvest || !!post.expectedHarvestDate) && (
+                                <TouchableOpacity
+                                  onPress={() => setReserveModalPost(post)}
+                                  activeOpacity={0.65}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={`Reserve ${post.cropName || "this product"}`}
+                                  accessibilityHint="Opens harvest details and the reservation form"
+                                  style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: "#F0F5EE", alignItems: "center", justifyContent: "center" }}
+                                >
+                                  <Ionicons name="bag-add-outline" size={21} color="#45664E" />
+                                </TouchableOpacity>
+                              )}
                             {/* Bookmark / Save Button Trigger - Opens Instagram Save To Collection Modal */}
                             <TouchableOpacity
                               onPress={() => {
@@ -2554,6 +2563,7 @@ export default function NewsFeed() {
                                 color={isBookmarked ? "#000000" : "#6b7280"}
                               />
                             </TouchableOpacity>
+                            </View>
                           </View>
 
                           {/* View all comments trigger (Opens Lightbox Modal) */}
@@ -5608,6 +5618,19 @@ export default function NewsFeed() {
         post={reserveModalPost}
         onSuccess={(reservation) => {
           setActiveReceipt(reservation);
+          if (reserveModalPost) {
+            const bookedAmount = Number(reservation?.quantity) || 0;
+            setPosts((prev) =>
+              prev.map((p) =>
+                p.id === reserveModalPost.id
+                  ? {
+                      ...p,
+                      reservedQuantity: (Number(p.reservedQuantity) || 0) + bookedAmount,
+                    }
+                  : p
+              )
+            );
+          }
         }}
       />
 
@@ -5631,7 +5654,7 @@ export default function NewsFeed() {
       />
 
       {/* Bottom Navigation Bar */}
-      <BottomNavBar onFabPress={() => setCreatePostVisible(true)} />
+      <BottomNavBar premium onFabPress={() => setCreatePostVisible(true)} />
     </SafeAreaView>
   );
 }

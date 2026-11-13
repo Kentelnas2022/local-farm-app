@@ -8,7 +8,7 @@ import { Image, Text, TouchableOpacity, View } from "react-native";
 import { NotificationModal } from "./NotificationModal";
 import { SearchModal } from "./SearchModal";
 
-const UserHeader = () => {
+const UserHeader = ({ premium = false }: { premium?: boolean }) => {
   const router = useRouter();
   const { user } = useAuth();
   const [isNotifOpen, setNotifOpen] = useState(false);
@@ -51,15 +51,15 @@ const UserHeader = () => {
 
   return (
     <>
-      <View className="flex-row justify-between items-center px-4 py-3 bg-white border-b border-gray-100 z-30">
+      <View className="flex-row justify-between items-center px-4 py-3 bg-white border-b border-gray-100 z-30" style={premium ? { backgroundColor: "#faf9f5", borderBottomWidth: 0, paddingHorizontal: 22, paddingVertical: 10 } : undefined}>
       {/* Left: Brand Logo */}
       <View className="flex-row items-center">
-        <Image
+        {premium ? <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}><Ionicons name="leaf" size={20} color="#49684b"/><Text style={{ color: "#30483b", fontSize: 19, fontWeight: "600", letterSpacing: -.7 }}>localfarm</Text></View> : <Image
           source={require("../../assets/images/LF3.png")}
           className="h-9 w-36"
           style={{ width: 135, height: 36 }}
           resizeMode="contain"
-        />
+        />}
       </View>
 
       {/* Right Side: Action Icons */}
@@ -71,7 +71,7 @@ const UserHeader = () => {
           accessibilityRole="button"
           accessibilityLabel="Notifications"
         >
-          <Ionicons name="notifications" size={24} color="#72AF5B" />
+          <Ionicons name={premium ? "notifications-outline" : "notifications"} size={22} color={premium ? "#4c6556" : "#72AF5B"} />
           {unreadCount > 0 && (
             <View className="absolute -top-0.5 -right-0.5 bg-red-500 rounded-full w-4 h-4 items-center justify-center border border-white">
               <Text className="text-white text-[10px] font-bold">
@@ -88,7 +88,7 @@ const UserHeader = () => {
           accessibilityRole="button"
           accessibilityLabel="Search"
         >
-          <Ionicons name="search-outline" size={24} color="#333333" />
+          <Ionicons name="search-outline" size={22} color={premium ? "#4c6556" : "#333333"} />
         </TouchableOpacity>
 
         {/* User Profile Avatar Icon */}

@@ -14,6 +14,7 @@ export interface TabRoute {
 }
 
 export interface NavigationProps {
+  premium?: boolean;
   activeTab?: "Home" | "Friends" | "Messages" | "Map" | "Menu" | "Chat" | "Connection" | string;
   activeTabName?: string;
   onFabPress?: () => void;
@@ -373,7 +374,7 @@ export default function Navigation(props?: NavigationProps) {
       {showFab && (
         <TouchableOpacity
           className="absolute right-4 h-14 w-14 rounded-full bg-[#72AF5B] items-center justify-center shadow-lg elevation-6 z-[60]"
-          style={{ position: "absolute", bottom: 72 + bottomInset, right: 16, zIndex: 60 }}
+          style={{ position: "absolute", bottom: 72 + bottomInset, right: 20, zIndex: 60, ...(props?.premium ? { backgroundColor: "#3d6049", width: 56, height: 56, borderRadius: 28, borderWidth: 1, borderColor: "#6e886b", boxShadow: "0 6px 18px rgba(255, 255, 255, .65)", shadowColor: "#ffffff" } : {}) }}
           activeOpacity={0.8}
           onPress={props?.onFabPress}
           accessibilityRole="button"
@@ -397,7 +398,7 @@ export default function Navigation(props?: NavigationProps) {
             activeKey === tab.title ||
             activeKey.toLowerCase() === tab.title.toLowerCase();
 
-          const iconColor = isFocused ? ACTIVE_COLOR : INACTIVE_COLOR;
+          const iconColor = props?.premium ? (isFocused ? "#3d6049" : "#879386") : isFocused ? ACTIVE_COLOR : INACTIVE_COLOR;
 
           return (
             <TouchableOpacity

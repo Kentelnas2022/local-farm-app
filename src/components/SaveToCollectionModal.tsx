@@ -284,7 +284,7 @@ export default function SaveToCollectionModal({
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text className="text-[15px] font-semibold text-[#0095F6]">
+                  <Text className="text-[15px] font-semibold text-[#34594A]">
                     New collection
                   </Text>
                 </TouchableOpacity>
@@ -356,7 +356,7 @@ export default function SaveToCollectionModal({
                         {/* Right: Plus Icon or Checkmark + Three-dot Options */}
                         <View className="flex-row items-center">
                           {isSelected ? (
-                            <Ionicons name="checkmark-circle" size={28} color="#0095F6" />
+                            <Ionicons name="checkmark-circle" size={28} color="#34594A" />
                           ) : (
                             <Ionicons name="add-circle-outline" size={28} color="#737373" />
                           )}
@@ -423,11 +423,11 @@ export default function SaveToCollectionModal({
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   {isCreating ? (
-                    <ActivityIndicator size="small" color="#0095F6" />
+                    <ActivityIndicator size="small" color="#34594A" />
                   ) : (
                     <Text
                       className={`text-[15px] font-bold ${
-                        newColName.trim() ? "text-[#0095F6]" : "text-gray-400"
+                        newColName.trim() ? "text-[#34594A]" : "text-gray-400"
                       }`}
                     >
                       Done
@@ -474,7 +474,7 @@ export default function SaveToCollectionModal({
                 disabled={!newColName.trim() || isCreating}
                 className={`w-full py-3.5 rounded-2xl items-center justify-center ${
                   newColName.trim() && !isCreating
-                    ? "bg-[#0095F6] active:bg-[#0081D6]"
+                    ? "bg-[#34594A] active:bg-[#2A4B3E]"
                     : "bg-gray-200 opacity-60"
                 }`}
               >
@@ -586,7 +586,7 @@ export default function SaveToCollectionModal({
                       disabled={!renameInput.trim() || isRenaming}
                       className={`px-4 py-2 rounded-xl ${
                         renameInput.trim() && !isRenaming
-                          ? "bg-[#0095F6]"
+                          ? "bg-[#34594A]"
                           : "bg-gray-200 opacity-60"
                       }`}
                     >

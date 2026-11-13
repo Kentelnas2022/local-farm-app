@@ -80,103 +80,104 @@ export default function WeighInVerificationModal({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1 bg-black/60 justify-end"
+        style={{ flex: 1, backgroundColor: 'rgba(18, 27, 21, 0.55)', justifyContent: 'flex-end' }}
       >
-        <View className="bg-white dark:bg-[#1e2022] rounded-t-3xl p-6 shadow-2xl border-t border-slate-200/80 dark:border-slate-800">
+        <View style={{ backgroundColor: '#faf9f6', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, shadowColor: '#122017', shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 14, borderWidth: 1, borderColor: '#e6ece2' }}>
           
           {/* Header */}
-          <View className="flex-row items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-            <View className="flex-row items-center gap-2.5">
-              <View className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 items-center justify-center">
-                <Ionicons name="scale-outline" size={20} color="#237227" />
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#edf1ea' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#274332', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="scale-outline" size={18} color="#ffffff" />
               </View>
               <View>
-                <Text className="text-base font-bold text-slate-900 dark:text-white">
-                  Weigh-In & Pickup Verification
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#1a271f', letterSpacing: -0.3 }}>
+                  Weigh-In Verification
                 </Text>
-                <Text className="text-xs text-slate-500">
+                <Text style={{ fontSize: 11, color: '#687e70', marginTop: 1 }}>
                   {reservation.reservation_code} • {reservation.crop_name}
                 </Text>
               </View>
             </View>
-            <TouchableOpacity onPress={onClose} className="p-1">
-              <Ionicons name="close" size={20} color="#64748b" />
+            <TouchableOpacity onPress={onClose} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#eef2eb', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="close" size={18} color="#5e7264" />
             </TouchableOpacity>
           </View>
 
           {/* Form Content */}
-          <View className="py-4 space-y-4">
+          <View style={{ paddingVertical: 14, gap: 14 }}>
             
             {/* Reserved vs Actual */}
-            <View className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#18191a] border border-slate-200 dark:border-slate-800 flex-row justify-between items-center">
+            <View style={{ padding: 12, borderRadius: 14, backgroundColor: '#f2f6ee', borderWidth: 1, borderColor: '#dce5da', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View>
-                <Text className="text-[10px] text-slate-400 uppercase font-bold">Initial Reserved</Text>
-                <Text className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                <Text style={{ fontSize: 9.5, color: '#62786a', textTransform: 'uppercase', fontWeight: '700', letterSpacing: 0.8 }}>Initial Reserved</Text>
+                <Text style={{ fontSize: 13.5, fontWeight: '700', color: '#1a271f', marginTop: 1 }}>
                   {reservation.quantity} {reservation.unit}
                 </Text>
               </View>
-              <View className="items-end">
-                <Text className="text-[10px] text-slate-400 uppercase font-bold">Agreed Unit Rate</Text>
-                <Text className="text-sm font-bold text-[#237227] dark:text-emerald-400">
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={{ fontSize: 9.5, color: '#62786a', textTransform: 'uppercase', fontWeight: '700', letterSpacing: 0.8 }}>Agreed Unit Rate</Text>
+                <Text style={{ fontSize: 13.5, fontWeight: '700', color: '#274332', marginTop: 1 }}>
                   ₱{unitPrice.toFixed(2)} / {reservation.unit}
                 </Text>
               </View>
             </View>
 
             {/* Scale Input */}
-            <View className="space-y-1.5">
-              <Text className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                Actual Physical Scale Weight ({reservation.unit}) <Text className="text-rose-500">*</Text>
+            <View style={{ gap: 6 }}>
+              <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#2a3d31' }}>
+                Actual Physical Scale Weight ({reservation.unit}) <Text style={{ color: '#b91c1c' }}>*</Text>
               </Text>
-              <View className="flex-row items-center h-12 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-[#18191a] px-4">
-                <Ionicons name="speedometer-outline" size={18} color="#237227" />
+              <View style={{ flexDirection: 'row', alignItems: 'center', height: 48, borderRadius: 14, borderWidth: 1, borderColor: '#d5dfd2', backgroundColor: '#ffffff', paddingHorizontal: 14 }}>
+                <Ionicons name="speedometer-outline" size={18} color="#274332" />
                 <TextInput
                   keyboardType="decimal-pad"
                   value={weighedQty}
                   onChangeText={setWeighedQty}
                   placeholder="0.00"
-                  className="flex-1 ml-2.5 text-base font-bold text-slate-900 dark:text-white"
+                  style={{ flex: 1, marginLeft: 10, fontSize: 16, fontWeight: '700', color: '#1a271f', paddingVertical: 0 }}
                 />
-                <Text className="text-xs font-semibold text-slate-400">{reservation.unit}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#7a8e81' }}>{reservation.unit}</Text>
               </View>
             </View>
 
             {/* Weigh-in Notes */}
-            <View className="space-y-1.5">
-              <Text className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                Inspection / Scale Notes
+            <View style={{ gap: 6 }}>
+              <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#2a3d31' }}>
+                Scale / Inspection Notes
               </Text>
               <TextInput
-                placeholder="e.g. Weighed at Bogo Central Hub, certified scale #2"
-                placeholderTextColor="#94a3b8"
+                placeholder="e.g. Certified scale #2, clean harvest crates..."
+                placeholderTextColor="#9caea1"
                 value={sellerNotes}
                 onChangeText={setSellerNotes}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#18191a] text-xs text-slate-900 dark:text-white"
+                style={{ width: '100%', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, borderWidth: 1, borderColor: '#dce5da', backgroundColor: '#ffffff', fontSize: 12.5, color: '#1a271f' }}
               />
             </View>
 
             {/* Settlement Calculation */}
-            <View className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 flex-row items-center justify-between">
+            <View style={{ padding: 14, borderRadius: 16, backgroundColor: '#edf4e9', borderWidth: 1, borderColor: '#d7e4d2', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View>
-                <Text className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">
+                <Text style={{ fontSize: 9.5, textTransform: 'uppercase', fontWeight: '700', color: '#486852', letterSpacing: 1 }}>
                   Final Settled Amount
                 </Text>
-                <Text className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <Text style={{ fontSize: 11, color: '#657e6f', marginTop: 2 }}>
                   {parsedWeighed} {reservation.unit} × ₱{unitPrice.toFixed(2)}
                 </Text>
               </View>
-              <Text className="text-2xl font-black text-[#237227] dark:text-emerald-400">
+              <Text style={{ fontSize: 24, fontWeight: '800', color: '#233f2d', letterSpacing: -0.5 }}>
                 ₱{finalAmount}
               </Text>
             </View>
 
             {/* Action Buttons */}
-            <View className="pt-2 flex-row gap-3">
+            <View style={{ paddingTop: 6, flexDirection: 'row', gap: 10 }}>
               <TouchableOpacity
                 onPress={onClose}
-                className="flex-1 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 items-center justify-center"
+                style={{ flex: 1, paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: '#dce5da', backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
               >
-                <Text className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <Text style={{ fontSize: 12.5, fontWeight: '600', color: '#5b6f62' }}>
                   Cancel
                 </Text>
               </TouchableOpacity>
@@ -184,15 +185,16 @@ export default function WeighInVerificationModal({
               <TouchableOpacity
                 onPress={handleVerify}
                 disabled={isSubmitting}
-                className="flex-2 py-3.5 rounded-xl bg-[#237227] items-center justify-center shadow-md flex-row gap-2 active:bg-[#1c5c1f]"
+                style={{ flex: 2, paddingVertical: 13, borderRadius: 14, backgroundColor: '#274332', alignItems: 'center', justifyContent: 'center', shadowColor: '#274332', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 4, elevation: 3, flexDirection: 'row', gap: 6 }}
+                activeOpacity={0.85}
               >
                 {isSubmitting ? (
                   <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
                   <>
-                    <Ionicons name="checkmark-done-circle" size={18} color="#ffffff" />
-                    <Text className="text-white text-xs font-bold">
-                      Stamp & Complete Order
+                    <Ionicons name="checkmark-done-circle" size={17} color="#ffffff" />
+                    <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '700' }}>
+                      Verify & Complete Order
                     </Text>
                   </>
                 )}

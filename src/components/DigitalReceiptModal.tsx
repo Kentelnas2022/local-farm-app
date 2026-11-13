@@ -77,7 +77,7 @@ function RenderSvgQrCode({ code, size = 160 }: { code: string; size?: number }) 
               y={r * cellSize}
               width={cellSize + 0.2}
               height={cellSize + 0.2}
-              fill="#1b4332"
+              fill="#274332"
             />
           ) : null
         )
@@ -97,14 +97,28 @@ export default function DigitalReceiptModal({
 
   if (!reservation) return null;
 
-  const isCompleted = reservation.status === 'completed';
-  const isReady = reservation.status === 'ready_for_pickup';
-  const isConfirmed = reservation.status === 'confirmed';
+  const statusStr = String(reservation.status || 'pending');
+  const isCompleted = statusStr === 'completed';
+  const isReady = statusStr === 'ready_for_pickup';
+  const isConfirmed = statusStr === 'confirmed';
+
+  const reservationCode = reservation.reservation_code || `LF-RES-${reservation.id || 'PENDING'}`;
+  const qrCodeValue = reservation.qr_token || reservationCode;
+  const cropName = reservation.crop_name || 'Produce';
+  const quantity = Number(reservation.quantity) || 1;
+  const unit = reservation.unit || 'kg';
+  const pricePerUnit = Number(reservation.price_per_unit) || 0;
+  const pickupLocation = reservation.pickup_location || 'Designated Farm Gate Hub';
+  const totalAmount = Number(
+    isCompleted && reservation.final_settled_amount
+      ? reservation.final_settled_amount
+      : reservation.total_estimated_amount || quantity * pricePerUnit
+  ).toFixed(2);
 
   const handleCopyCode = async () => {
     try {
-      await Clipboard.setStringAsync(reservation.reservation_code);
-      showToast(`Code copied: ${reservation.reservation_code}`, 'success');
+      await Clipboard.setStringAsync(reservationCode);
+      showToast(`Code copied: ${reservationCode}`, 'success');
     } catch {
       showToast('Unable to copy code.', 'error');
     }
@@ -113,163 +127,160 @@ export default function DigitalReceiptModal({
   const handleShareReceipt = async () => {
     try {
       await Share.share({
-        message: `🌾 Local Farm Digital Pickup Receipt\nReservation Code: ${reservation.reservation_code}\nCrop: ${reservation.crop_name} (${reservation.quantity} ${reservation.unit})\nEstimated: ₱${Number(reservation.total_estimated_amount).toFixed(2)}\nPickup: ${reservation.pickup_location}\nStatus: ${reservation.status.toUpperCase()}`,
+        message: `🌾 Local Farm Digital Pickup Receipt\nReservation Code: ${reservationCode}\nCrop: ${cropName} (${quantity} ${unit})\nEstimated: ₱${totalAmount}\nPickup: ${pickupLocation}\nStatus: ${statusStr.toUpperCase()}`,
       });
     } catch {}
   };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View className="flex-1 bg-black/70 items-center justify-center p-4">
-        <View className="bg-white dark:bg-[#1e2022] rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-200/80 dark:border-slate-800">
+      <View style={{ flex: 1, backgroundColor: 'rgba(18, 27, 21, 0.55)', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <View style={{ backgroundColor: '#faf9f6', borderRadius: 28, width: '100%', maxWidth: 360, overflow: 'hidden', borderWidth: 1, borderColor: '#e6ece2', shadowColor: '#122017', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.16, shadowRadius: 18, elevation: 12 }}>
           
           {/* Header Bar */}
-          <View className="p-4 bg-[#237227] flex-row items-center justify-between">
-            <View className="flex-row items-center gap-2">
-              <View className="w-7 h-7 rounded-lg bg-white/20 items-center justify-center">
-                <Ionicons name="receipt-outline" size={16} color="#ffffff" />
+          <View style={{ paddingHorizontal: 18, paddingVertical: 14, backgroundColor: '#274332', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(255, 255, 255, 0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="receipt-outline" size={15} color="#ffffff" />
               </View>
-              <Text className="text-white font-bold text-sm">
+              <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 13.5, letterSpacing: 0.2 }}>
                 Digital Pickup Receipt
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose} className="p-1">
-              <Ionicons name="close" size={20} color="#ffffff" />
+            <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
+              <Ionicons name="close" size={19} color="#ffffff" />
             </TouchableOpacity>
           </View>
 
-          <ScrollView className="p-5 max-h-[500px]" showsVerticalScrollIndicator={false}>
+          <ScrollView style={{ padding: 18, maxHeight: 480 }} showsVerticalScrollIndicator={false}>
             {/* Status Pill */}
-            <View className="items-center my-2">
+            <View style={{ alignItems: 'center', marginVertical: 4 }}>
               <View
-                className={`px-3 py-1 rounded-full flex-row items-center gap-1.5 ${
-                  isCompleted
-                    ? 'bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800'
-                    : isReady
-                    ? 'bg-purple-100 dark:bg-purple-950/60 border border-purple-300 dark:border-purple-800'
-                    : isConfirmed
-                    ? 'bg-blue-100 dark:bg-blue-950/60 border border-blue-300 dark:border-blue-800'
-                    : 'bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800'
-                }`}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 5,
+                  borderRadius: 14,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  backgroundColor: isCompleted ? '#edf4e9' : isReady ? '#ede9fe' : isConfirmed ? '#e0f2fe' : '#fef3c7',
+                  borderWidth: 1,
+                  borderColor: isCompleted ? '#c9ddc3' : isReady ? '#ddd6fe' : isConfirmed ? '#bae6fd' : '#fde68a',
+                }}
               >
                 <Ionicons
                   name={isCompleted ? 'checkmark-circle' : isReady ? 'cube' : 'time'}
-                  size={14}
-                  color={isCompleted ? '#237227' : isReady ? '#7e22ce' : isConfirmed ? '#1d4ed8' : '#b45309'}
+                  size={13}
+                  color={isCompleted ? '#274332' : isReady ? '#6d28d9' : isConfirmed ? '#0284c7' : '#b45309'}
                 />
                 <Text
-                  className={`text-xs font-bold uppercase tracking-wider ${
-                    isCompleted
-                      ? 'text-[#237227] dark:text-emerald-400'
-                      : isReady
-                      ? 'text-purple-700 dark:text-purple-300'
-                      : isConfirmed
-                      ? 'text-blue-700 dark:text-blue-300'
-                      : 'text-amber-700 dark:text-amber-400'
-                  }`}
+                  style={{
+                    fontSize: 10.5,
+                    fontWeight: '700',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.8,
+                    color: isCompleted ? '#274332' : isReady ? '#6d28d9' : isConfirmed ? '#0284c7' : '#b45309',
+                  }}
                 >
-                  {reservation.status.replace(/_/g, ' ')}
+                  {statusStr.replace(/_/g, ' ')}
                 </Text>
               </View>
 
-              <Text className="text-xl font-extrabold text-slate-900 dark:text-white mt-2">
-                {reservation.reservation_code}
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#1a271f', marginTop: 8, letterSpacing: 0.5 }}>
+                {reservationCode}
               </Text>
-              <Text className="text-[11px] text-slate-400 mt-0.5">
-                Issued on {new Date(reservation.created_at).toLocaleDateString()}
+              <Text style={{ fontSize: 11, color: '#7a8e81', marginTop: 2 }}>
+                Issued on {reservation.created_at ? new Date(reservation.created_at).toLocaleDateString() : 'Today'}
               </Text>
             </View>
 
             {/* QR Code Container */}
-            <View className="items-center justify-center p-4 bg-slate-50 dark:bg-[#141517] rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 my-3">
-              <RenderSvgQrCode code={reservation.qr_token || reservation.reservation_code} size={150} />
-              <Text className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-2">
+            <View style={{ alignItems: 'center', justifyContent: 'center', padding: 16, backgroundColor: '#ffffff', borderRadius: 18, borderWidth: 1, borderColor: '#e4ece0', marginVertical: 12 }}>
+              <RenderSvgQrCode code={qrCodeValue} size={144} />
+              <Text style={{ fontSize: 10, color: '#7a8e81', fontWeight: '500', marginTop: 10 }}>
                 Scan or present this code at pickup hub
               </Text>
             </View>
 
             {/* Receipt Details Breakdown */}
-            <View className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <View className="flex-row justify-between">
-                <Text className="text-xs text-slate-500">Crop Variety</Text>
-                <Text className="text-xs font-bold text-slate-900 dark:text-white">
-                  {reservation.crop_name}
+            <View style={{ paddingTop: 10, borderTopWidth: 1, borderTopColor: '#edf1ea', gap: 9 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 11.5, color: '#687e70' }}>Crop Variety</Text>
+                <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#1a271f' }}>
+                  {cropName}
                 </Text>
               </View>
 
-              <View className="flex-row justify-between">
-                <Text className="text-xs text-slate-500">Reserved Quantity</Text>
-                <Text className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  {reservation.quantity} {reservation.unit} @ ₱{Number(reservation.price_per_unit).toFixed(2)}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 11.5, color: '#687e70' }}>Reserved Quantity</Text>
+                <Text style={{ fontSize: 11.5, fontWeight: '600', color: '#274332' }}>
+                  {quantity} {unit} @ ₱{pricePerUnit.toFixed(2)}
                 </Text>
               </View>
 
               {reservation.actual_weighed_quantity && (
-                <View className="flex-row justify-between p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/40">
-                  <Text className="text-xs font-bold text-[#237227] dark:text-emerald-400">
-                    Actual Weighed Quantity
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, borderRadius: 10, backgroundColor: '#edf4e9', borderWidth: 1, borderColor: '#d7e4d2' }}>
+                  <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#274332' }}>
+                    Actual Scale Weight
                   </Text>
-                  <Text className="text-xs font-extrabold text-[#237227] dark:text-emerald-400">
-                    {reservation.actual_weighed_quantity} {reservation.unit}
+                  <Text style={{ fontSize: 11.5, fontWeight: '800', color: '#274332' }}>
+                    {reservation.actual_weighed_quantity} {unit}
                   </Text>
                 </View>
               )}
 
-              <View className="flex-row justify-between">
-                <Text className="text-xs text-slate-500">Pickup Location</Text>
-                <Text className="text-xs font-medium text-slate-700 dark:text-slate-300 text-right max-w-[180px]">
-                  {reservation.pickup_location}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 11.5, color: '#687e70' }}>Pickup Hub</Text>
+                <Text style={{ fontSize: 11.5, fontWeight: '500', color: '#1a271f', textAlign: 'right', maxWidth: 180 }}>
+                  {pickupLocation}
                 </Text>
               </View>
 
-              <View className="flex-row justify-between">
-                <Text className="text-xs text-slate-500">Farmer / Producer</Text>
-                <Text className="text-xs font-medium text-slate-700 dark:text-slate-300">
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 11.5, color: '#687e70' }}>Farmer</Text>
+                <Text style={{ fontSize: 11.5, fontWeight: '500', color: '#1a271f' }}>
                   {reservation.seller_name || 'Verified Farmer'}
                 </Text>
               </View>
 
-              <View className="flex-row justify-between">
-                <Text className="text-xs text-slate-500">Buyer Name</Text>
-                <Text className="text-xs font-medium text-slate-700 dark:text-slate-300">
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 11.5, color: '#687e70' }}>Buyer</Text>
+                <Text style={{ fontSize: 11.5, fontWeight: '500', color: '#1a271f' }}>
                   {reservation.buyer_name || 'Registered Buyer'}
                 </Text>
               </View>
 
               {/* Total Settlement */}
-              <View className="pt-2 border-t border-slate-200 dark:border-slate-800 flex-row justify-between items-center">
-                <Text className="text-xs font-bold text-slate-900 dark:text-white">
+              <View style={{ paddingTop: 10, marginTop: 4, borderTopWidth: 1, borderTopColor: '#e3ece0', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#1a271f' }}>
                   {isCompleted ? 'Final Settled Price' : 'Estimated Total'}
                 </Text>
-                <Text className="text-lg font-extrabold text-[#237227] dark:text-emerald-400">
-                  ₱
-                  {Number(
-                    isCompleted && reservation.final_settled_amount
-                      ? reservation.final_settled_amount
-                      : reservation.total_estimated_amount
-                  ).toFixed(2)}
+                <Text style={{ fontSize: 19, fontWeight: '800', color: '#274332' }}>
+                  ₱{totalAmount}
                 </Text>
               </View>
             </View>
 
             {/* Action Buttons */}
-            <View className="flex-row gap-2 mt-5 mb-2">
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 18, marginBottom: 8 }}>
               <TouchableOpacity
                 onPress={handleCopyCode}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 items-center justify-center flex-row gap-1.5"
+                style={{ flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#dce5da', backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}
+                activeOpacity={0.7}
               >
-                <Ionicons name="copy-outline" size={14} color="#64748b" />
-                <Text className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <Ionicons name="copy-outline" size={14} color="#45584b" />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#324538' }}>
                   Copy Code
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={handleShareReceipt}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 items-center justify-center flex-row gap-1.5"
+                style={{ flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#dce5da', backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}
+                activeOpacity={0.7}
               >
-                <Ionicons name="share-social-outline" size={14} color="#64748b" />
-                <Text className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <Ionicons name="share-social-outline" size={14} color="#45584b" />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#324538' }}>
                   Share
                 </Text>
               </TouchableOpacity>
@@ -282,10 +293,11 @@ export default function DigitalReceiptModal({
                   onClose();
                   onOpenWeighIn(reservation);
                 }}
-                className="w-full mt-2 py-3 rounded-xl bg-[#237227] items-center justify-center shadow-xs flex-row gap-2"
+                style={{ width: '100%', marginTop: 6, paddingVertical: 12, borderRadius: 14, backgroundColor: '#274332', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, shadowColor: '#274332', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 4, elevation: 3 }}
+                activeOpacity={0.85}
               >
                 <Ionicons name="scale-outline" size={16} color="#ffffff" />
-                <Text className="text-white text-xs font-bold">
+                <Text style={{ color: '#ffffff', fontSize: 12.5, fontWeight: '700' }}>
                   Weigh-In & Complete Order
                 </Text>
               </TouchableOpacity>

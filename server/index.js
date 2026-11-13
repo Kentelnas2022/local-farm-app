@@ -6485,6 +6485,11 @@ app.get("/api/reservations/my-reservations", authenticateToken, async (req, res)
       filterClause += ` AND hr.status = $${params.length}`;
     }
 
+    if (req.query.postId) {
+      params.push(req.query.postId);
+      filterClause += ` AND hr.post_id = $${params.length}`;
+    }
+
     const { rows } = await pool.query(
       `SELECT 
         hr.*,
@@ -6584,6 +6589,51 @@ app.post("/api/reservations", authenticateToken, async (req, res) => {
       ]
     );
 
+    const createdId = inserted[0]?.id;
+
+    // Fetch full reservation record for complete client response
+    let createdReservation = null;
+    if (createdId) {
+      try {
+        const { rows: fetchedRows } = await pool.query(
+          `SELECT hr.*, 
+                  buyer.full_name as buyer_name,
+                  buyer.username as buyer_username,
+                  seller.full_name as seller_name,
+                  seller.username as seller_username
+           FROM harvest_reservations hr
+           LEFT JOIN users buyer ON hr.buyer_id = buyer.id
+           LEFT JOIN users seller ON hr.seller_id = seller.id
+           WHERE hr.id = $1`,
+          [createdId]
+        );
+        createdReservation = fetchedRows[0] || null;
+      } catch (fetchErr) {
+        console.warn("[Reservation Fetch Warning]", fetchErr.message);
+      }
+    }
+
+    if (!createdReservation) {
+      createdReservation = {
+        id: createdId,
+        reservation_code: reservationCode,
+        post_id: postId,
+        seller_id: sellerId,
+        buyer_id: buyerId,
+        crop_name: cropName,
+        quantity: reservedQty,
+        unit,
+        price_per_unit: pricePerUnit,
+        total_estimated_amount: totalEstAmount,
+        harvest_date: harvestDate,
+        pickup_location: pickupLoc,
+        status: "pending",
+        qr_token: qrToken,
+        buyer_notes: buyerNotes || null,
+        created_at: new Date().toISOString(),
+      };
+    }
+
     // Update reserved_quantity on post
     try {
       await pool.query(
@@ -6605,7 +6655,7 @@ app.post("/api/reservations", authenticateToken, async (req, res) => {
           sellerId,
           buyerId,
           `${buyerName} placed an advance reservation of ${reservedQty} ${unit} for ${cropName} (${reservationCode}).`,
-          inserted[0]?.id || null,
+          createdId || null,
         ]
       );
     } catch (notifErr) {
@@ -6615,7 +6665,7 @@ app.post("/api/reservations", authenticateToken, async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Harvest reservation created successfully!",
-      reservation: inserted[0]
+      reservation: createdReservation
     });
   } catch (err) {
     console.error("[POST /api/reservations Error]", err);
@@ -6667,7 +6717,7 @@ app.post("/api/reservations/verify-pickup", authenticateToken, async (req, res) 
     const weighed = Number(actualWeighedQuantity) > 0 ? Number(actualWeighedQuantity) : Number(reservation.quantity);
     const finalAmount = weighed * Number(reservation.price_per_unit);
 
-    const { rows: updatedRows } = await pool.query(
+    await pool.query(
       `UPDATE harvest_reservations
        SET status = 'completed',
            actual_weighed_quantity = $1,
@@ -6675,10 +6725,27 @@ app.post("/api/reservations/verify-pickup", authenticateToken, async (req, res) 
            seller_notes = COALESCE($3, seller_notes),
            weighed_at = NOW(),
            completed_at = NOW()
-       WHERE id = $4
-       RETURNING *`,
+       WHERE id = $4`,
       [weighed, finalAmount, sellerNotes || null, reservation.id]
     );
+
+    const { rows: refreshedWeighed } = await pool.query(
+      `SELECT hr.*, buyer.full_name as buyer_name, seller.full_name as seller_name
+       FROM harvest_reservations hr
+       LEFT JOIN users buyer ON hr.buyer_id = buyer.id
+       LEFT JOIN users seller ON hr.seller_id = seller.id
+       WHERE hr.id = $1`,
+      [reservation.id]
+    );
+
+    const updatedReceipt = refreshedWeighed[0] || {
+      ...reservation,
+      status: 'completed',
+      actual_weighed_quantity: weighed,
+      final_settled_amount: finalAmount,
+      seller_notes: sellerNotes || reservation.seller_notes,
+      completed_at: new Date().toISOString(),
+    };
 
     // Notify buyer that pickup is stamped
     try {
@@ -6697,11 +6764,7 @@ app.post("/api/reservations/verify-pickup", authenticateToken, async (req, res) 
     res.json({
       success: true,
       message: `Pickup verified! Weighed: ${weighed} ${reservation.unit} • Final: ₱${finalAmount.toFixed(2)}`,
-      receipt: {
-        ...updatedRows[0],
-        buyer_name: reservation.buyer_name,
-        seller_name: reservation.seller_name
-      }
+      receipt: updatedReceipt
     });
   } catch (err) {
     console.error("[POST /api/reservations/verify-pickup Error]", err);
@@ -6736,14 +6799,28 @@ app.patch("/api/reservations/:id/status", authenticateToken, async (req, res) =>
       return res.status(403).json({ message: "Unauthorized to update this reservation." });
     }
 
-    const { rows: updated } = await pool.query(
+    await pool.query(
       `UPDATE harvest_reservations
        SET status = $1,
            seller_notes = COALESCE($2, seller_notes)
-       WHERE id = $3
-       RETURNING *`,
+       WHERE id = $3`,
       [status, sellerNotes || null, reservationId]
     );
+
+    const { rows: refreshedRows } = await pool.query(
+      `SELECT hr.*, buyer.full_name as buyer_name, seller.full_name as seller_name
+       FROM harvest_reservations hr
+       LEFT JOIN users buyer ON hr.buyer_id = buyer.id
+       LEFT JOIN users seller ON hr.seller_id = seller.id
+       WHERE hr.id = $1`,
+      [reservationId]
+    );
+
+    const updatedRes = refreshedRows[0] || {
+      ...reservation,
+      status,
+      seller_notes: sellerNotes || reservation.seller_notes,
+    };
 
     // Notify counterpart
     const targetUserId = userId === reservation.seller_id ? reservation.buyer_id : reservation.seller_id;
@@ -6766,7 +6843,7 @@ app.patch("/api/reservations/:id/status", authenticateToken, async (req, res) =>
     res.json({
       success: true,
       message: `Reservation status updated to ${status}.`,
-      reservation: updated[0]
+      reservation: updatedRes
     });
   } catch (err) {
     console.error("[PATCH /api/reservations/:id/status Error]", err);
