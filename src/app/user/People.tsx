@@ -209,8 +209,8 @@ export default function People() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={() => fetchRequests(true)}
-            colors={["#72AF5B"]}
-            tintColor="#72AF5B"
+            colors={["#34594A"]}
+            tintColor="#34594A"
           />
         }
       >
@@ -227,7 +227,7 @@ export default function People() {
             accessibilityRole="button"
             accessibilityLabel="Open sidebar menu"
           >
-            <Ionicons name="person-add-outline" size={26} color="#374151" />
+            <Ionicons name="person-add-outline" size={26} color="#34594A" />
           </TouchableOpacity>
 
           {/* Search Input */}
@@ -246,10 +246,10 @@ export default function People() {
                 className="p-1 mr-1"
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+                <Ionicons name="close-circle" size={18} color="#34594A" />
               </TouchableOpacity>
             ) : null}
-            <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="search-outline" size={20} color="#34594A" />
           </View>
         </View>
 
@@ -259,16 +259,16 @@ export default function People() {
             <View className="flex-row justify-between items-center py-2 mb-2">
               <Text className="text-lg font-semibold text-gray-900">
                 Search Results{" "}
-                <Text className="text-[#72AF5B] font-bold">
+                <Text className="text-[#34594A] font-bold">
                   ({searchResults.length})
                 </Text>
               </Text>
-              {isSearching ? <ActivityIndicator size="small" color="#72AF5B" /> : null}
+              {isSearching ? <ActivityIndicator size="small" color="#34594A" /> : null}
             </View>
 
             {isSearching ? (
               <View className="py-12 items-center justify-center">
-                <ActivityIndicator size="large" color="#72AF5B" />
+                <ActivityIndicator size="large" color="#34594A" />
                 <Text className="text-xs text-gray-500 mt-2">
                   Searching for users...
                 </Text>
@@ -276,7 +276,7 @@ export default function People() {
             ) : searchResults.length === 0 ? (
               <View className="py-16 items-center justify-center px-6">
                 <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-                  <Ionicons name="search-outline" size={32} color="#9CA3AF" />
+                  <Ionicons name="search-outline" size={32} color="#34594A" />
                 </View>
                 <Text className="text-base font-bold text-gray-800 mb-1">
                   No Users Found
@@ -306,7 +306,7 @@ export default function People() {
                           resizeMode="cover"
                         />
                       ) : (
-                        <Ionicons name="person" size={26} color="#6B7280" />
+                        <Ionicons name="person" size={26} color="#34594A" />
                       )}
                     </View>
 
@@ -322,9 +322,9 @@ export default function People() {
 
                     {/* Action Buttons based on relationship */}
                     {user.relationship === "accepted" ? (
-                      <View className="bg-green-50 px-3 py-1.5 rounded-xl flex-row items-center gap-1 border border-green-200">
-                        <Ionicons name="checkmark-circle" size={14} color="#72AF5B" />
-                        <Text className="text-[#72AF5B] font-bold text-xs">
+                      <View className="bg-[#EDF3EE] px-3 py-1.5 rounded-xl flex-row items-center gap-1 border border-[#E3ECE5]">
+                        <Ionicons name="checkmark-circle" size={14} color="#34594A" />
+                        <Text className="text-[#34594A] font-bold text-xs">
                           Connected
                         </Text>
                       </View>
@@ -338,7 +338,7 @@ export default function People() {
                           <ActivityIndicator size="small" color="#6B7280" />
                         ) : (
                           <>
-                            <Ionicons name="time-outline" size={14} color="#6B7280" />
+                            <Ionicons name="time-outline" size={14} color="#34594A" />
                             <Text className="text-gray-700 font-semibold text-xs">
                               Requested
                             </Text>
@@ -349,7 +349,7 @@ export default function People() {
                       <View className="flex-row items-center gap-1.5">
                         <TouchableOpacity
                           onPress={() => handleConfirm(user)}
-                          className="bg-[#72AF5B] px-3 py-1.5 rounded-xl items-center justify-center active:bg-[#62974e]"
+                          className="bg-[#34594A] px-3 py-1.5 rounded-xl items-center justify-center active:bg-[#2A4F3E]"
                         >
                           <Text className="text-white font-bold text-xs">Confirm</Text>
                         </TouchableOpacity>
@@ -365,7 +365,7 @@ export default function People() {
                       <TouchableOpacity
                         onPress={() => handleSendFriendRequest(user)}
                         disabled={isLoadingAction}
-                        className="bg-[#72AF5B] px-3.5 py-2 rounded-xl flex-row items-center justify-center gap-1 active:bg-[#62974e] shadow-2xs"
+                        className="bg-[#34594A] px-3.5 py-2 rounded-xl flex-row items-center justify-center gap-1 active:bg-[#2A4F3E] shadow-2xs"
                         activeOpacity={0.8}
                       >
                         {isLoadingAction ? (
@@ -392,7 +392,7 @@ export default function People() {
             <View className="flex-row justify-between items-center px-5 py-3 mb-1">
               <Text className="text-lg font-semibold text-gray-900">
                 Request{" "}
-                <Text className="text-[#72AF5B] font-bold">
+                <Text className="text-[#34594A] font-bold">
                   {activeRequests.filter((r) => requestStates[r.id] !== "confirmed").length}
                 </Text>
               </Text>
@@ -401,7 +401,7 @@ export default function People() {
             {/* Loading State */}
             {isLoading ? (
               <View className="py-12 items-center justify-center">
-                <ActivityIndicator size="large" color="#72AF5B" />
+                <ActivityIndicator size="large" color="#34594A" />
                 <Text className="text-sm text-gray-500 mt-2 font-medium">
                   Loading requests...
                 </Text>
@@ -409,7 +409,7 @@ export default function People() {
             ) : activeRequests.length === 0 ? (
               <View className="py-16 items-center justify-center px-6">
                 <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-                  <Ionicons name="people-outline" size={32} color="#9CA3AF" />
+                  <Ionicons name="people-outline" size={32} color="#34594A" />
                 </View>
                 <Text className="text-base font-bold text-gray-800 mb-1">
                   No Connection Requests
@@ -438,7 +438,7 @@ export default function People() {
                             resizeMode="cover"
                           />
                         ) : (
-                          <Ionicons name="person" size={28} color="#6B7280" />
+                          <Ionicons name="person" size={28} color="#34594A" />
                         )}
                       </View>
 
@@ -453,7 +453,7 @@ export default function People() {
                               <Ionicons
                                 name="people"
                                 size={13}
-                                color="#6B7280"
+                                color="#34594A"
                                 style={{ marginRight: 4 }}
                               />
                               <Text className="text-gray-500 text-xs font-medium">
@@ -463,16 +463,16 @@ export default function People() {
                           </View>
 
                           {/* Time Received */}
-                          <Text className="text-[#72AF5B] font-medium text-xs">
+                          <Text className="text-[#34594A] font-medium text-xs">
                             {item.timeAgo || "Recently"}
                           </Text>
                         </View>
 
                         {/* Card Bottom Buttons */}
                         {state === "confirmed" ? (
-                          <View className="bg-green-50 border border-[#72AF5B] py-2 rounded-xl items-center flex-row justify-center gap-1.5">
-                            <Ionicons name="checkmark-circle" size={16} color="#72AF5B" />
-                            <Text className="text-[#72AF5B] font-bold text-xs">
+                          <View className="bg-[#EDF3EE] border border-[#34594A] py-2 rounded-xl items-center flex-row justify-center gap-1.5">
+                            <Ionicons name="checkmark-circle" size={16} color="#34594A" />
+                            <Text className="text-[#34594A] font-bold text-xs">
                               Request Confirmed
                             </Text>
                           </View>
@@ -488,7 +488,7 @@ export default function People() {
                             <TouchableOpacity
                               onPress={() => handleConfirm(item)}
                               disabled={state === "loading"}
-                              className="flex-1 bg-[#72AF5B] py-2.5 rounded-xl items-center justify-center active:bg-[#62974e] shadow-2xs"
+                              className="flex-1 bg-[#34594A] py-2.5 rounded-xl items-center justify-center active:bg-[#2A4F3E] shadow-2xs"
                               activeOpacity={0.8}
                               accessibilityRole="button"
                               accessibilityLabel="Confirm connection request"
@@ -528,7 +528,7 @@ export default function People() {
       </ScrollView>
 
       {/* Bottom Navigation Component */}
-      <BottomNavBar activeTab="Connection" showFab={false} />
+      <BottomNavBar accentColor="#34594A" activeTab="Connection" showFab={false} />
 
       {/* Sidebar Navigation Menu */}
       <SidebarMenu

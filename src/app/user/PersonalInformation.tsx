@@ -5,25 +5,35 @@ import {
   getRSBSAApplication,
   RSBSAApplication,
 } from "@/services/rsbsa-service";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   Image,
+  LayoutAnimation,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  UIManager,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Navigation from "../../components/Navigation";
+
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const FARM_DETAILS_STORAGE_KEY = "localfarm_user_farm_details_v1";
 
@@ -40,6 +50,271 @@ const DEFAULT_FARM_DETAILS: FarmDetails = {
 };
 
 const GENDER_OPTIONS = ["Male", "Female", "Prefer not to say"];
+
+// Floating Label Field with smooth placeholder animation
+function FloatingLabelField({
+  label,
+  value,
+  onChangeText,
+  iconName,
+  editable = true,
+  isEditing = false,
+  keyboardType,
+  multiline,
+  autoCapitalize,
+  lockedBadge,
+  children,
+}: {
+  label: string;
+  value?: string;
+  onChangeText?: (text: string) => void;
+  iconName: keyof typeof Ionicons.glyphMap;
+  editable?: boolean;
+  isEditing?: boolean;
+  keyboardType?: any;
+  multiline?: boolean;
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  lockedBadge?: string;
+  children?: React.ReactNode;
+}) {
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+  const hasValue = Boolean(value && value.trim().length > 0);
+  const shouldFloat = !isEditing || isFocused || hasValue || Boolean(children);
+
+  const animatedFocus = useRef(
+    new Animated.Value(shouldFloat ? 1 : 0)
+  ).current;
+
+  useEffect(() => {
+    Animated.timing(animatedFocus, {
+      toValue: shouldFloat ? 1 : 0,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [shouldFloat]);
+
+  const handleFocus = () => {
+    setIsFocused(true);
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+  };
+
+  const handleContainerPress = () => {
+    if (isEditing && editable && !children) {
+      inputRef.current?.focus();
+    }
+  };
+
+  const labelTop = animatedFocus.interpolate({
+    inputRange: [0, 1],
+    outputRange: [multiline ? 16 : 16, 5],
+  });
+
+  const labelFontSize = animatedFocus.interpolate({
+    inputRange: [0, 1],
+    outputRange: [13.5, 10],
+  });
+
+  const labelColor = animatedFocus.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#7F9185", isFocused ? "#34594A" : "#6B7D72"],
+  });
+
+  const borderColor = isFocused
+    ? "#34594A"
+    : isEditing
+    ? "#D8E3DB"
+    : "#EAF0EC";
+
+  const backgroundColor = isFocused
+    ? "#FFFFFF"
+    : isEditing
+    ? "#FAFCFA"
+    : "#F8FAF8";
+
+  return (
+    <Pressable
+      onPress={handleContainerPress}
+      style={[
+        styles.floatingFieldContainer,
+        {
+          borderColor,
+          backgroundColor,
+          borderWidth: isFocused ? 1.5 : 1,
+          minHeight: multiline ? (isEditing ? 96 : 72) : 56,
+          alignItems: multiline ? "flex-start" : "center",
+        },
+      ]}
+    >
+      {/* Leading Icon */}
+      <View
+        style={[
+          styles.floatingFieldIconBox,
+          isFocused && styles.floatingFieldIconBoxFocused,
+          multiline && { marginTop: 8 },
+        ]}
+      >
+        <Ionicons
+          name={iconName}
+          size={16}
+          color={isFocused ? "#34594A" : "#5F7467"}
+        />
+      </View>
+
+      {/* Main Content Area */}
+      <View style={styles.floatingFieldContent}>
+        {/* Floating Animated Label */}
+        <Animated.Text
+          pointerEvents="none"
+          style={[
+            styles.floatingLabelText,
+            {
+              top: labelTop,
+              fontSize: labelFontSize,
+              color: labelColor,
+              fontWeight: isFocused ? "700" : "600",
+            },
+          ]}
+          numberOfLines={1}
+        >
+          {label}
+        </Animated.Text>
+
+        {children ? (
+          <View style={styles.floatingFieldCustomChild}>{children}</View>
+        ) : isEditing && editable ? (
+          <TextInput
+            ref={inputRef}
+            value={value}
+            onChangeText={onChangeText}
+            keyboardType={keyboardType}
+            multiline={multiline}
+            autoCapitalize={autoCapitalize}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            style={[
+              styles.floatingTextInput,
+              multiline && {
+                minHeight: 56,
+                paddingTop: 22,
+                textAlignVertical: "top",
+              },
+            ]}
+          />
+        ) : (
+          <Text
+            style={[
+              styles.floatingValueText,
+              !value && styles.floatingValueEmptyText,
+              multiline && { marginTop: 22 },
+            ]}
+            numberOfLines={multiline ? undefined : 1}
+          >
+            {value || "Not specified"}
+          </Text>
+        )}
+      </View>
+
+      {/* Locked Badge if applicable */}
+      {lockedBadge && (
+        <View style={styles.lockedPill}>
+          <Ionicons name="lock-closed" size={10} color="#34594A" />
+          <Text style={styles.lockedPillText}>{lockedBadge}</Text>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+// Smooth subtle entrance for premium feel
+function FadeEntrance({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const progress = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(8)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: 280,
+        delay,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: Platform.OS !== "web",
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 280,
+        delay,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: Platform.OS !== "web",
+      }),
+    ]).start();
+  }, [delay, progress, translateY]);
+
+  return (
+    <Animated.View style={{ opacity: progress, transform: [{ translateY }] }}>
+      {children}
+    </Animated.View>
+  );
+}
+
+// Tactile press button with smooth spring animation
+function TactileTouchable({
+  children,
+  onPress,
+  style,
+  disabled,
+  activeOpacity = 0.85,
+  scaleTo = 0.98,
+  ...rest
+}: any) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: scaleTo,
+      useNativeDriver: Platform.OS !== "web",
+      speed: 35,
+      bounciness: 4,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: Platform.OS !== "web",
+      speed: 35,
+      bounciness: 4,
+    }).start();
+  };
+
+  const flattened = StyleSheet.flatten(style) || {};
+  const hasFlex = flattened.flex !== undefined;
+
+  return (
+    <Animated.View
+      style={[
+        hasFlex && { flex: flattened.flex },
+        { transform: [{ scale }] },
+      ]}
+    >
+      <TouchableOpacity
+        activeOpacity={activeOpacity}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={onPress}
+        disabled={disabled}
+        style={[style, hasFlex && { width: "100%" }]}
+        {...rest}
+      >
+        {children}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
 
 export default function PersonalInformation() {
   const params = useLocalSearchParams<{ edit?: string; mode?: string }>();
@@ -378,42 +653,52 @@ export default function PersonalInformation() {
     );
 
     return (
-      <SafeAreaView
-        className="flex-1 bg-white relative"
-        style={{ flex: 1, backgroundColor: "#FFFFFF" }}
-      >
-        <ScrollView
-          className="flex-1 bg-white"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 110 }}
-        >
-          {/* Top Header Row */}
-          <View className="flex-row items-center justify-center px-4 pt-4 pb-3 relative bg-white">
-            <TouchableOpacity
-              onPress={handleCancelPicture}
-              className="absolute left-4 top-4 p-1 active:opacity-70"
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-            >
-              <Ionicons name="arrow-undo" size={28} color="#000000" />
-            </TouchableOpacity>
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={handleCancelPicture}
+            style={styles.backButton}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="chevron-back" size={20} color="#293E33" />
+          </TouchableOpacity>
 
-            <Text className="text-xl font-bold text-gray-900">
-              Change picture
-            </Text>
+          <View style={styles.headerTitleWrap}>
+            <Text style={styles.headerTitle}>Change Picture</Text>
           </View>
 
+          <View style={{ width: 36 }} />
+        </View>
+
+        <ScrollView
+          style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 110, paddingHorizontal: 20 }}
+        >
           {/* Large Circular Profile Picture Preview */}
-          <View className="items-center justify-center mt-10 mb-6">
+          <View style={{ alignItems: "center", justifyContent: "center", marginTop: 32, marginBottom: 24 }}>
             <TouchableOpacity
               onPress={pickImageFromGallery}
               activeOpacity={0.9}
-              className="relative"
+              style={{ position: "relative" }}
               accessibilityRole="button"
               accessibilityLabel="Choose photo from gallery"
             >
-              <View className="w-64 h-64 sm:w-72 sm:h-72 rounded-full overflow-hidden bg-[#E5E7EB] items-center justify-center shadow-lg border border-gray-100">
+              <View
+                style={{
+                  width: 240,
+                  height: 240,
+                  borderRadius: 120,
+                  overflow: "hidden",
+                  backgroundColor: "#F0F4EF",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderWidth: 1,
+                  borderColor: "#E5ECE6",
+                }}
+              >
                 {avatarUri ? (
                   <Image
                     source={{ uri: avatarUri }}
@@ -425,31 +710,43 @@ export default function PersonalInformation() {
                     resizeMode="cover"
                   />
                 ) : (
-                  <View className="w-full h-full bg-[#72AF5B] items-center justify-center">
-                    <Ionicons name="person" size={130} color="#ffffff" />
+                  <View style={{ width: "100%", height: "100%", backgroundColor: "#34594A", alignItems: "center", justifyContent: "center" }}>
+                    <Ionicons name="person" size={110} color="#FFFFFF" />
                   </View>
                 )}
               </View>
 
               {/* Gallery Icon Badge */}
-              <View className="absolute bottom-2 right-4 bg-[#72AF5B] p-2.5 rounded-full border-2 border-white shadow-md">
-                <Ionicons name="images" size={18} color="#FFFFFF" />
+              <View
+                style={{
+                  position: "absolute",
+                  bottom: 6,
+                  right: 12,
+                  backgroundColor: "#34594A",
+                  padding: 10,
+                  borderRadius: 20,
+                  borderWidth: 2,
+                  borderColor: "#FFFFFF",
+                }}
+              >
+                <Ionicons name="images" size={16} color="#FFFFFF" />
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={pickImageFromGallery}
-              className="mt-3 flex-row items-center gap-1.5 active:opacity-70"
+              style={{ marginTop: 16, flexDirection: "row", alignItems: "center", gap: 6 }}
+              activeOpacity={0.7}
             >
-              <Ionicons name="image-outline" size={18} color="#72AF5B" />
-              <Text className="text-sm font-semibold text-[#72AF5B]">
+              <Ionicons name="image-outline" size={18} color="#34594A" />
+              <Text style={{ fontSize: 13, fontWeight: "600", color: "#34594A" }}>
                 Choose from gallery
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Slider & Actions Container */}
-          <View className="px-8 w-full max-w-[360px] self-center">
+          <View style={{ width: "100%", maxWidth: 320, alignSelf: "center", marginTop: 10 }}>
             {/* Horizontal Slider Track */}
             <View
               onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
@@ -461,12 +758,10 @@ export default function PersonalInformation() {
               onResponderMove={(evt) =>
                 updateSliderProgress(evt.nativeEvent.locationX)
               }
-              className="h-8 justify-center relative"
+              style={{ height: 32, justifyContent: "center", position: "relative" }}
             >
-              {/* Gray Bar */}
-              <View className="h-2 bg-[#D1D5DB] rounded-full w-full" />
+              <View style={{ height: 6, backgroundColor: "#EDF2EE", borderRadius: 3, width: "100%" }} />
 
-              {/* Slider Thumb Handle */}
               <View
                 style={{
                   position: "absolute",
@@ -474,34 +769,46 @@ export default function PersonalInformation() {
                   width: 24,
                   height: 24,
                   borderRadius: 12,
-                  backgroundColor: "#CBD5E1",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 2,
-                  elevation: 3,
+                  backgroundColor: "#34594A",
+                  borderWidth: 2,
+                  borderColor: "#FFFFFF",
                 }}
               />
             </View>
 
             {/* Action Buttons: Cancel and Save */}
-            <View className="flex-row justify-end gap-3 mt-6">
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 24 }}>
               <TouchableOpacity
                 onPress={handleCancelPicture}
                 disabled={isSaving}
-                className="bg-[#A0A8B0] px-6 py-2.5 rounded-xl active:bg-[#8e969e] shadow-sm"
+                style={{
+                  paddingHorizontal: 20,
+                  paddingVertical: 12,
+                  borderRadius: 13,
+                  backgroundColor: "#F3F5F2",
+                  borderWidth: 1,
+                  borderColor: "#E2ECE4",
+                }}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Cancel"
               >
-                <Text className="text-white text-base font-bold">Cancel</Text>
+                <Text style={{ fontSize: 13.5, fontWeight: "600", color: "#5E7265" }}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={handleSavePicture}
                 disabled={isSaving}
-                className="bg-[#72AF5B] px-7 py-2.5 rounded-xl active:bg-[#60964c] shadow-sm flex-row items-center justify-center min-w-[90px]"
-                style={{ backgroundColor: "#72AF5B" }}
+                style={{
+                  paddingHorizontal: 26,
+                  paddingVertical: 12,
+                  borderRadius: 13,
+                  backgroundColor: "#34594A",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: 100,
+                }}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Save"
@@ -509,7 +816,7 @@ export default function PersonalInformation() {
                 {isSaving ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
-                  <Text className="text-white text-base font-bold">Save</Text>
+                  <Text style={{ fontSize: 13.5, fontWeight: "600", color: "#FFFFFF" }}>Save</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -529,629 +836,452 @@ export default function PersonalInformation() {
   const isRSBSAPending = rsbsaApp?.status === "pending";
 
   return (
-    <SafeAreaView
-      className="flex-1 bg-[#F9FAFB] relative"
-      style={{ flex: 1, backgroundColor: "#F9FAFB" }}
-    >
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <ScrollView
-        className="flex-1 bg-[#F9FAFB]"
+        style={styles.scrollArea}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 130 }}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* Top Green Brand Banner Header */}
-        <View className="w-full bg-[#6EA352] pt-6 pb-20 px-4 relative shadow-sm">
-          <View className="flex-row items-center justify-between relative">
+        {/* Top Deep Forest Brand Banner Header (matching Reservations & Saved) */}
+        <View style={styles.topBanner}>
+          <View style={styles.bannerHeaderRow}>
             <TouchableOpacity
               onPress={handleBack}
-              className="p-1 active:opacity-70"
+              style={styles.bannerBackBtn}
+              activeOpacity={0.75}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               accessibilityRole="button"
               accessibilityLabel={isEditing ? "Cancel edit" : "Go back"}
             >
-              <Ionicons name="arrow-undo" size={26} color="#FFFFFF" />
+              <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
             </TouchableOpacity>
 
-            <View className="items-center">
-              <Text className="text-white text-lg font-bold tracking-wide">
+            <View style={styles.bannerTitleWrap}>
+              <Text style={styles.bannerTitle}>
                 {isEditing ? "Edit Information" : "Personal Information"}
               </Text>
-              <Text className="text-green-100 text-xs mt-0.5">
+              <Text style={styles.bannerSubtitle}>
                 {isEditing
                   ? "Update farm & personal details"
                   : "Identity & Agricultural Details"}
               </Text>
             </View>
 
-            {/* Right Spacer to keep header title centered */}
-            <View className="w-8" />
+            <View style={{ width: 36 }} />
           </View>
         </View>
 
         {/* Overlapping Avatar Profile Section */}
-        <View className="items-center z-50 -mt-16 px-4">
-          <View className="relative">
-            <View className="w-32 h-32 rounded-full border-[5px] border-white bg-[#E5E7EB] items-center justify-center overflow-hidden shadow-md">
-              {avatarUri ? (
-                <Image
-                  source={{ uri: avatarUri }}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    transform: [{ scale: avatarScale }],
-                  }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View className="w-full h-full bg-[#E5E7EB] items-center justify-center">
-                  <Ionicons name="person" size={68} color="#9CA3AF" />
-                </View>
-              )}
-            </View>
-
-            {/* Verified Green Badge on Avatar */}
-            {isRSBSAVerified ? (
-              <View className="absolute bottom-1 right-1 w-7 h-7 bg-white rounded-full items-center justify-center shadow-md">
-                <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+        <FadeEntrance delay={20}>
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarWrap}>
+              <View style={styles.avatarCircle}>
+                {avatarUri ? (
+                  <Image
+                    source={{ uri: avatarUri }}
+                    style={[
+                      styles.avatarImg,
+                      { transform: [{ scale: avatarScale }] },
+                    ]}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.avatarFallback}>
+                    <Ionicons name="person" size={58} color="#9CA3AF" />
+                  </View>
+                )}
               </View>
-            ) : (
-              <View className="absolute bottom-1 right-1 w-6 h-6 bg-[#72AF5B] rounded-full border-[3px] border-white shadow-sm" />
-            )}
-          </View>
 
-          {/* Profile Name & Primary Action */}
-          <View className="items-center mt-3">
-            <View className="flex-row items-center gap-1.5">
-              <Text className="text-xl font-bold text-gray-900 text-center">
-                {displayName}
-              </Text>
-              {isRSBSAVerified && (
-                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+              {/* Status Badge on Avatar */}
+              {isRSBSAVerified ? (
+                <View style={styles.avatarBadgeVerified}>
+                  <Ionicons name="checkmark-circle" size={20} color="#2E7D5B" />
+                </View>
+              ) : (
+                <View style={styles.avatarBadgeDot} />
               )}
             </View>
 
-            {/* Change Picture or Edit Information Action */}
-            {isEditing ? (
-              <TouchableOpacity
-                onPress={() => setIsPhotoOptionsVisible(true)}
-                className="mt-3.5 flex-row items-center justify-center gap-2 px-4 py-2 rounded-xl shadow-sm"
-                style={{ backgroundColor: "#72AF5B" }}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel="Change picture"
-              >
-                <Ionicons name="camera" size={16} color="#FFFFFF" />
-                <Text className="text-xs font-bold text-white uppercase tracking-wider">
-                  Change Photo
+            {/* Profile Name & Primary Action */}
+            <View style={styles.nameBlock}>
+              <View style={styles.nameRow}>
+                <Text style={styles.profileName} numberOfLines={1}>
+                  {displayName}
                 </Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                onPress={() => setIsEditing(true)}
-                className="mt-3.5 flex-row items-center justify-center gap-2 px-5 py-2 rounded-xl shadow-sm"
-                style={{ backgroundColor: "#72AF5B" }}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel="Edit Information"
-              >
-                <Ionicons name="create-outline" size={16} color="#FFFFFF" />
-                <Text className="text-sm font-bold text-white">
-                  Edit Information
-                </Text>
-              </TouchableOpacity>
-            )}
+                {isRSBSAVerified && (
+                  <Ionicons name="checkmark-circle" size={18} color="#2E7D5B" />
+                )}
+              </View>
+
+              {/* Change Photo or Edit Information Action */}
+              {isEditing ? (
+                <TactileTouchable
+                  onPress={() => setIsPhotoOptionsVisible(true)}
+                  style={styles.actionPillBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Change picture"
+                >
+                  <Ionicons name="camera" size={14} color="#FFFFFF" />
+                  <Text style={styles.actionPillText}>Change Photo</Text>
+                </TactileTouchable>
+              ) : (
+                <TactileTouchable
+                  onPress={() => setIsEditing(true)}
+                  style={styles.actionPillBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit Information"
+                >
+                  <Ionicons name="create-outline" size={15} color="#FFFFFF" />
+                  <Text style={styles.actionPillText}>Edit Information</Text>
+                </TactileTouchable>
+              )}
+            </View>
           </View>
-        </View>
+        </FadeEntrance>
 
         {/* Content Body Container */}
-        <View className="px-4 mt-5">
+        <View style={styles.bodyContent}>
           {/* ================================================================= */}
           {/* RSBSA VERIFICATION STATUS CARD (Hidden in Edit Mode)              */}
           {/* ================================================================= */}
-          {!isEditing &&
-            (isRSBSAVerified ? (
-              <View className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-4 shadow-sm">
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-3 flex-1 pr-2">
-                    <View className="w-10 h-10 rounded-full bg-emerald-100 items-center justify-center shadow-sm">
+          {!isEditing && (
+            <FadeEntrance delay={60}>
+              {isRSBSAVerified ? (
+                <View style={styles.rsbsaCardVerified}>
+                  <View style={styles.rsbsaCardRow}>
+                    <View style={styles.rsbsaIconBoxVerified}>
                       <Ionicons
                         name="checkmark-circle"
-                        size={24}
-                        color="#059669"
+                        size={22}
+                        color="#2E7D5B"
                       />
                     </View>
-                    <View className="flex-1">
-                      <View className="flex-row items-center gap-1.5 flex-wrap">
-                        <Text className="text-sm font-bold text-emerald-950">
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <Text style={styles.rsbsaTitleVerified}>
                           RSBSA Verified Grower
                         </Text>
-                        <View className="bg-emerald-600 px-1.5 py-0.5 rounded-md">
-                          <Text className="text-[10px] font-bold text-white uppercase tracking-wider">
+                        <View style={styles.rsbsaPillVerified}>
+                          <Text style={styles.rsbsaPillTextVerified}>
                             Official DA
                           </Text>
                         </View>
                       </View>
-                      <Text className="text-xs text-emerald-800 mt-0.5">
+                      <Text style={styles.rsbsaDescVerified} numberOfLines={1}>
                         {rsbsaApp?.rsbsaNumber
                           ? `Ref ID: ${rsbsaApp.rsbsaNumber}`
                           : "Department of Agriculture registered"}
                       </Text>
                     </View>
+
+                    <TouchableOpacity
+                      onPress={() => router.push("/user/RSBSAVerification" as any)}
+                      style={styles.rsbsaActionBtnVerified}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.rsbsaActionTextVerified}>
+                        Credentials →
+                      </Text>
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    onPress={() =>
-                      router.push("/user/RSBSAVerification" as any)
-                    }
-                    className="bg-white px-3 py-1.5 rounded-xl border border-emerald-300 shadow-sm active:bg-emerald-50"
-                    activeOpacity={0.7}
-                  >
-                    <Text className="text-xs font-bold text-emerald-800">
-                      Credentials →
-                    </Text>
-                  </TouchableOpacity>
                 </View>
-              </View>
-            ) : isRSBSAPending ? (
-              <View className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4 shadow-sm">
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-3 flex-1 pr-2">
-                    <View className="w-10 h-10 rounded-full bg-amber-100 items-center justify-center">
-                      <Ionicons name="time" size={22} color="#D97706" />
+              ) : isRSBSAPending ? (
+                <View style={styles.rsbsaCardPending}>
+                  <View style={styles.rsbsaCardRow}>
+                    <View style={styles.rsbsaIconBoxPending}>
+                      <Ionicons name="time" size={20} color="#B45309" />
                     </View>
-                    <View className="flex-1">
-                      <View className="flex-row items-center gap-1.5 flex-wrap">
-                        <Text className="text-sm font-bold text-amber-950">
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <Text style={styles.rsbsaTitlePending}>
                           RSBSA Verification Pending
                         </Text>
-                        <View className="bg-amber-500 px-1.5 py-0.5 rounded-md">
-                          <Text className="text-[10px] font-bold text-white uppercase tracking-wider">
+                        <View style={styles.rsbsaPillPending}>
+                          <Text style={styles.rsbsaPillTextPending}>
                             In Review
                           </Text>
                         </View>
                       </View>
-                      <Text className="text-xs text-amber-800 mt-0.5">
+                      <Text style={styles.rsbsaDescPending} numberOfLines={1}>
                         Submitted for Municipal Agri Office verification.
                       </Text>
                     </View>
+
+                    <TouchableOpacity
+                      onPress={() => router.push("/user/RSBSAVerification" as any)}
+                      style={styles.rsbsaActionBtnPending}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.rsbsaActionTextPending}>
+                        Track →
+                      </Text>
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity
-                    onPress={() =>
-                      router.push("/user/RSBSAVerification" as any)
-                    }
-                    className="bg-white px-3 py-1.5 rounded-xl border border-amber-300 shadow-sm active:bg-amber-50"
-                    activeOpacity={0.7}
-                  >
-                    <Text className="text-xs font-bold text-amber-800">
-                      Track →
-                    </Text>
-                  </TouchableOpacity>
                 </View>
-              </View>
-            ) : (
-              <TouchableOpacity
-                onPress={() => router.push("/user/RSBSAVerification" as any)}
-                className="bg-white border border-gray-100 rounded-2xl p-4 mb-4 shadow-sm active:bg-gray-50"
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel="Apply for RSBSA Grower Verification"
-              >
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-3 flex-1 pr-2">
-                    <View className="w-10 h-10 rounded-xl bg-gray-50 items-center justify-center shadow-sm">
-                      <Ionicons name="ribbon" size={22} color="#72AF5B" />
+              ) : (
+                <TactileTouchable
+                  onPress={() => router.push("/user/RSBSAVerification" as any)}
+                  style={styles.rsbsaCardUnverified}
+                  accessibilityRole="button"
+                  accessibilityLabel="Apply for RSBSA Grower Verification"
+                >
+                  <View style={styles.rsbsaCardRow}>
+                    <View style={styles.rsbsaIconBoxUnverified}>
+                      <Ionicons name="ribbon" size={20} color="#34594A" />
                     </View>
-                    <View className="flex-1">
-                      <View className="flex-row items-center gap-1.5">
-                        <Text className="text-sm font-bold text-gray-900">
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Text style={styles.rsbsaTitleUnverified}>
                           Get RSBSA Verified
                         </Text>
-                        <View className="bg-gray-50 px-1.5 py-0.5 rounded-md">
-                          <Text className="text-[10px] font-bold text-[#72AF5B]">
+                        <View style={styles.rsbsaPillUnverified}>
+                          <Text style={styles.rsbsaPillTextUnverified}>
                             Badge
                           </Text>
                         </View>
                       </View>
-                      <Text className="text-xs text-gray-600 mt-0.5 leading-4">
+                      <Text style={styles.rsbsaDescUnverified}>
                         Register with the DA Registry System to earn the
                         verified grower badge & wholesale access.
                       </Text>
                     </View>
+                    <View style={styles.rsbsaChevronWrap}>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={16}
+                        color="#34594A"
+                      />
+                    </View>
                   </View>
-                  <View className="w-8 h-8 rounded-full bg-gray-50 items-center justify-center">
-                    <Ionicons
-                      name="chevron-forward"
-                      size={18}
-                      color="#72AF5B"
-                    />
-                  </View>
+                </TactileTouchable>
+              )}
+            </FadeEntrance>
+          )}
+
+          {/* ================================================================= */}
+          {/* UNIFIED INFORMATION CONTAINER (Single container for view & edit)  */}
+          {/* ================================================================= */}
+          <FadeEntrance delay={80}>
+            <View style={styles.unifiedCardContainer}>
+              {/* SUBSECTION 1: Personal Identity */}
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionIconBox}>
+                  <Ionicons name="person" size={15} color="#34594A" />
                 </View>
-              </TouchableOpacity>
-            ))}
-
-          {/* ================================================================= */}
-          {/* SECTION 1: FARM & AGRICULTURAL IDENTITY                           */}
-          {/* ================================================================= */}
-          <View className="bg-white rounded-2xl p-4 mb-4 border border-gray-100 shadow-sm">
-            <View className="flex-row items-center gap-2 mb-1">
-              <View className="w-7 h-7 rounded-lg bg-gray-100 items-center justify-center">
-                <Ionicons name="leaf" size={16} color="#72AF5B" />
-              </View>
-              <Text className="text-base font-bold text-gray-900">
-                Farm & Agricultural Identity
-              </Text>
-            </View>
-            <Text className="text-xs text-gray-500 mb-4 ml-9">
-              {isEditing
-                ? "Update your farm and harvest product details"
-                : "Your public grower credentials displayed across LocalFarm"}
-            </Text>
-
-            {/* Farm or Product */}
-            <View className="mb-4">
-              <Text className="text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
-                Farm or Product
-              </Text>
-              <View
-                className={`flex-row items-center rounded-xl px-3.5 py-2.5 border ${
-                  isEditing
-                    ? "bg-white border-[#72AF5B]"
-                    : "bg-gray-50 border-gray-200"
-                }`}
-              >
-                <Ionicons
-                  name="storefront-outline"
-                  size={18}
-                  color={isEditing ? "#72AF5B" : "#72AF5B"}
-                />
-                <TextInput
-                  value={farmData.farmName}
-                  editable={isEditing}
-                  onChangeText={(text) =>
-                    setFarmData((prev) => ({ ...prev, farmName: text }))
-                  }
-                  placeholder="e.g., Green Valley Organic Farm or Fresh Produce"
-                  placeholderTextColor="#9CA3AF"
-                  className="flex-1 ml-2.5 text-sm font-medium text-gray-900 p-0"
-                />
-              </View>
-            </View>
-
-            {/* Farm Location / Barangay */}
-            <View className="mb-4">
-              <Text className="text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
-                Farm Location (Barangay & Municipality)
-              </Text>
-              <View
-                className={`flex-row items-center rounded-xl px-3.5 py-2.5 border ${
-                  isEditing
-                    ? "bg-white border-[#72AF5B]"
-                    : "bg-gray-50 border-gray-200"
-                }`}
-              >
-                <Ionicons
-                  name="location-outline"
-                  size={18}
-                  color={isEditing ? "#72AF5B" : "#72AF5B"}
-                />
-                <TextInput
-                  value={farmData.farmLocation}
-                  editable={isEditing}
-                  onChangeText={(text) =>
-                    setFarmData((prev) => ({ ...prev, farmLocation: text }))
-                  }
-                  placeholder="e.g., Brgy. Bunga, Cabanglasan, Bukidnon"
-                  placeholderTextColor="#9CA3AF"
-                  className="flex-1 ml-2.5 text-sm font-medium text-gray-900 p-0"
-                />
-              </View>
-            </View>
-
-            {/* Primary Produce / Crops */}
-            <View className="mb-1">
-              <Text className="text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
-                Primary Produce / Crops & Livestock
-              </Text>
-              <View
-                className={`flex-row items-center rounded-xl px-3.5 py-2.5 border ${
-                  isEditing
-                    ? "bg-white border-[#72AF5B]"
-                    : "bg-gray-50 border-gray-200"
-                }`}
-              >
-                <Ionicons
-                  name="nutrition-outline"
-                  size={18}
-                  color={isEditing ? "#72AF5B" : "#72AF5B"}
-                />
-                <TextInput
-                  value={farmData.primaryCrops}
-                  editable={isEditing}
-                  onChangeText={(text) =>
-                    setFarmData((prev) => ({ ...prev, primaryCrops: text }))
-                  }
-                  placeholder="e.g., Tomatoes, Romaine Lettuce, Native Chickens"
-                  placeholderTextColor="#9CA3AF"
-                  className="flex-1 ml-2.5 text-sm font-medium text-gray-900 p-0"
-                />
-              </View>
-            </View>
-          </View>
-
-          {/* ================================================================= */}
-          {/* SECTION 2: PERSONAL IDENTITY                                      */}
-          {/* ================================================================= */}
-          <View className="bg-white rounded-2xl p-4 mb-4 border border-gray-100 shadow-sm">
-            <View className="flex-row items-center gap-2 mb-1">
-              <View className="w-7 h-7 rounded-lg bg-gray-50 items-center justify-center">
-                <Ionicons name="person" size={16} color="#72AF5B" />
-              </View>
-              <Text className="text-base font-bold text-gray-900">
-                Personal Identity
-              </Text>
-            </View>
-            <Text className="text-xs text-gray-500 mb-4 ml-9">
-              {isEditing
-                ? "Update your personal name, username, and story"
-                : "Your personal profile details and bio"}
-            </Text>
-
-            {/* Full Name */}
-            <View className="mb-4">
-              <Text className="text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
-                Full Name
-              </Text>
-              <View
-                className={`flex-row items-center rounded-xl px-3.5 py-2.5 border ${
-                  isEditing
-                    ? "bg-white border-[#72AF5B]"
-                    : "bg-gray-50 border-gray-200"
-                }`}
-              >
-                <Ionicons
-                  name="person-outline"
-                  size={18}
-                  color={isEditing ? "#72AF5B" : "#6B7280"}
-                />
-                <TextInput
-                  value={formData.name}
-                  editable={isEditing}
-                  onChangeText={(text) =>
-                    setFormData((prev) => ({ ...prev, name: text }))
-                  }
-                  placeholder="Your full name"
-                  placeholderTextColor="#9CA3AF"
-                  className="flex-1 ml-2.5 text-sm font-medium text-gray-900 p-0"
-                />
-              </View>
-            </View>
-
-            {/* Username */}
-            <View className="mb-4">
-              <Text className="text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
-                Username
-              </Text>
-              <View
-                className={`flex-row items-center rounded-xl px-3.5 py-2.5 border ${
-                  isEditing
-                    ? "bg-white border-[#72AF5B]"
-                    : "bg-gray-50 border-gray-200"
-                }`}
-              >
-                <Ionicons
-                  name="at-outline"
-                  size={18}
-                  color={isEditing ? "#72AF5B" : "#6B7280"}
-                />
-                <TextInput
-                  value={formData.username}
-                  editable={isEditing}
-                  onChangeText={(text) =>
-                    setFormData((prev) => ({ ...prev, username: text }))
-                  }
-                  placeholder="username"
-                  placeholderTextColor="#9CA3AF"
-                  autoCapitalize="none"
-                  className="flex-1 ml-2.5 text-sm font-medium text-gray-900 p-0"
-                />
-              </View>
-            </View>
-
-            {/* Gender */}
-            <View className="mb-4">
-              <Text className="text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
-                Gender
-              </Text>
-              {isEditing ? (
-                <View className="flex-row gap-2 pt-1">
-                  {GENDER_OPTIONS.map((g) => {
-                    const isSelected = formData.gender === g;
-                    return (
-                      <TouchableOpacity
-                        key={g}
-                        onPress={() =>
-                          setFormData((prev) => ({ ...prev, gender: g }))
-                        }
-                        className={`flex-1 py-2 rounded-xl border items-center justify-center ${
-                          isSelected
-                            ? "bg-[#72AF5B]/10 border-[#72AF5B]"
-                            : "bg-gray-50 border-gray-200"
-                        }`}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          className={`text-xs font-semibold ${
-                            isSelected ? "text-[#558643] font-bold" : "text-gray-700"
-                          }`}
-                        >
-                          {g}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              ) : (
-                <View className="flex-row items-center rounded-xl px-3.5 py-2.5 bg-gray-50 border border-gray-100">
-                  <MaterialCommunityIcons
-                    name="gender-male-female"
-                    size={18}
-                    color="#6B7280"
-                  />
-                  <Text className="flex-1 ml-2.5 text-sm font-medium text-gray-900">
-                    {formData.gender}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sectionTitle}>Personal Identity</Text>
+                  <Text style={styles.sectionSubtitle}>
+                    {isEditing
+                      ? "Update your personal name, username, and story"
+                      : "Your personal profile details and bio"}
                   </Text>
                 </View>
+              </View>
+
+              <FloatingLabelField
+                label="Full Name"
+                value={formData.name}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({ ...prev, name: text }))
+                }
+                iconName="person-outline"
+                isEditing={isEditing}
+              />
+
+              <FloatingLabelField
+                label="Username"
+                value={formData.username}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({ ...prev, username: text }))
+                }
+                iconName="at-outline"
+                autoCapitalize="none"
+                isEditing={isEditing}
+              />
+
+              <FloatingLabelField
+                label="Gender"
+                value={formData.gender}
+                iconName={
+                  formData.gender === "Female"
+                    ? "female-outline"
+                    : formData.gender === "Male"
+                    ? "male-outline"
+                    : "male-female-outline"
+                }
+                isEditing={isEditing}
+              >
+                {isEditing ? (
+                  <View style={styles.genderPillsRow}>
+                    {GENDER_OPTIONS.map((g) => {
+                      const isSelected = formData.gender === g;
+                      return (
+                        <TouchableOpacity
+                          key={g}
+                          onPress={() =>
+                            setFormData((prev) => ({ ...prev, gender: g }))
+                          }
+                          style={[
+                            styles.genderPill,
+                            isSelected && styles.genderPillSelected,
+                          ]}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.genderPillText,
+                              isSelected && styles.genderPillTextSelected,
+                            ]}
+                          >
+                            {g}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                ) : null}
+              </FloatingLabelField>
+
+              <FloatingLabelField
+                label="Bio / Farm Story"
+                value={formData.bio}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({ ...prev, bio: text }))
+                }
+                iconName="document-text-outline"
+                multiline
+                isEditing={isEditing}
+              />
+
+              {/* Section Divider */}
+              <View style={styles.sectionDivider} />
+
+              {/* SUBSECTION 2: Farm & Agricultural Identity */}
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionIconBox}>
+                  <Ionicons name="leaf" size={15} color="#34594A" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sectionTitle}>
+                    Farm & Agricultural Identity
+                  </Text>
+                  <Text style={styles.sectionSubtitle}>
+                    {isEditing
+                      ? "Update your farm and harvest product details"
+                      : "Your public grower credentials displayed across LocalFarm"}
+                  </Text>
+                </View>
+              </View>
+
+              <FloatingLabelField
+                label="Farm or Product"
+                value={farmData.farmName}
+                onChangeText={(text) =>
+                  setFarmData((prev) => ({ ...prev, farmName: text }))
+                }
+                iconName="storefront-outline"
+                isEditing={isEditing}
+              />
+
+              <FloatingLabelField
+                label="Farm Location (Barangay & Municipality)"
+                value={farmData.farmLocation}
+                onChangeText={(text) =>
+                  setFarmData((prev) => ({ ...prev, farmLocation: text }))
+                }
+                iconName="location-outline"
+                isEditing={isEditing}
+              />
+
+              <FloatingLabelField
+                label="Primary Produce / Crops & Livestock"
+                value={farmData.primaryCrops}
+                onChangeText={(text) =>
+                  setFarmData((prev) => ({ ...prev, primaryCrops: text }))
+                }
+                iconName="nutrition-outline"
+                isEditing={isEditing}
+              />
+
+              {/* Section Divider */}
+              <View style={styles.sectionDivider} />
+
+              {/* SUBSECTION 3: Contact & Security */}
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionIconBox}>
+                  <Ionicons name="call" size={15} color="#34594A" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sectionTitle}>Contact & Security</Text>
+                  <Text style={styles.sectionSubtitle}>
+                    Your direct communication and account login channels
+                  </Text>
+                </View>
+              </View>
+
+              <FloatingLabelField
+                label="Phone Number"
+                value={formData.phoneNumber}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({ ...prev, phoneNumber: text }))
+                }
+                iconName="call-outline"
+                keyboardType="phone-pad"
+                isEditing={isEditing}
+              />
+
+              <FloatingLabelField
+                label="Email Address"
+                value={formData.email || "user@localfarm.ph"}
+                iconName="mail-outline"
+                editable={false}
+                lockedBadge="Primary"
+                isEditing={isEditing}
+              />
+              {isEditing && (
+                <Text style={styles.lockedNoteText}>
+                  Primary login email cannot be edited directly for security.
+                </Text>
               )}
             </View>
-
-            {/* Bio */}
-            <View className="mb-1">
-              <Text className="text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
-                Bio / Farm Story
-              </Text>
-              <View
-                className={`flex-row items-start rounded-xl px-3.5 py-2.5 border ${
-                  isEditing
-                    ? "bg-white border-[#72AF5B]"
-                    : "bg-gray-50 border-gray-200"
-                }`}
-              >
-                <View className="pt-0.5">
-                  <Ionicons
-                    name="document-text-outline"
-                    size={18}
-                    color={isEditing ? "#72AF5B" : "#6B7280"}
-                  />
-                </View>
-                <TextInput
-                  value={formData.bio}
-                  editable={isEditing}
-                  onChangeText={(text) =>
-                    setFormData((prev) => ({ ...prev, bio: text }))
-                  }
-                  multiline
-                  placeholder={
-                    isEditing
-                      ? "Share a few sentences about your agricultural journey..."
-                      : "No bio added yet."
-                  }
-                  placeholderTextColor="#9CA3AF"
-                  style={{ minHeight: 52, textAlignVertical: "top" }}
-                  className="flex-1 ml-2.5 text-sm font-medium text-gray-900 p-0 leading-5"
-                />
-              </View>
-            </View>
-          </View>
-
-          {/* ================================================================= */}
-          {/* SECTION 3: CONTACT & SECURITY                                     */}
-          {/* ================================================================= */}
-          <View className="bg-white rounded-2xl p-4 mb-5 border border-gray-100 shadow-sm">
-            <View className="flex-row items-center gap-2 mb-1">
-              <View className="w-7 h-7 rounded-lg bg-gray-50 items-center justify-center">
-                <Ionicons name="call" size={16} color="#72AF5B" />
-              </View>
-              <Text className="text-base font-bold text-gray-900">
-                Contact & Security
-              </Text>
-            </View>
-            <Text className="text-xs text-gray-500 mb-4 ml-9">
-              Your direct communication and account login channels
-            </Text>
-
-            {/* Phone Number */}
-            <View className="mb-4">
-              <Text className="text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
-                Phone Number
-              </Text>
-              <View
-                className={`flex-row items-center rounded-xl px-3.5 py-2.5 border ${
-                  isEditing
-                    ? "bg-white border-[#72AF5B]"
-                    : "bg-gray-50 border-gray-200"
-                }`}
-              >
-                <Ionicons
-                  name="call-outline"
-                  size={18}
-                  color={isEditing ? "#72AF5B" : "#6B7280"}
-                />
-                <TextInput
-                  value={formData.phoneNumber}
-                  editable={isEditing}
-                  keyboardType="phone-pad"
-                  onChangeText={(text) =>
-                    setFormData((prev) => ({ ...prev, phoneNumber: text }))
-                  }
-                  placeholder="+63 9XX XXX XXXX"
-                  placeholderTextColor="#9CA3AF"
-                  className="flex-1 ml-2.5 text-sm font-medium text-gray-900 p-0"
-                />
-              </View>
-            </View>
-
-            {/* Email Address (Account Locked) */}
-            <View className="mb-1">
-              <Text className="text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
-                Email Address
-              </Text>
-              <View className="flex-row items-center rounded-xl px-3.5 py-2.5 bg-gray-100 border border-gray-200">
-                <Ionicons name="mail-outline" size={18} color="#6B7280" />
-                <TextInput
-                  value={formData.email}
-                  editable={false}
-                  placeholder="user@localfarm.ph"
-                  placeholderTextColor="#9CA3AF"
-                  className="flex-1 ml-2.5 text-sm font-medium text-gray-600 p-0"
-                />
-                <View className="flex-row items-center gap-1 bg-gray-200 px-2 py-0.5 rounded-md">
-                  <Ionicons name="lock-closed" size={12} color="#6B7280" />
-                  <Text className="text-[10px] font-semibold text-gray-600">
-                    Primary
-                  </Text>
-                </View>
-              </View>
-              <Text className="text-[11px] text-gray-400 mt-1.5 ml-1">
-                Primary login email cannot be edited directly for security.
-              </Text>
-            </View>
-          </View>
+          </FadeEntrance>
 
           {/* ================================================================= */}
           {/* EDIT MODE BOTTOM ACTION BAR                                       */}
           {/* ================================================================= */}
           {isEditing && (
-            <View className="flex-row gap-3 mb-6">
-              <TouchableOpacity
-                onPress={handleCancelEdit}
-                disabled={isSaving}
-                className="flex-1 py-3.5 bg-gray-200 rounded-2xl items-center justify-center active:bg-gray-300"
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel="Cancel"
-              >
-                <Text className="text-sm font-bold text-gray-800">Cancel</Text>
-              </TouchableOpacity>
+            <FadeEntrance delay={180}>
+              <View style={styles.editActionBar}>
+                <TouchableOpacity
+                  onPress={handleCancelEdit}
+                  disabled={isSaving}
+                  style={styles.cancelBtn}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel"
+                >
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={handleDone}
-                disabled={isSaving}
-                className="flex-[2] py-3.5 bg-[#72AF5B] rounded-2xl items-center justify-center shadow-md active:bg-[#60964c] flex-row gap-2"
-                style={{ backgroundColor: "#72AF5B" }}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel="Save Changes"
-              >
-                {isSaving ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-                    <Text className="text-sm font-bold text-white">
-                      Save Changes
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  onPress={handleDone}
+                  disabled={isSaving}
+                  style={styles.saveBtn}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Save Changes"
+                >
+                  {isSaving ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark" size={17} color="#FFFFFF" />
+                      <Text style={styles.saveBtnText}>Save Changes</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </FadeEntrance>
           )}
         </View>
       </ScrollView>
@@ -1168,17 +1298,11 @@ export default function PersonalInformation() {
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => setIsPhotoOptionsVisible(false)}
-          className="flex-1 justify-end sm:justify-center items-center px-4 pb-6"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+          style={styles.modalOverlay}
         >
-          <TouchableOpacity
-            activeOpacity={1}
-            className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl"
-          >
-            <Text className="text-lg font-bold text-gray-900 text-center mb-1">
-              Change Profile Picture
-            </Text>
-            <Text className="text-xs text-gray-500 text-center mb-4">
+          <TouchableOpacity activeOpacity={1} style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Change Profile Picture</Text>
+            <Text style={styles.modalSubtitle}>
               Select an option to update your photo
             </Text>
 
@@ -1188,18 +1312,17 @@ export default function PersonalInformation() {
                 setIsPhotoOptionsVisible(false);
                 pickImageFromGallery();
               }}
-              className="flex-row items-center py-3.5 px-4 bg-gray-50 rounded-2xl mb-2.5 active:bg-gray-100 border border-gray-100"
+              style={styles.modalOptionRow}
               accessibilityRole="button"
               accessibilityLabel="Choose from Gallery"
+              activeOpacity={0.7}
             >
-              <View className="w-10 h-10 rounded-full bg-[#E2F0D9] items-center justify-center mr-3.5">
-                <Ionicons name="images" size={20} color="#72AF5B" />
+              <View style={styles.modalOptionIconBox}>
+                <Ionicons name="images" size={18} color="#34594A" />
               </View>
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900">
-                  Choose from Gallery
-                </Text>
-                <Text className="text-xs text-gray-500">
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalOptionTitle}>Choose from Gallery</Text>
+                <Text style={styles.modalOptionDesc}>
                   Pick an existing image from your device
                 </Text>
               </View>
@@ -1211,18 +1334,17 @@ export default function PersonalInformation() {
                 setIsPhotoOptionsVisible(false);
                 takePhotoWithCamera();
               }}
-              className="flex-row items-center py-3.5 px-4 bg-gray-50 rounded-2xl mb-2.5 active:bg-gray-100 border border-gray-100"
+              style={styles.modalOptionRow}
               accessibilityRole="button"
               accessibilityLabel="Take Photo"
+              activeOpacity={0.7}
             >
-              <View className="w-10 h-10 rounded-full bg-[#E2F0D9] items-center justify-center mr-3.5">
-                <Ionicons name="camera" size={20} color="#72AF5B" />
+              <View style={styles.modalOptionIconBox}>
+                <Ionicons name="camera" size={18} color="#34594A" />
               </View>
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900">
-                  Take Photo
-                </Text>
-                <Text className="text-xs text-gray-500">
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalOptionTitle}>Take Photo</Text>
+                <Text style={styles.modalOptionDesc}>
                   Use your camera to take a new picture
                 </Text>
               </View>
@@ -1234,18 +1356,17 @@ export default function PersonalInformation() {
                 setIsPhotoOptionsVisible(false);
                 setIsChangingPicture(true);
               }}
-              className="flex-row items-center py-3.5 px-4 bg-gray-50 rounded-2xl mb-4 active:bg-gray-100 border border-gray-100"
+              style={styles.modalOptionRow}
               accessibilityRole="button"
               accessibilityLabel="Adjust Current Picture"
+              activeOpacity={0.7}
             >
-              <View className="w-10 h-10 rounded-full bg-[#E2F0D9] items-center justify-center mr-3.5">
-                <Ionicons name="crop" size={20} color="#72AF5B" />
+              <View style={styles.modalOptionIconBox}>
+                <Ionicons name="crop" size={18} color="#34594A" />
               </View>
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900">
-                  Adjust Current Picture
-                </Text>
-                <Text className="text-xs text-gray-500">
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalOptionTitle}>Adjust Current Picture</Text>
+                <Text style={styles.modalOptionDesc}>
                   Zoom and position your current avatar
                 </Text>
               </View>
@@ -1254,13 +1375,12 @@ export default function PersonalInformation() {
             {/* Cancel Button */}
             <TouchableOpacity
               onPress={() => setIsPhotoOptionsVisible(false)}
-              className="w-full py-3 bg-gray-200 rounded-2xl items-center justify-center active:bg-gray-300"
+              style={styles.modalCancelBtn}
               accessibilityRole="button"
               accessibilityLabel="Cancel"
+              activeOpacity={0.8}
             >
-              <Text className="text-base font-semibold text-gray-700">
-                Cancel
-              </Text>
+              <Text style={styles.modalCancelBtnText}>Cancel</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -1268,3 +1388,600 @@ export default function PersonalInformation() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 10,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#EDF1EB",
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "#F5F7F5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitleWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: -0.4,
+    color: "#293E33",
+    textAlign: "center",
+  },
+  scrollArea: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  scrollContent: {
+    paddingBottom: 120,
+  },
+
+  // Top Deep Forest Brand Banner (matching Reservations & Saved)
+  topBanner: {
+    backgroundColor: "#34594A",
+    paddingTop: 14,
+    paddingBottom: 68,
+    paddingHorizontal: 16,
+  },
+  bannerHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  bannerBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.16)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bannerTitleWrap: {
+    alignItems: "center",
+  },
+  bannerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+  bannerSubtitle: {
+    fontSize: 11.5,
+    color: "#D2E3D6",
+    textAlign: "center",
+    marginTop: 2,
+  },
+
+  // Overlapping Avatar Section
+  avatarSection: {
+    marginTop: -52,
+    alignItems: "center",
+    paddingHorizontal: 16,
+    zIndex: 10,
+  },
+  avatarWrap: {
+    position: "relative",
+  },
+  avatarCircle: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    borderWidth: 4,
+    borderColor: "#FFFFFF",
+    backgroundColor: "#E9EFEA",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImg: {
+    width: "100%",
+    height: "100%",
+  },
+  avatarFallback: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#E9EFEA",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarBadgeVerified: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarBadgeDot: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#34594A",
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+  },
+  nameBlock: {
+    alignItems: "center",
+    marginTop: 8,
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  profileName: {
+    fontSize: 19,
+    fontWeight: "700",
+    letterSpacing: -0.4,
+    color: "#23382D",
+    textAlign: "center",
+  },
+  actionPillBtn: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#34594A",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  actionPillText: {
+    fontSize: 12.5,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+
+  // Content Container
+  bodyContent: {
+    paddingHorizontal: 16,
+    marginTop: 18,
+  },
+
+  // RSBSA Status Cards (Crisp borders, zero harsh shadows)
+  rsbsaCardUnverified: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#E5ECE6",
+  },
+  rsbsaCardVerified: {
+    backgroundColor: "#F2F8F4",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#D5E8DC",
+  },
+  rsbsaCardPending: {
+    backgroundColor: "#FEF9EC",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#F7E6B8",
+  },
+  rsbsaCardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  rsbsaIconBoxUnverified: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: "#EDF3EE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rsbsaIconBoxVerified: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: "#E1EFE6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rsbsaIconBoxPending: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: "#FDF0D1",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rsbsaTitleUnverified: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#293E33",
+  },
+  rsbsaPillUnverified: {
+    backgroundColor: "#EDF3EE",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  rsbsaPillTextUnverified: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#34594A",
+  },
+  rsbsaDescUnverified: {
+    fontSize: 11.5,
+    lineHeight: 16,
+    color: "#718376",
+    marginTop: 2,
+  },
+  rsbsaChevronWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    backgroundColor: "#F4F7F3",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rsbsaTitleVerified: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#184530",
+  },
+  rsbsaPillVerified: {
+    backgroundColor: "#34594A",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  rsbsaPillTextVerified: {
+    fontSize: 9.5,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    textTransform: "uppercase",
+  },
+  rsbsaDescVerified: {
+    fontSize: 11.5,
+    color: "#2B5E43",
+    marginTop: 2,
+  },
+  rsbsaActionBtnVerified: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: "#CDE3D5",
+  },
+  rsbsaActionTextVerified: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#2E7D5B",
+  },
+  rsbsaTitlePending: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#78350F",
+  },
+  rsbsaPillPending: {
+    backgroundColor: "#B45309",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  rsbsaPillTextPending: {
+    fontSize: 9.5,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    textTransform: "uppercase",
+  },
+  rsbsaDescPending: {
+    fontSize: 11.5,
+    color: "#92400E",
+    marginTop: 2,
+  },
+  rsbsaActionBtnPending: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: "#F2DC9D",
+  },
+  rsbsaActionTextPending: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#B45309",
+  },
+
+  // Single Unified Container (for both View and Edit modes)
+  unifiedCardContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#E5ECE6",
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  sectionIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "#EDF3EE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+    color: "#293E33",
+  },
+  sectionSubtitle: {
+    fontSize: 11.5,
+    lineHeight: 16,
+    color: "#7A887F",
+    marginTop: 2,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: "#EDF2EE",
+    marginVertical: 14,
+  },
+
+  // Floating Label Fields (Smooth Placeholder Animation)
+  floatingFieldContainer: {
+    flexDirection: "row",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+  },
+  floatingFieldIconBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: "#F2F6F3",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  floatingFieldIconBoxFocused: {
+    backgroundColor: "#EBF3EE",
+  },
+  floatingFieldContent: {
+    flex: 1,
+    minHeight: 46,
+    justifyContent: "center",
+    position: "relative",
+  },
+  floatingLabelText: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    letterSpacing: -0.1,
+  },
+  floatingTextInput: {
+    fontSize: 13.5,
+    fontWeight: "500",
+    color: "#22382B",
+    paddingTop: 18,
+    paddingBottom: 2,
+    paddingHorizontal: 0,
+    margin: 0,
+    height: 48,
+  },
+  floatingValueText: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: "#1F3327",
+    letterSpacing: -0.1,
+    marginTop: 18,
+    paddingBottom: 2,
+  },
+  floatingValueEmptyText: {
+    color: "#8E9E94",
+    fontWeight: "400",
+  },
+  floatingFieldCustomChild: {
+    marginTop: 18,
+    paddingBottom: 4,
+  },
+
+  // Gender Pill Selectors inside Floating Field
+  genderPillsRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingTop: 2,
+  },
+  genderPill: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E5ECE6",
+    backgroundColor: "#F7FAF7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  genderPillSelected: {
+    backgroundColor: "#EDF3EE",
+    borderColor: "#34594A",
+    borderWidth: 1.5,
+  },
+  genderPillText: {
+    fontSize: 11.5,
+    fontWeight: "600",
+    color: "#718376",
+  },
+  genderPillTextSelected: {
+    color: "#34594A",
+    fontWeight: "700",
+  },
+
+  // Locked Badge & Helper
+  lockedPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#EDF3EE",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 7,
+    marginLeft: 8,
+  },
+  lockedPillText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#34594A",
+  },
+  lockedNoteText: {
+    fontSize: 11,
+    color: "#839287",
+    marginTop: 2,
+    marginBottom: 4,
+    marginLeft: 4,
+  },
+
+  // Edit Mode Action Bar
+  editActionBar: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  cancelBtn: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 14,
+    backgroundColor: "#F3F5F2",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E2ECE4",
+  },
+  cancelBtnText: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: "#5E7265",
+  },
+  saveBtn: {
+    flex: 2,
+    minHeight: 46,
+    borderRadius: 14,
+    backgroundColor: "#34594A",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
+  saveBtnText: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+
+  // Photo Options Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(22, 38, 29, 0.45)",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 390,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#E5ECE6",
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#293E33",
+    textAlign: "center",
+    marginBottom: 3,
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: "#7A887F",
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  modalOptionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: "#F7FAF7",
+    borderRadius: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#E8EFE9",
+    gap: 12,
+  },
+  modalOptionIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    backgroundColor: "#EDF3EE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalOptionTitle: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: "#293E33",
+  },
+  modalOptionDesc: {
+    fontSize: 11,
+    color: "#7A887F",
+    marginTop: 1,
+  },
+  modalCancelBtn: {
+    marginTop: 6,
+    minHeight: 44,
+    borderRadius: 13,
+    backgroundColor: "#F3F5F2",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E2ECE4",
+  },
+  modalCancelBtnText: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: "#5E7265",
+  },
+});

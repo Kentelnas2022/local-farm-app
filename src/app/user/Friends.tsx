@@ -134,7 +134,7 @@ export default function Friends() {
           accessibilityRole="button"
           accessibilityLabel="Open sidebar menu"
         >
-          <Ionicons name="person-add-outline" size={26} color="#374151" />
+          <Ionicons name="person-add-outline" size={26} color="#34594A" />
         </TouchableOpacity>
 
         <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 h-11 border border-gray-100">
@@ -152,10 +152,10 @@ export default function Friends() {
               className="p-1 mr-1"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+              <Ionicons name="close-circle" size={18} color="#34594A" />
             </TouchableOpacity>
           ) : null}
-          <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+          <Ionicons name="search-outline" size={20} color="#34594A" />
         </View>
       </View>
 
@@ -200,7 +200,7 @@ export default function Friends() {
                     <Ionicons
                       name={isSelected ? "radio-button-on" : "radio-button-off"}
                       size={20}
-                      color={isSelected ? "#72AF5B" : "#9CA3AF"}
+                      color={isSelected ? "#34594A" : "#9CA3AF"}
                       style={{ marginRight: 10 }}
                     />
                     <Text
@@ -228,7 +228,7 @@ export default function Friends() {
               <Switch
                 value={noMutualFilter}
                 onValueChange={setNoMutualFilter}
-                trackColor={{ false: "#E5E7EB", true: "#72AF5B" }}
+                trackColor={{ false: "#E5E7EB", true: "#34594A" }}
                 thumbColor="#FFFFFF"
               />
             </View>
@@ -250,14 +250,14 @@ export default function Friends() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={() => fetchFriends(true)}
-            colors={["#72AF5B"]}
-            tintColor="#72AF5B"
+            colors={["#34594A"]}
+            tintColor="#34594A"
           />
         }
       >
         {isLoading ? (
           <View className="py-12 items-center justify-center">
-            <ActivityIndicator size="large" color="#72AF5B" />
+            <ActivityIndicator size="large" color="#34594A" />
             <Text className="text-sm text-gray-500 mt-2 font-medium">
               Loading friends...
             </Text>
@@ -268,7 +268,7 @@ export default function Friends() {
             <View className="flex-row justify-between items-center px-5 py-2 mb-1">
               <Text className="text-lg font-semibold text-gray-900">
                 Friends{" "}
-                <Text className="text-[#72AF5B] font-bold">
+                <Text className="text-[#34594A] font-bold">
                   {filteredFriends.length}
                 </Text>
               </Text>
@@ -287,7 +287,7 @@ export default function Friends() {
                       : "chevron-down-outline"
                   }
                   size={16}
-                  color="#4B5563"
+                  color="#34594A"
                 />
               </TouchableOpacity>
             </View>
@@ -295,7 +295,7 @@ export default function Friends() {
             {filteredFriends.length === 0 ? (
               <View className="py-14 items-center justify-center px-6">
                 <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-                  <Ionicons name="people-outline" size={32} color="#9CA3AF" />
+                  <Ionicons name="people-outline" size={32} color="#34594A" />
                 </View>
                 <Text className="text-base font-bold text-gray-800 mb-1">
                   No Friends Found
@@ -321,7 +321,7 @@ export default function Friends() {
                           resizeMode="cover"
                         />
                       ) : (
-                        <Ionicons name="person" size={26} color="#6B7280" />
+                        <Ionicons name="person" size={26} color="#34594A" />
                       )}
                     </View>
 
@@ -349,7 +349,7 @@ export default function Friends() {
                       <Ionicons
                         name="ellipsis-horizontal"
                         size={18}
-                        color="#4B5563"
+                        color="#34594A"
                       />
                     </TouchableOpacity>
                   </TouchableOpacity>
@@ -399,7 +399,7 @@ export default function Friends() {
                       resizeMode="cover"
                     />
                   ) : (
-                    <Ionicons name="person" size={24} color="#6B7280" />
+                    <Ionicons name="person" size={24} color="#34594A" />
                   )}
                 </View>
                 <View className="flex-1">
@@ -425,8 +425,8 @@ export default function Friends() {
                 }}
                 className="flex-row items-center py-3 px-3 rounded-2xl active:bg-gray-50"
               >
-                <View className="w-10 h-10 rounded-full bg-green-50 items-center justify-center mr-3.5 border border-green-100">
-                  <Ionicons name="person-outline" size={20} color="#72AF5B" />
+                <View className="w-10 h-10 rounded-full bg-[#EDF3EE] items-center justify-center mr-3.5 border border-[#E4EDE6]">
+                  <Ionicons name="person-outline" size={20} color="#34594A" />
                 </View>
                 <View className="flex-1">
                   <Text className="text-base font-semibold text-gray-900">
@@ -436,7 +436,7 @@ export default function Friends() {
                     See posts, photos, and info
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                <Ionicons name="chevron-forward" size={18} color="#34594A" />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -462,7 +462,7 @@ export default function Friends() {
                     Send a direct message
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                <Ionicons name="chevron-forward" size={18} color="#34594A" />
               </TouchableOpacity>
             </View>
 
@@ -479,7 +479,7 @@ export default function Friends() {
         </View>
       </Modal>
 
-      <BottomNavBar activeTab="Connection" showFab={false} />
+      <BottomNavBar accentColor="#34594A" activeTab="Connection" showFab={false} />
       <SidebarMenu
         isVisible={isSidebarVisible}
         onClose={() => setSidebarVisible(false)}

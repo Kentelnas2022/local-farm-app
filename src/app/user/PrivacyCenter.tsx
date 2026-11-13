@@ -68,8 +68,8 @@ const AUDIENCE_OPTIONS: AudienceOptionConfig[] = [
     title: "Profile Visibility",
     subtitle: "Who can see your farm details, bio, and contact info",
     icon: "person-circle-outline",
-    iconBg: "bg-blue-50",
-    iconColor: "#2563EB",
+    iconBg: "bg-[#EDF3EE]",
+    iconColor: "#34594A",
     options: [
       {
         value: "Public",
@@ -93,8 +93,8 @@ const AUDIENCE_OPTIONS: AudienceOptionConfig[] = [
     title: "Posts & Harvests",
     subtitle: "Default audience for your harvest posts and updates",
     icon: "newspaper-outline",
-    iconBg: "bg-emerald-50",
-    iconColor: "#059669",
+    iconBg: "bg-[#EDF3EE]",
+    iconColor: "#34594A",
     options: [
       {
         value: "Public",
@@ -118,8 +118,8 @@ const AUDIENCE_OPTIONS: AudienceOptionConfig[] = [
     title: "Stories",
     subtitle: "Who can view your 24-hour expiring farm stories",
     icon: "time-outline",
-    iconBg: "bg-purple-50",
-    iconColor: "#7C3AED",
+    iconBg: "bg-[#EDF3EE]",
+    iconColor: "#34594A",
     options: [
       {
         value: "Public",
@@ -143,8 +143,8 @@ const AUDIENCE_OPTIONS: AudienceOptionConfig[] = [
     title: "Tagging & Mentions",
     subtitle: "Who can tag your farm in posts, harvests, and photos",
     icon: "pricetag-outline",
-    iconBg: "bg-amber-50",
-    iconColor: "#D97706",
+    iconBg: "bg-[#EDF3EE]",
+    iconColor: "#34594A",
     options: [
       {
         value: "Everyone",
@@ -168,8 +168,8 @@ const AUDIENCE_OPTIONS: AudienceOptionConfig[] = [
     title: "Connections List",
     subtitle: "Who can see your connected farmers and buyers list",
     icon: "people-outline",
-    iconBg: "bg-teal-50",
-    iconColor: "#0D9488",
+    iconBg: "bg-[#EDF3EE]",
+    iconColor: "#34594A",
     options: [
       {
         value: "Public",
@@ -193,8 +193,8 @@ const AUDIENCE_OPTIONS: AudienceOptionConfig[] = [
     title: "Produce Pricing",
     subtitle: "Who can view wholesale and retail crop prices",
     icon: "cash-outline",
-    iconBg: "bg-green-50",
-    iconColor: "#16A34A",
+    iconBg: "bg-[#EDF3EE]",
+    iconColor: "#34594A",
     options: [
       {
         value: "Public",
@@ -312,9 +312,24 @@ export default function PrivacyCenter() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F8F9FA] h-full" style={{ flex: 1 }}>
+    <SafeAreaView
+      className="flex-1"
+      style={{ flex: 1, backgroundColor: "#FAF9F5" }}
+      edges={["top", "left", "right"]}
+    >
       {/* Top Header */}
-      <View className="flex-row items-center justify-between px-4 py-3.5 bg-white border-b border-gray-100">
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          backgroundColor: "#FFFFFF",
+          borderBottomWidth: 1,
+          borderColor: "#E5ECE6",
+        }}
+      >
         <TouchableOpacity
           onPress={() => {
             if (router.canGoBack()) {
@@ -324,35 +339,51 @@ export default function PrivacyCenter() {
             }
           }}
           activeOpacity={0.7}
-          className="p-1 -ml-1"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-undo" size={26} color="#111827" />
+          <Ionicons name="chevron-back" size={22} color="#34594A" />
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-900">Privacy Center</Text>
-        <View className="w-8" />
+        <Text
+          style={{
+            fontSize: 17,
+            fontWeight: "700",
+            color: "#23382D",
+            letterSpacing: -0.3,
+          }}
+        >
+          Privacy Center
+        </Text>
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
-        className="flex-1 px-4 pt-4"
+        className="flex-1"
+        style={{ flex: 1, backgroundColor: "#FAF9F5" }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
       >
-        {/* Rich Hero Banner with verified vibrant LinearGradient */}
+        {/* Rich Hero Banner with calm forest LinearGradient */}
         <LinearGradient
-          colors={["#1b4332", "#2d6a4f"]}
+          colors={["#29483B", "#38604F"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{
-            borderRadius: 16,
+            borderRadius: 18,
             padding: 18,
             marginBottom: 20,
-            shadowColor: "#000",
+            shadowColor: "#293E33",
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 3,
+            shadowRadius: 5,
+            elevation: 2,
           }}
         >
           <View className="flex-row items-center gap-3 mb-2">
@@ -363,12 +394,12 @@ export default function PrivacyCenter() {
               <Text className="text-white font-bold text-base">
                 Your Privacy & Safety
               </Text>
-              <Text className="text-emerald-100 text-xs">
+              <Text style={{ color: "#E0EBE4", fontSize: 12 }}>
                 Control farm visibility, location, and data security
               </Text>
             </View>
           </View>
-          <Text className="text-emerald-50 text-xs leading-5 mt-1">
+          <Text style={{ color: "#D4E4DA", fontSize: 12, lineHeight: 18, marginTop: 4 }}>
             Local Farm gives you full autonomy over who sees your farm location,
             produce prices, posts, and agricultural registry records.
           </Text>
@@ -376,8 +407,8 @@ export default function PrivacyCenter() {
 
         {isLoading ? (
           <View className="py-12 items-center justify-center">
-            <ActivityIndicator size="large" color="#72AF5B" />
-            <Text className="text-xs text-gray-400 mt-2">
+            <ActivityIndicator size="large" color="#34594A" />
+            <Text style={{ fontSize: 12, color: "#75867B", marginTop: 8 }}>
               Loading privacy preferences...
             </Text>
           </View>
@@ -385,10 +416,33 @@ export default function PrivacyCenter() {
           <>
             {/* Section 1: Audience & Visibility (List of Options) */}
             <View className="mb-5">
-              <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
+              <Text
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: "700",
+                  letterSpacing: 0.4,
+                  textTransform: "uppercase",
+                  color: "#738579",
+                  marginBottom: 8,
+                  marginLeft: 4,
+                }}
+              >
                 Audience & Visibility
               </Text>
-              <View className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+              <View
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: "#E5ECE6",
+                  shadowColor: "#293E33",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.035,
+                  shadowRadius: 6,
+                  elevation: 1,
+                  overflow: "hidden",
+                }}
+              >
                 {AUDIENCE_OPTIONS.map((item, index) => {
                   const currentValue = String(settings[item.key] || "");
                   const isLast = index === AUDIENCE_OPTIONS.length - 1;
@@ -398,26 +452,50 @@ export default function PrivacyCenter() {
                       key={item.key}
                       onPress={() => setSelectedAudienceConfig(item)}
                       activeOpacity={0.7}
-                      className={`flex-row items-center justify-between p-4 active:bg-gray-50 ${
-                        !isLast ? "border-b border-gray-100" : ""
-                      }`}
+                      style={[
+                        {
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: 15,
+                        },
+                        !isLast && { borderBottomWidth: 1, borderColor: "#F0F4F0" },
+                      ]}
                     >
                       <View className="flex-row items-center gap-3 flex-1 mr-3">
                         <View
-                          className={`w-9 h-9 rounded-xl ${item.iconBg} items-center justify-center`}
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 12,
+                            backgroundColor: "#EDF3EE",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
                         >
                           <Ionicons
                             name={item.icon}
                             size={20}
-                            color={item.iconColor}
+                            color="#34594A"
                           />
                         </View>
                         <View className="flex-1">
-                          <Text className="text-sm font-semibold text-gray-800">
+                          <Text
+                            style={{
+                              fontSize: 14.5,
+                              fontWeight: "600",
+                              color: "#24372C",
+                              letterSpacing: -0.2,
+                            }}
+                          >
                             {item.title}
                           </Text>
                           <Text
-                            className="text-xs text-gray-500 mt-0.5"
+                            style={{
+                              fontSize: 11.5,
+                              color: "#7C8D82",
+                              marginTop: 2,
+                            }}
                             numberOfLines={1}
                           >
                             {item.subtitle}
@@ -427,15 +505,30 @@ export default function PrivacyCenter() {
 
                       {/* Current Value Pill + Chevron */}
                       <View className="flex-row items-center gap-1.5">
-                        <View className="bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
-                          <Text className="text-xs font-semibold text-emerald-700">
+                        <View
+                          style={{
+                            backgroundColor: "#EDF3EE",
+                            paddingHorizontal: 10,
+                            paddingVertical: 3.5,
+                            borderRadius: 8,
+                            borderWidth: 1,
+                            borderColor: "#DCE6DF",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11.5,
+                              fontWeight: "700",
+                              color: "#34594A",
+                            }}
+                          >
                             {currentValue}
                           </Text>
                         </View>
                         <Ionicons
                           name="chevron-forward"
                           size={16}
-                          color="#9CA3AF"
+                          color="#879386"
                         />
                       </View>
                     </TouchableOpacity>
@@ -446,20 +539,51 @@ export default function PrivacyCenter() {
 
             {/* Section 2: Farm Location & Safety */}
             <View className="mb-5">
-              <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
+              <Text
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: "700",
+                  letterSpacing: 0.4,
+                  textTransform: "uppercase",
+                  color: "#738579",
+                  marginBottom: 8,
+                  marginLeft: 4,
+                }}
+              >
                 Location & Safety
               </Text>
-              <View className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm gap-4">
+              <View
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: "#E5ECE6",
+                  padding: 16,
+                  shadowColor: "#293E33",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.035,
+                  shadowRadius: 6,
+                  elevation: 1,
+                  gap: 16,
+                }}
+              >
                 {/* Precise GPS Coordinates */}
                 <View className="flex-row items-center justify-between">
                   <View className="flex-1 mr-3">
                     <View className="flex-row items-center gap-2 mb-1">
-                      <Ionicons name="location-outline" size={18} color="#374151" />
-                      <Text className="text-sm font-semibold text-gray-800">
+                      <Ionicons name="location-outline" size={18} color="#34594A" />
+                      <Text
+                        style={{
+                          fontSize: 14.5,
+                          fontWeight: "600",
+                          color: "#24372C",
+                          letterSpacing: -0.2,
+                        }}
+                      >
                         Exact Farm Gate GPS
                       </Text>
                     </View>
-                    <Text className="text-xs text-gray-500">
+                    <Text style={{ fontSize: 11.5, color: "#7C8D82", lineHeight: 16 }}>
                       When enabled, pinpoint GPS coordinates are included for pickup
                       directions. When disabled, only your barangay is displayed.
                     </Text>
@@ -475,21 +599,37 @@ export default function PrivacyCenter() {
                           : "Location limited to general barangay.",
                       )
                     }
-                    trackColor={{ false: "#D1D5DB", true: "#86EFAC" }}
-                    thumbColor={settings.preciseLocation ? "#16A34A" : "#9CA3AF"}
+                    trackColor={{ false: "#E0E7E1", true: "#B8D5C4" }}
+                    thumbColor={settings.preciseLocation ? "#34594A" : "#FFFFFF"}
                   />
                 </View>
 
                 {/* Explore Map Presence */}
-                <View className="pt-3 border-t border-gray-100 flex-row items-center justify-between">
+                <View
+                  style={{
+                    paddingTop: 14,
+                    borderTopWidth: 1,
+                    borderColor: "#F0F4F0",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
                   <View className="flex-1 mr-3">
                     <View className="flex-row items-center gap-2 mb-1">
-                      <Ionicons name="map-outline" size={18} color="#374151" />
-                      <Text className="text-sm font-semibold text-gray-800">
+                      <Ionicons name="map-outline" size={18} color="#34594A" />
+                      <Text
+                        style={{
+                          fontSize: 14.5,
+                          fontWeight: "600",
+                          color: "#24372C",
+                          letterSpacing: -0.2,
+                        }}
+                      >
                         Explore Map Discovery
                       </Text>
                     </View>
-                    <Text className="text-xs text-gray-500">
+                    <Text style={{ fontSize: 11.5, color: "#7C8D82", lineHeight: 16 }}>
                       Allow your farm pin and fresh harvests to appear on the
                       Local Farm community map.
                     </Text>
@@ -505,8 +645,8 @@ export default function PrivacyCenter() {
                           : "Farm hidden from Explore Map.",
                       )
                     }
-                    trackColor={{ false: "#D1D5DB", true: "#86EFAC" }}
-                    thumbColor={settings.mapDiscovery ? "#16A34A" : "#9CA3AF"}
+                    trackColor={{ false: "#E0E7E1", true: "#B8D5C4" }}
+                    thumbColor={settings.mapDiscovery ? "#34594A" : "#FFFFFF"}
                   />
                 </View>
               </View>
@@ -514,26 +654,64 @@ export default function PrivacyCenter() {
 
             {/* Section 3: Social & Messaging Controls */}
             <View className="mb-5">
-              <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
+              <Text
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: "700",
+                  letterSpacing: 0.4,
+                  textTransform: "uppercase",
+                  color: "#738579",
+                  marginBottom: 8,
+                  marginLeft: 4,
+                }}
+              >
                 Interactions & Accounts
               </Text>
-              <View className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+              <View
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: "#E5ECE6",
+                  shadowColor: "#293E33",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.035,
+                  shadowRadius: 6,
+                  elevation: 1,
+                  overflow: "hidden",
+                }}
+              >
                 {/* Who Can Message You */}
-                <View className="p-4 border-b border-gray-100">
+                <View style={{ padding: 16, borderBottomWidth: 1, borderColor: "#F0F4F0" }}>
                   <View className="flex-row items-center gap-2 mb-1">
                     <Ionicons
                       name="chatbubble-ellipses-outline"
                       size={18}
-                      color="#374151"
+                      color="#34594A"
                     />
-                    <Text className="text-sm font-semibold text-gray-800">
+                    <Text
+                      style={{
+                        fontSize: 14.5,
+                        fontWeight: "600",
+                        color: "#24372C",
+                        letterSpacing: -0.2,
+                      }}
+                    >
                       Message Inquiries
                     </Text>
                   </View>
-                  <Text className="text-xs text-gray-500 mb-2.5">
+                  <Text style={{ fontSize: 11.5, color: "#7C8D82", marginBottom: 10 }}>
                     Choose who can start direct chats or inquiries with your farm.
                   </Text>
-                  <View className="flex-row bg-gray-100 p-1 rounded-xl gap-1">
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      backgroundColor: "#F2F5F2",
+                      padding: 3,
+                      borderRadius: 12,
+                      gap: 4,
+                    }}
+                  >
                     {(
                       [
                         { id: "everyone", label: "Everyone" },
@@ -549,18 +727,24 @@ export default function PrivacyCenter() {
                             `Messaging inquiries set to ${opt.label}`,
                           )
                         }
-                        className={`flex-1 py-2 rounded-lg items-center ${
-                          settings.messagingScope === opt.id
-                            ? "bg-white shadow-xs"
-                            : ""
-                        }`}
+                        style={[
+                          { flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: "center" },
+                          settings.messagingScope === opt.id && {
+                            backgroundColor: "#FFFFFF",
+                            shadowColor: "#293E33",
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.06,
+                            shadowRadius: 3,
+                            elevation: 1,
+                          },
+                        ]}
                       >
                         <Text
-                          className={`text-xs font-semibold ${
-                            settings.messagingScope === opt.id
-                              ? "text-emerald-700 font-bold"
-                              : "text-gray-600"
-                          }`}
+                          style={{
+                            fontSize: 12,
+                            fontWeight: settings.messagingScope === opt.id ? "700" : "500",
+                            color: settings.messagingScope === opt.id ? "#34594A" : "#738579",
+                          }}
                         >
                           {opt.label}
                         </Text>
@@ -570,12 +754,28 @@ export default function PrivacyCenter() {
                 </View>
 
                 {/* Show Online Activity Status */}
-                <View className="p-4 border-b border-gray-100 flex-row items-center justify-between">
+                <View
+                  style={{
+                    padding: 16,
+                    borderBottomWidth: 1,
+                    borderColor: "#F0F4F0",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
                   <View className="flex-1 mr-3">
-                    <Text className="text-sm font-semibold text-gray-800">
+                    <Text
+                      style={{
+                        fontSize: 14.5,
+                        fontWeight: "600",
+                        color: "#24372C",
+                        letterSpacing: -0.2,
+                      }}
+                    >
                       Show Online Status
                     </Text>
-                    <Text className="text-xs text-gray-500 mt-0.5">
+                    <Text style={{ fontSize: 11.5, color: "#7C8D82", marginTop: 2 }}>
                       Let other growers and buyers see when you are active.
                     </Text>
                   </View>
@@ -588,126 +788,270 @@ export default function PrivacyCenter() {
                         val ? "Online status visible." : "Online status hidden.",
                       )
                     }
-                    trackColor={{ false: "#D1D5DB", true: "#86EFAC" }}
-                    thumbColor={settings.showOnlineStatus ? "#16A34A" : "#9CA3AF"}
+                    trackColor={{ false: "#E0E7E1", true: "#B8D5C4" }}
+                    thumbColor={settings.showOnlineStatus ? "#34594A" : "#FFFFFF"}
                   />
                 </View>
 
                 {/* Blocked Accounts Navigation */}
                 <TouchableOpacity
                   onPress={() => router.push("/user/BlockedAccounts" as any)}
-                  className="flex-row items-center justify-between p-4 border-b border-gray-100 active:bg-gray-50"
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: 15,
+                    borderBottomWidth: 1,
+                    borderColor: "#F0F4F0",
+                  }}
                   activeOpacity={0.7}
                 >
                   <View className="flex-row items-center gap-3">
-                    <Ionicons name="ban-outline" size={20} color="#EF4444" />
+                    <View
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 12,
+                        backgroundColor: "#F9ECEC",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons name="ban-outline" size={19} color="#B85454" />
+                    </View>
                     <View>
-                      <Text className="text-sm font-semibold text-gray-800">
+                      <Text
+                        style={{
+                          fontSize: 14.5,
+                          fontWeight: "600",
+                          color: "#24372C",
+                          letterSpacing: -0.2,
+                        }}
+                      >
                         Blocked Accounts
                       </Text>
-                      <Text className="text-xs text-gray-400">
+                      <Text style={{ fontSize: 11.5, color: "#7C8D82", marginTop: 2 }}>
                         Manage blocked users and spam restrictions
                       </Text>
                     </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                  <Ionicons name="chevron-forward" size={16} color="#879386" />
                 </TouchableOpacity>
 
                 {/* Restricted Accounts Navigation */}
                 <TouchableOpacity
                   onPress={() => router.push("/user/RestrictedAccounts" as any)}
-                  className="flex-row items-center justify-between p-4 active:bg-gray-50"
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: 15,
+                  }}
                   activeOpacity={0.7}
                 >
                   <View className="flex-row items-center gap-3">
-                    <Ionicons name="hand-left-outline" size={20} color="#F59E0B" />
+                    <View
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 12,
+                        backgroundColor: "#F8F2E6",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons name="hand-left-outline" size={19} color="#B07D38" />
+                    </View>
                     <View>
-                      <Text className="text-sm font-semibold text-gray-800">
+                      <Text
+                        style={{
+                          fontSize: 14.5,
+                          fontWeight: "600",
+                          color: "#24372C",
+                          letterSpacing: -0.2,
+                        }}
+                      >
                         Restricted Accounts
                       </Text>
-                      <Text className="text-xs text-gray-400">
+                      <Text style={{ fontSize: 11.5, color: "#7C8D82", marginTop: 2 }}>
                         Limit interactions without blocking
                       </Text>
                     </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                  <Ionicons name="chevron-forward" size={16} color="#879386" />
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* Section 4: Data Security & Policies */}
             <View className="mb-6">
-              <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
+              <Text
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: "700",
+                  letterSpacing: 0.4,
+                  textTransform: "uppercase",
+                  color: "#738579",
+                  marginBottom: 8,
+                  marginLeft: 4,
+                }}
+              >
                 Data & Policies
               </Text>
-              <View className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+              <View
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: "#E5ECE6",
+                  shadowColor: "#293E33",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.035,
+                  shadowRadius: 6,
+                  elevation: 1,
+                  overflow: "hidden",
+                }}
+              >
                 <TouchableOpacity
                   onPress={() => setActivePolicyModal("data_privacy")}
-                  className="flex-row items-center justify-between p-4 border-b border-gray-100 active:bg-gray-50"
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: 15,
+                    borderBottomWidth: 1,
+                    borderColor: "#F0F4F0",
+                  }}
                   activeOpacity={0.7}
                 >
                   <View className="flex-row items-center gap-3">
-                    <Ionicons
-                      name="lock-closed-outline"
-                      size={20}
-                      color="#2563EB"
-                    />
+                    <View
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 12,
+                        backgroundColor: "#EDF3EE",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons
+                        name="lock-closed-outline"
+                        size={19}
+                        color="#34594A"
+                      />
+                    </View>
                     <View>
-                      <Text className="text-sm font-semibold text-gray-800">
+                      <Text
+                        style={{
+                          fontSize: 14.5,
+                          fontWeight: "600",
+                          color: "#24372C",
+                          letterSpacing: -0.2,
+                        }}
+                      >
                         Data Privacy Policy
                       </Text>
-                      <Text className="text-xs text-gray-400">
+                      <Text style={{ fontSize: 11.5, color: "#7C8D82", marginTop: 2 }}>
                         How your agricultural and contact data is secured
                       </Text>
                     </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                  <Ionicons name="chevron-forward" size={16} color="#879386" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   onPress={() => setActivePolicyModal("rsbsa_safety")}
-                  className="flex-row items-center justify-between p-4 border-b border-gray-100 active:bg-gray-50"
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: 15,
+                    borderBottomWidth: 1,
+                    borderColor: "#F0F4F0",
+                  }}
                   activeOpacity={0.7}
                 >
                   <View className="flex-row items-center gap-3">
-                    <Ionicons
-                      name="ribbon-outline"
-                      size={20}
-                      color="#059669"
-                    />
+                    <View
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 12,
+                        backgroundColor: "#EDF3EE",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons
+                        name="ribbon-outline"
+                        size={19}
+                        color="#34594A"
+                      />
+                    </View>
                     <View>
-                      <Text className="text-sm font-semibold text-gray-800">
+                      <Text
+                        style={{
+                          fontSize: 14.5,
+                          fontWeight: "600",
+                          color: "#24372C",
+                          letterSpacing: -0.2,
+                        }}
+                      >
                         RSBSA Registry & ID Protection
                       </Text>
-                      <Text className="text-xs text-gray-400">
+                      <Text style={{ fontSize: 11.5, color: "#7C8D82", marginTop: 2 }}>
                         Government verification document safety guidelines
                       </Text>
                     </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                  <Ionicons name="chevron-forward" size={16} color="#879386" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   onPress={() => setActivePolicyModal("export_data")}
-                  className="flex-row items-center justify-between p-4 active:bg-gray-50"
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: 15,
+                  }}
                   activeOpacity={0.7}
                 >
                   <View className="flex-row items-center gap-3">
-                    <Ionicons
-                      name="cloud-download-outline"
-                      size={20}
-                      color="#7C3AED"
-                    />
+                    <View
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 12,
+                        backgroundColor: "#EDF3EE",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons
+                        name="cloud-download-outline"
+                        size={19}
+                        color="#34594A"
+                      />
+                    </View>
                     <View>
-                      <Text className="text-sm font-semibold text-gray-800">
+                      <Text
+                        style={{
+                          fontSize: 14.5,
+                          fontWeight: "600",
+                          color: "#24372C",
+                          letterSpacing: -0.2,
+                        }}
+                      >
                         Download Your Farm Data
                       </Text>
-                      <Text className="text-xs text-gray-400">
+                      <Text style={{ fontSize: 11.5, color: "#7C8D82", marginTop: 2 }}>
                         Export an archive of listings, transactions & profile
                       </Text>
                     </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                  <Ionicons name="chevron-forward" size={16} color="#879386" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -722,32 +1066,66 @@ export default function PrivacyCenter() {
         transparent={true}
         onRequestClose={() => setSelectedAudienceConfig(null)}
       >
-        <View className="flex-1 justify-end bg-black/50">
-          <View className="bg-white rounded-t-3xl max-h-[75%] p-5 shadow-2xl">
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(25, 38, 30, 0.45)" }}>
+          <View
+            style={{
+              backgroundColor: "#FFFFFF",
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              maxHeight: "75%",
+              padding: 20,
+              borderTopWidth: 1,
+              borderColor: "#E5ECE6",
+            }}
+          >
             {/* Drag Handle */}
             <View className="items-center mb-3">
-              <View className="w-12 h-1.5 rounded-full bg-gray-300" />
+              <View style={{ width: 44, height: 5, borderRadius: 3, backgroundColor: "#D4E2D8" }} />
             </View>
 
             {/* Modal Header */}
-            <View className="flex-row items-center justify-between pb-3 border-b border-gray-100 mb-4">
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingBottom: 14,
+                borderBottomWidth: 1,
+                borderColor: "#E5ECE6",
+                marginBottom: 16,
+              }}
+            >
               <View className="flex-row items-center gap-2.5">
                 {selectedAudienceConfig && (
                   <View
-                    className={`w-9 h-9 rounded-xl ${selectedAudienceConfig.iconBg} items-center justify-center`}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 11,
+                      backgroundColor: "#EDF3EE",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
                   >
                     <Ionicons
                       name={selectedAudienceConfig.icon}
                       size={20}
-                      color={selectedAudienceConfig.iconColor}
+                      color="#34594A"
                     />
                   </View>
                 )}
                 <View>
-                  <Text className="text-base font-bold text-gray-900">
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "700",
+                      color: "#23382D",
+                      letterSpacing: -0.2,
+                    }}
+                  >
                     {selectedAudienceConfig?.title}
                   </Text>
-                  <Text className="text-xs text-gray-500">
+                  <Text style={{ fontSize: 11.5, color: "#7C8D82", marginTop: 1 }}>
                     Select who can view or interact
                   </Text>
                 </View>
@@ -755,9 +1133,16 @@ export default function PrivacyCenter() {
 
               <TouchableOpacity
                 onPress={() => setSelectedAudienceConfig(null)}
-                className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: "#F2F5F2",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
-                <Ionicons name="close" size={20} color="#6B7280" />
+                <Ionicons name="close" size={18} color="#75867B" />
               </TouchableOpacity>
             </View>
 
@@ -780,32 +1165,44 @@ export default function PrivacyCenter() {
                         setSelectedAudienceConfig(null);
                       }}
                       activeOpacity={0.7}
-                      className={`p-4 rounded-2xl border flex-row items-center justify-between ${
-                        isSelected
-                          ? "bg-emerald-50/60 border-emerald-500"
-                          : "bg-gray-50/70 border-gray-200"
-                      }`}
+                      style={{
+                        padding: 15,
+                        borderRadius: 16,
+                        borderWidth: isSelected ? 1.5 : 1,
+                        borderColor: isSelected ? "#34594A" : "#E5ECE6",
+                        backgroundColor: isSelected ? "#EDF3EE" : "#FAFBF9",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
                     >
                       <View className="flex-1 mr-3">
                         <Text
-                          className={`text-sm font-bold ${
-                            isSelected ? "text-emerald-800" : "text-gray-900"
-                          }`}
+                          style={{
+                            fontSize: 14,
+                            fontWeight: isSelected ? "700" : "600",
+                            color: isSelected ? "#23382D" : "#24372C",
+                          }}
                         >
                           {opt.label}
                         </Text>
-                        <Text className="text-xs text-gray-500 mt-1 leading-4">
+                        <Text style={{ fontSize: 11.5, color: "#7C8D82", marginTop: 3, lineHeight: 16 }}>
                           {opt.description}
                         </Text>
                       </View>
 
                       {/* Custom Radio Circle */}
                       <View
-                        className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-                          isSelected
-                            ? "border-emerald-600 bg-emerald-600"
-                            : "border-gray-300 bg-white"
-                        }`}
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: 11,
+                          borderWidth: isSelected ? 0 : 1.5,
+                          borderColor: "#D0DCD3",
+                          backgroundColor: isSelected ? "#34594A" : "#FFFFFF",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
                       >
                         {isSelected && (
                           <Ionicons name="checkmark" size={14} color="#FFFFFF" />
@@ -819,9 +1216,20 @@ export default function PrivacyCenter() {
 
             <TouchableOpacity
               onPress={() => setSelectedAudienceConfig(null)}
-              className="w-full bg-gray-100 py-3.5 rounded-xl items-center justify-center active:bg-gray-200 mt-2"
+              style={{
+                width: "100%",
+                backgroundColor: "#F2F5F2",
+                paddingVertical: 13,
+                borderRadius: 14,
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: 8,
+              }}
+              activeOpacity={0.8}
             >
-              <Text className="text-gray-700 font-bold text-sm">Cancel</Text>
+              <Text style={{ color: "#5E7265", fontWeight: "600", fontSize: 14 }}>
+                Cancel
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -834,11 +1242,38 @@ export default function PrivacyCenter() {
         transparent={true}
         onRequestClose={() => setActivePolicyModal(null)}
       >
-        <View className="flex-1 justify-end bg-black/50">
-          <View className="bg-white rounded-t-3xl max-h-[80%] p-6 shadow-2xl">
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(25, 38, 30, 0.45)" }}>
+          <View
+            style={{
+              backgroundColor: "#FFFFFF",
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              maxHeight: "80%",
+              padding: 22,
+              borderTopWidth: 1,
+              borderColor: "#E5ECE6",
+            }}
+          >
             {/* Modal Header */}
-            <View className="flex-row items-center justify-between pb-4 border-b border-gray-100 mb-4">
-              <Text className="text-lg font-bold text-gray-900">
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingBottom: 14,
+                borderBottomWidth: 1,
+                borderColor: "#E5ECE6",
+                marginBottom: 16,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 17,
+                  fontWeight: "700",
+                  color: "#23382D",
+                  letterSpacing: -0.2,
+                }}
+              >
                 {activePolicyModal === "data_privacy"
                   ? "Local Farm Data Privacy"
                   : activePolicyModal === "rsbsa_safety"
@@ -847,44 +1282,75 @@ export default function PrivacyCenter() {
               </Text>
               <TouchableOpacity
                 onPress={() => setActivePolicyModal(null)}
-                className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: "#F2F5F2",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
-                <Ionicons name="close" size={20} color="#6B7280" />
+                <Ionicons name="close" size={18} color="#75867B" />
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} className="mb-4">
               {activePolicyModal === "data_privacy" && (
                 <View className="gap-3.5">
-                  <Text className="text-sm text-gray-700 leading-6">
+                  <Text style={{ fontSize: 13.5, color: "#4E6155", lineHeight: 21 }}>
                     Local Farm is dedicated to protecting the rights, privacy, and
                     agricultural livelihoods of Filipino farmers and buyers.
                   </Text>
-                  <View className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-100">
-                    <Text className="text-xs font-bold text-emerald-800 mb-1">
+                  <View
+                    style={{
+                      backgroundColor: "#EDF3EE",
+                      padding: 14,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: "#DCE6DF",
+                    }}
+                  >
+                    <Text style={{ fontSize: 12.5, fontWeight: "700", color: "#23382D", marginBottom: 3 }}>
                       1. Encryption & Safeguards
                     </Text>
-                    <Text className="text-xs text-emerald-700 leading-5">
+                    <Text style={{ fontSize: 12, color: "#4F6456", lineHeight: 18 }}>
                       All account passwords, session tokens, and personal farm
                       contact information are secured using industry-standard
                       cryptographic protocols.
                     </Text>
                   </View>
-                  <View className="bg-gray-50 p-3.5 rounded-xl border border-gray-100">
-                    <Text className="text-xs font-bold text-gray-800 mb-1">
+                  <View
+                    style={{
+                      backgroundColor: "#F7FAF7",
+                      padding: 14,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: "#E5ECE6",
+                    }}
+                  >
+                    <Text style={{ fontSize: 12.5, fontWeight: "700", color: "#23382D", marginBottom: 3 }}>
                       2. Commercial Non-Exploitation
                     </Text>
-                    <Text className="text-xs text-gray-600 leading-5">
+                    <Text style={{ fontSize: 12, color: "#6B7D72", lineHeight: 18 }}>
                       We never sell, rent, or lease your harvest pricing, farm
                       yield records, or buyer transaction histories to third-party
                       advertisers or brokers.
                     </Text>
                   </View>
-                  <View className="bg-gray-50 p-3.5 rounded-xl border border-gray-100">
-                    <Text className="text-xs font-bold text-gray-800 mb-1">
+                  <View
+                    style={{
+                      backgroundColor: "#F7FAF7",
+                      padding: 14,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: "#E5ECE6",
+                    }}
+                  >
+                    <Text style={{ fontSize: 12.5, fontWeight: "700", color: "#23382D", marginBottom: 3 }}>
                       3. Granular Farm Privacy
                     </Text>
-                    <Text className="text-xs text-gray-600 leading-5">
+                    <Text style={{ fontSize: 12, color: "#6B7D72", lineHeight: 18 }}>
                       You maintain continuous control over whether your farm gate
                       GPS coordinates are publicly navigable or blurred to
                       barangay-level approximations.
@@ -895,25 +1361,41 @@ export default function PrivacyCenter() {
 
               {activePolicyModal === "rsbsa_safety" && (
                 <View className="gap-3.5">
-                  <Text className="text-sm text-gray-700 leading-6">
+                  <Text style={{ fontSize: 13.5, color: "#4E6155", lineHeight: 21 }}>
                     RSBSA stubs and government farmer identity credentials are
                     confidential administrative records.
                   </Text>
-                  <View className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-100">
-                    <Text className="text-xs font-bold text-emerald-800 mb-1">
+                  <View
+                    style={{
+                      backgroundColor: "#EDF3EE",
+                      padding: 14,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: "#DCE6DF",
+                    }}
+                  >
+                    <Text style={{ fontSize: 12.5, fontWeight: "700", color: "#23382D", marginBottom: 3 }}>
                       Verification Purpose Only
                     </Text>
-                    <Text className="text-xs text-emerald-700 leading-5">
+                    <Text style={{ fontSize: 12, color: "#4F6456", lineHeight: 18 }}>
                       Uploaded RSBSA certificates and DA stubs are strictly utilized
                       for municipal verification and awarding the official green
                       checkmark badge.
                     </Text>
                   </View>
-                  <View className="bg-gray-50 p-3.5 rounded-xl border border-gray-100">
-                    <Text className="text-xs font-bold text-gray-800 mb-1">
+                  <View
+                    style={{
+                      backgroundColor: "#F7FAF7",
+                      padding: 14,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: "#E5ECE6",
+                    }}
+                  >
+                    <Text style={{ fontSize: 12.5, fontWeight: "700", color: "#23382D", marginBottom: 3 }}>
                       Never Shared Publicly
                     </Text>
-                    <Text className="text-xs text-gray-600 leading-5">
+                    <Text style={{ fontSize: 12, color: "#6B7D72", lineHeight: 18 }}>
                       Your government RSBSA registration number and raw certificate
                       photos are never exposed on your public newsfeed, profile, or
                       search results.
@@ -924,25 +1406,47 @@ export default function PrivacyCenter() {
 
               {activePolicyModal === "export_data" && (
                 <View className="gap-4">
-                  <Text className="text-sm text-gray-700 leading-6">
+                  <Text style={{ fontSize: 13.5, color: "#4E6155", lineHeight: 21 }}>
                     Request an export of all information associated with your Local
                     Farm account, including:
                   </Text>
-                  <View className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 gap-1.5">
-                    <Text className="text-xs text-gray-700">• Farm profile & bio</Text>
-                    <Text className="text-xs text-gray-700">• Posted harvests & media</Text>
-                    <Text className="text-xs text-gray-700">• Message histories & inquiries</Text>
-                    <Text className="text-xs text-gray-700">• RSBSA verification records</Text>
+                  <View
+                    style={{
+                      backgroundColor: "#F7FAF7",
+                      padding: 14,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: "#E5ECE6",
+                      gap: 6,
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, color: "#4E6155" }}>• Farm profile & bio</Text>
+                    <Text style={{ fontSize: 12, color: "#4E6155" }}>• Posted harvests & media</Text>
+                    <Text style={{ fontSize: 12, color: "#4E6155" }}>• Message histories & inquiries</Text>
+                    <Text style={{ fontSize: 12, color: "#4E6155" }}>• RSBSA verification records</Text>
                   </View>
                   <TouchableOpacity
                     onPress={handleExportData}
                     disabled={isExporting}
-                    className="w-full bg-[#72AF5B] py-3.5 rounded-xl items-center justify-center active:opacity-90 shadow-sm"
+                    style={{
+                      width: "100%",
+                      backgroundColor: "#34594A",
+                      paddingVertical: 13,
+                      borderRadius: 14,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      shadowColor: "#293E33",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.12,
+                      shadowRadius: 5,
+                      elevation: 2,
+                    }}
+                    activeOpacity={0.85}
                   >
                     {isExporting ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Text className="text-white font-bold text-sm">
+                      <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 14 }}>
                         Request Data Archive
                       </Text>
                     )}
@@ -953,9 +1457,20 @@ export default function PrivacyCenter() {
 
             <TouchableOpacity
               onPress={() => setActivePolicyModal(null)}
-              className="w-full bg-gray-100 py-3 rounded-xl items-center justify-center active:bg-gray-200 mt-2"
+              style={{
+                width: "100%",
+                backgroundColor: "#F2F5F2",
+                paddingVertical: 12,
+                borderRadius: 14,
+                alignItems: "center",
+                justifyContent: "center",
+                marginTop: 6,
+              }}
+              activeOpacity={0.8}
             >
-              <Text className="text-gray-700 font-semibold text-sm">Close</Text>
+              <Text style={{ color: "#5E7265", fontWeight: "600", fontSize: 13.5 }}>
+                Close
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

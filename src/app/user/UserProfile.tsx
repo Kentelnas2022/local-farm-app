@@ -1222,8 +1222,8 @@ export default function UserProfile() {
                     <View className="p-4 pb-2">
                       <View className="flex-row justify-between items-start mb-3">
                         <View className="flex-row items-center flex-1 pr-2">
-                          {/* Avatar with #72AF5B ring */}
-                          <View className="h-10 w-10 rounded-full border border-[#72AF5B] items-center justify-center bg-gray-100 mr-3 overflow-hidden">
+                          {/* Avatar with calm ring */}
+                          <View className="h-10 w-10 rounded-full border border-[#C8DCCF] items-center justify-center bg-[#EDF3EE] mr-3 overflow-hidden">
                             {currentPost.avatarUri || parentPost?.avatarUri || profileAvatar ? (
                               <Image
                                 source={{
@@ -1239,7 +1239,7 @@ export default function UserProfile() {
                               <Ionicons
                                 name="person"
                                 size={20}
-                                color="#72AF5B"
+                                color="#7A8D81"
                               />
                             )}
                           </View>
@@ -1286,7 +1286,7 @@ export default function UserProfile() {
                                   <Ionicons
                                     name="location"
                                     size={12}
-                                    color="#72AF5B"
+                                    color="#34594A"
                                   />
                                   <Text className="text-xs text-gray-500 ml-1 mr-1.5">
                                     {currentPost.location || parentPost?.location} •
@@ -1465,7 +1465,7 @@ export default function UserProfile() {
                                 : "bookmark-outline"
                             }
                             size={24}
-                            color={isSaved ? "#72AF5B" : "#6b7280"}
+                            color={isSaved ? "#34594A" : "#6b7280"}
                           />
                         </TouchableOpacity>
                       </View>
@@ -1476,7 +1476,7 @@ export default function UserProfile() {
                           onPress={() => toggleExpandComments(baseId)}
                           className="mt-2.5 active:opacity-70"
                         >
-                          <Text className="text-xs font-semibold text-gray-500 hover:text-[#72AF5B]">
+                          <Text className="text-xs font-semibold text-gray-500 hover:text-[#34594A]">
                             View all {commentsCount}{" "}
                             {commentsCount === 1 ? "comment" : "comments"}
                           </Text>
@@ -1509,12 +1509,17 @@ export default function UserProfile() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+    <SafeAreaView
+      className="flex-1"
+      style={{ flex: 1, backgroundColor: "#FAF9F5" }}
+      edges={["top", "left", "right"]}
+    >
       {/* Top Header */}
 
       {/* Main Content ScrollView */}
       <ScrollView
-        className="flex-1 bg-white"
+        className="flex-1"
+        style={{ flex: 1, backgroundColor: "#FAF9F5" }}
         contentContainerStyle={{ paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
       >
@@ -1539,46 +1544,85 @@ export default function UserProfile() {
         />
 
         {/* 4. Profile Details Section */}
-        <View className="px-4">
+        <View className="px-4 bg-white pb-1 border-b border-[#EAE7DF]">
           {/* Name & Badge */}
           <View className="flex-row items-center mt-2 mb-1 flex-wrap">
-            <Text className="text-2xl font-bold text-gray-900 mr-1.5">
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "700",
+                color: "#23382D",
+                marginRight: 8,
+                letterSpacing: -0.3,
+              }}
+            >
               {profileName}
             </Text>
             {isVerifiedProfile && (
               <View className="flex-row items-center mr-2">
-                <Ionicons name="checkmark-circle" size={22} color="#10B981" />
+                <Ionicons name="checkmark-circle" size={20} color="#2A734D" />
               </View>
             )}
             <View
-              className={`rounded-md px-2.5 py-0.5 flex-row items-center gap-1 ${
-                isVerifiedProfile ? "bg-emerald-600" : "bg-[#77af5c]"
-              }`}
+              style={{
+                borderRadius: 8,
+                paddingHorizontal: 9,
+                paddingVertical: 2.5,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                backgroundColor: isVerifiedProfile ? "#E4EDE6" : "#EDF3EE",
+                borderWidth: 1,
+                borderColor: isVerifiedProfile ? "#C8DCCF" : "#DCE6DF",
+              }}
             >
               {isVerifiedProfile && (
-                <Ionicons name="ribbon-outline" size={12} color="#FFFFFF" />
+                <Ionicons name="ribbon-outline" size={12} color="#2A734D" />
               )}
-              <Text className="text-xs font-bold text-white">
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "700",
+                  color: isVerifiedProfile ? "#2A734D" : "#34594A",
+                  textTransform: "capitalize",
+                }}
+              >
                 {isVerifiedProfile ? "RSBSA Verified Farmer" : profileRole}
               </Text>
             </View>
           </View>
 
           {/* Handle/Email */}
-          <Text className="text-sm text-gray-800 mb-3">{profileHandle}</Text>
+          <Text
+            style={{
+              fontSize: 13.5,
+              color: "#6F8074",
+              marginBottom: 10,
+              fontWeight: "500",
+            }}
+          >
+            {profileHandle}
+          </Text>
 
           {/* Location */}
           {Boolean(profileLocation) && (
             <View className="flex-row items-center mb-4">
-              <Ionicons name="location" size={16} color="#000000" />
-              <Text className="text-sm text-gray-800 ml-1">
+              <Ionicons name="location-sharp" size={15} color="#34594A" />
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: "#5F7265",
+                  marginLeft: 4,
+                  fontWeight: "500",
+                }}
+              >
                 {profileLocation}
               </Text>
             </View>
           )}
 
           {/* Action Buttons Row */}
-          <View className="flex-row items-center gap-2.5 mb-5">
+          <View className="flex-row items-center gap-2.5 mb-4">
             {isOwnProfile ? (
               <>
                 {/* Edit profile Button */}
@@ -1589,12 +1633,35 @@ export default function UserProfile() {
                       params: { mode: "edit" },
                     } as any)
                   }
-                  className="flex-1 bg-[#5cb85c] rounded-xl py-2.5 px-3 flex-row items-center justify-center gap-1.5 shadow-sm active:opacity-85"
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#34594A",
+                    borderRadius: 14,
+                    paddingVertical: 11,
+                    paddingHorizontal: 12,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    shadowColor: "#293E33",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.12,
+                    shadowRadius: 5,
+                    elevation: 2,
+                  }}
+                  activeOpacity={0.85}
                   accessibilityRole="button"
                   accessibilityLabel="Edit profile"
                 >
                   <Ionicons name="create-outline" size={16} color="#FFFFFF" />
-                  <Text className="text-white text-sm font-semibold">
+                  <Text
+                    style={{
+                      color: "#FFFFFF",
+                      fontSize: 14,
+                      fontWeight: "700",
+                      letterSpacing: -0.2,
+                    }}
+                  >
                     Edit profile
                   </Text>
                 </TouchableOpacity>
@@ -1602,16 +1669,41 @@ export default function UserProfile() {
                 {/* Share profile Button */}
                 <TouchableOpacity
                   onPress={handleShareProfile}
-                  className="flex-1 bg-gray-200 py-2.5 px-3 rounded-xl flex-row items-center justify-center gap-1.5 active:bg-gray-300"
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#FFFFFF",
+                    borderWidth: 1.2,
+                    borderColor: "#E0E7E1",
+                    borderRadius: 14,
+                    paddingVertical: 11,
+                    paddingHorizontal: 12,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    shadowColor: "#293E33",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.03,
+                    shadowRadius: 3,
+                    elevation: 1,
+                  }}
+                  activeOpacity={0.8}
                   accessibilityRole="button"
                   accessibilityLabel="Share profile"
                 >
                   <Ionicons
                     name="share-social-outline"
                     size={16}
-                    color="#1f2937"
+                    color="#34594A"
                   />
-                  <Text className="text-gray-800 text-sm font-semibold">
+                  <Text
+                    style={{
+                      color: "#24372C",
+                      fontSize: 14,
+                      fontWeight: "600",
+                      letterSpacing: -0.2,
+                    }}
+                  >
                     Share profile
                   </Text>
                 </TouchableOpacity>
@@ -1622,11 +1714,39 @@ export default function UserProfile() {
                 <TouchableOpacity
                   onPress={handleAddFriend}
                   disabled={isLoadingFriend}
-                  className={`flex-1 py-2.5 px-3 rounded-xl flex-row items-center justify-center gap-1.5 shadow-sm active:opacity-85 ${
+                  style={
                     isFriendRequested
-                      ? "bg-gray-100 border border-gray-300"
-                      : "bg-[#5cb85c]"
-                  }`}
+                      ? {
+                          flex: 1,
+                          backgroundColor: "#EDF3EE",
+                          borderWidth: 1.2,
+                          borderColor: "#DCE6DF",
+                          borderRadius: 14,
+                          paddingVertical: 11,
+                          paddingHorizontal: 12,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                        }
+                      : {
+                          flex: 1,
+                          backgroundColor: "#34594A",
+                          borderRadius: 14,
+                          paddingVertical: 11,
+                          paddingHorizontal: 12,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                          shadowColor: "#293E33",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.12,
+                          shadowRadius: 5,
+                          elevation: 2,
+                        }
+                  }
+                  activeOpacity={0.85}
                   accessibilityRole="button"
                   accessibilityLabel={
                     isFriendRequested ? "Friend request sent" : "Add friend"
@@ -1635,12 +1755,15 @@ export default function UserProfile() {
                   <Ionicons
                     name={isFriendRequested ? "checkmark-circle" : "person-add"}
                     size={16}
-                    color={isFriendRequested ? "#5cb85c" : "#FFFFFF"}
+                    color={isFriendRequested ? "#34594A" : "#FFFFFF"}
                   />
                   <Text
-                    className={`text-sm font-semibold ${
-                      isFriendRequested ? "text-[#5cb85c]" : "text-white"
-                    }`}
+                    style={{
+                      fontSize: 14,
+                      fontWeight: isFriendRequested ? "600" : "700",
+                      color: isFriendRequested ? "#34594A" : "#FFFFFF",
+                      letterSpacing: -0.2,
+                    }}
                   >
                     {isFriendRequested ? "Requested" : "Add friend"}
                   </Text>
@@ -1658,12 +1781,41 @@ export default function UserProfile() {
                       },
                     } as any)
                   }
-                  className="flex-1 bg-gray-200 py-2.5 px-3 rounded-xl flex-row items-center justify-center gap-1.5 active:bg-gray-300"
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#FFFFFF",
+                    borderWidth: 1.2,
+                    borderColor: "#E0E7E1",
+                    borderRadius: 14,
+                    paddingVertical: 11,
+                    paddingHorizontal: 12,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    shadowColor: "#293E33",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.03,
+                    shadowRadius: 3,
+                    elevation: 1,
+                  }}
+                  activeOpacity={0.8}
                   accessibilityRole="button"
                   accessibilityLabel="Message"
                 >
-                  <Ionicons name="chatbubble" size={15} color="#1f2937" />
-                  <Text className="text-gray-800 text-sm font-semibold">
+                  <Ionicons
+                    name="chatbubble-outline"
+                    size={15}
+                    color="#34594A"
+                  />
+                  <Text
+                    style={{
+                      color: "#24372C",
+                      fontSize: 14,
+                      fontWeight: "600",
+                      letterSpacing: -0.2,
+                    }}
+                  >
                     Message
                   </Text>
                 </TouchableOpacity>
@@ -1673,21 +1825,36 @@ export default function UserProfile() {
         </View>
 
         {/* 6. Tab Navigation */}
-        <View className="flex-row border-b border-gray-300 bg-gray-50">
+        <View
+          style={{
+            flexDirection: "row",
+            borderBottomWidth: 1,
+            borderColor: "#E5ECE6",
+            backgroundColor: "#FFFFFF",
+          }}
+        >
           {/* Tab 1 (All - Left) */}
           <TouchableOpacity
             onPress={() => setActiveTab("all")}
-            className={`flex-1 py-3 items-center border-b-[3px] ${
-              activeTab === "all" ? "border-[#77af5c]" : "border-transparent"
-            }`}
+            style={{
+              flex: 1,
+              paddingVertical: 12,
+              alignItems: "center",
+              borderBottomWidth: 3,
+              borderBottomColor:
+                activeTab === "all" ? "#34594A" : "transparent",
+            }}
             activeOpacity={0.7}
             accessibilityRole="tab"
             accessibilityState={{ selected: activeTab === "all" }}
           >
             <Text
-              className={`font-bold ${
-                activeTab === "all" ? "text-gray-900" : "text-gray-600"
-              }`}
+              style={{
+                fontSize: 14.5,
+                fontWeight: activeTab === "all" ? "700" : "500",
+                color: activeTab === "all" ? "#23382D" : "#75867B",
+                letterSpacing: -0.2,
+              }}
             >
               All
             </Text>
@@ -1696,17 +1863,25 @@ export default function UserProfile() {
           {/* Tab 2 (Posts - Center) */}
           <TouchableOpacity
             onPress={() => setActiveTab("posts")}
-            className={`flex-1 py-3 items-center border-b-[3px] ${
-              activeTab === "posts" ? "border-[#77af5c]" : "border-transparent"
-            }`}
+            style={{
+              flex: 1,
+              paddingVertical: 12,
+              alignItems: "center",
+              borderBottomWidth: 3,
+              borderBottomColor:
+                activeTab === "posts" ? "#34594A" : "transparent",
+            }}
             activeOpacity={0.7}
             accessibilityRole="tab"
             accessibilityState={{ selected: activeTab === "posts" }}
           >
             <Text
-              className={`font-bold ${
-                activeTab === "posts" ? "text-gray-900" : "text-gray-600"
-              }`}
+              style={{
+                fontSize: 14.5,
+                fontWeight: activeTab === "posts" ? "700" : "500",
+                color: activeTab === "posts" ? "#23382D" : "#75867B",
+                letterSpacing: -0.2,
+              }}
             >
               Posts
             </Text>
@@ -1715,17 +1890,25 @@ export default function UserProfile() {
           {/* Tab 3 (About - Inactive) */}
           <TouchableOpacity
             onPress={() => setActiveTab("about")}
-            className={`flex-1 py-3 items-center border-b-[3px] ${
-              activeTab === "about" ? "border-[#77af5c]" : "border-transparent"
-            }`}
+            style={{
+              flex: 1,
+              paddingVertical: 12,
+              alignItems: "center",
+              borderBottomWidth: 3,
+              borderBottomColor:
+                activeTab === "about" ? "#34594A" : "transparent",
+            }}
             activeOpacity={0.7}
             accessibilityRole="tab"
             accessibilityState={{ selected: activeTab === "about" }}
           >
             <Text
-              className={`font-bold ${
-                activeTab === "about" ? "text-gray-900" : "text-gray-600"
-              }`}
+              style={{
+                fontSize: 14.5,
+                fontWeight: activeTab === "about" ? "700" : "500",
+                color: activeTab === "about" ? "#23382D" : "#75867B",
+                letterSpacing: -0.2,
+              }}
             >
               About
             </Text>
@@ -1770,13 +1953,32 @@ export default function UserProfile() {
         {activeTab === "all" && (
           <View className="w-full">
             {/* 1. 'Create Post' Section */}
-            <View className="bg-white p-4">
+            <View
+              style={{
+                backgroundColor: "#FFFFFF",
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                borderBottomWidth: 1,
+                borderColor: "#EAE7DF",
+              }}
+            >
               <View className="flex-row items-center">
-                {/* Profile Avatar Icon matching UserHeader.tsx */}
+                {/* Profile Avatar Icon matching calm header */}
                 <TouchableOpacity
                   onPress={() => setCreatePostVisible(true)}
                   activeOpacity={0.8}
-                  className="w-10 h-10 rounded-full border border-[#72AF5B] items-center justify-center overflow-hidden bg-gray-100 mr-3"
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    borderWidth: 1.5,
+                    borderColor: "#C8DCCF",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                    backgroundColor: "#EDF3EE",
+                    marginRight: 12,
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel="Create post"
                 >
@@ -1787,7 +1989,7 @@ export default function UserProfile() {
                       resizeMode="cover"
                     />
                   ) : (
-                    <Ionicons name="person-outline" size={20} color="#333333" />
+                    <Ionicons name="person" size={20} color="#7A8D81" />
                   )}
                 </TouchableOpacity>
 
@@ -1795,7 +1997,16 @@ export default function UserProfile() {
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => setCreatePostVisible(true)}
-                  className="flex-1 bg-gray-100 rounded-full px-4 justify-center h-10"
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#F4F7F4",
+                    borderWidth: 1,
+                    borderColor: "#E5ECE6",
+                    borderRadius: 22,
+                    paddingHorizontal: 16,
+                    justifyContent: "center",
+                    height: 42,
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel={
                     isOwnProfile
@@ -1803,7 +2014,7 @@ export default function UserProfile() {
                       : `Write something to ${profileName}...`
                   }
                 >
-                  <Text className="text-base text-gray-500">
+                  <Text style={{ fontSize: 14, color: "#75867B", fontWeight: "500" }}>
                     {isOwnProfile
                       ? "What's on your mind?"
                       : `Write something to ${profileName}...`}
@@ -1813,17 +2024,54 @@ export default function UserProfile() {
             </View>
 
             {/* Post Feed */}
-            <View className="bg-gray-100 pt-3 pb-6 px-3">
+            <View
+              style={{
+                backgroundColor: "#FAF9F5",
+                paddingTop: 14,
+                paddingBottom: 24,
+                paddingHorizontal: 14,
+              }}
+            >
               {isLoadingPosts ? (
                 <View className="py-12 items-center justify-center">
-                  <ActivityIndicator size="large" color="#72AF5B" />
-                  <Text className="text-sm text-gray-500 mt-2">Loading posts...</Text>
+                  <ActivityIndicator size="large" color="#34594A" />
+                  <Text style={{ fontSize: 13, color: "#75867B", marginTop: 8, fontWeight: "500" }}>
+                    Loading posts...
+                  </Text>
                 </View>
               ) : posts.length === 0 ? (
-                <View className="py-12 px-6 items-center justify-center bg-white rounded-xl border border-gray-200">
-                  <Ionicons name="newspaper-outline" size={48} color="#9CA3AF" />
-                  <Text className="text-base font-bold text-gray-700 mt-3">No posts yet</Text>
-                  <Text className="text-sm text-gray-400 text-center mt-1">
+                <View
+                  style={{
+                    paddingVertical: 40,
+                    paddingHorizontal: 20,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#FFFFFF",
+                    borderRadius: 18,
+                    borderWidth: 1,
+                    borderColor: "#EAE7DF",
+                  }}
+                >
+                  <Ionicons name="newspaper-outline" size={44} color="#A3B2A7" />
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      fontWeight: "700",
+                      color: "#23382D",
+                      marginTop: 10,
+                    }}
+                  >
+                    No posts yet
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      color: "#75867B",
+                      textAlign: "center",
+                      marginTop: 4,
+                      lineHeight: 18,
+                    }}
+                  >
                     {isOwnProfile
                       ? "Share your farming updates, produce, or stories with the community!"
                       : `${profileName} hasn't published any posts yet.`}
@@ -1841,25 +2089,37 @@ export default function UserProfile() {
                   return (
                     <View
                       key={post.id}
-                      className="bg-white mb-3 rounded-xl shadow-xs border border-gray-100 overflow-hidden"
+                      style={{
+                        backgroundColor: "#FFFFFF",
+                        marginBottom: 14,
+                        borderRadius: 20,
+                        borderWidth: 1,
+                        borderColor: "#EAE7DF",
+                        shadowColor: "#1e2a22",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.04,
+                        shadowRadius: 8,
+                        elevation: 2,
+                        overflow: "hidden",
+                      }}
                     >
                       {/* Shared Post Header Banner */}
                       {post.isShared && post.originalPost && (
                         <View className="flex-row items-center px-4 pt-3 pb-1">
-                          <Ionicons name="arrow-redo" size={14} color="#72AF5B" />
+                          <Ionicons name="arrow-redo" size={14} color="#34594A" />
                           <View className="flex-row items-center ml-1.5 flex-wrap">
-                            <Text className="font-bold text-gray-900 text-xs">
+                            <Text style={{ fontWeight: "700", color: "#23382D", fontSize: 12 }}>
                               {post.authorName}
                             </Text>
                             {isVerifiedUser && (
                               <Ionicons
                                 name="checkmark-circle"
                                 size={13}
-                                color="#10B981"
+                                color="#2A734D"
                                 style={{ marginHorizontal: 3 }}
                               />
                             )}
-                            <Text className="text-xs text-gray-500 font-medium ml-1">
+                            <Text style={{ fontSize: 12, color: "#75867B", fontWeight: "500", marginLeft: 4 }}>
                               shared a post
                             </Text>
                           </View>
@@ -1870,8 +2130,21 @@ export default function UserProfile() {
                       <View className="p-4 pb-2">
                         <View className="flex-row justify-between items-start mb-3">
                           <View className="flex-row items-center flex-1 pr-2">
-                            {/* Avatar with #72AF5B ring */}
-                            <View className="h-10 w-10 rounded-full border border-[#72AF5B] items-center justify-center bg-gray-100 mr-3 overflow-hidden">
+                            {/* Avatar with calm ring */}
+                            <View
+                              style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 20,
+                                borderWidth: 1.5,
+                                borderColor: "#C8DCCF",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                backgroundColor: "#EDF3EE",
+                                marginRight: 12,
+                                overflow: "hidden",
+                              }}
+                            >
                               {post.avatarUri ? (
                                 <Image
                                   source={{ uri: post.avatarUri }}
@@ -1879,34 +2152,59 @@ export default function UserProfile() {
                                   resizeMode="cover"
                                 />
                               ) : (
-                                <Ionicons name="person" size={20} color="#72AF5B" />
+                                <Ionicons name="person" size={20} color="#7A8D81" />
                               )}
                             </View>
                             {/* Author details */}
                             <View className="flex-1">
                               <View className="flex-row items-center flex-wrap">
-                                <Text className="font-bold text-gray-900 mr-1.5 text-base">
+                                <Text
+                                  style={{
+                                    fontWeight: "700",
+                                    color: "#23382D",
+                                    fontSize: 15,
+                                    marginRight: 6,
+                                  }}
+                                >
                                   {post.authorName}
                                 </Text>
                                 {isVerifiedUser && (
                                   <Ionicons
                                     name="checkmark-circle"
                                     size={16}
-                                    color="#10B981"
+                                    color="#2A734D"
                                     style={{ marginRight: 6 }}
                                   />
                                 )}
-                                <Text
-                                  className={`text-xs font-bold px-1.5 py-0.5 rounded ${
-                                    isCurrentUser && isRSBSAVerified
-                                      ? "text-emerald-700 bg-emerald-50"
-                                      : "text-green-600 bg-green-50"
-                                  }`}
+                                <View
+                                  style={{
+                                    backgroundColor: isVerifiedUser
+                                      ? "#E4EDE6"
+                                      : "#EDF3EE",
+                                    borderWidth: 1,
+                                    borderColor: isVerifiedUser
+                                      ? "#C8DCCF"
+                                      : "#DCE6DF",
+                                    borderRadius: 6,
+                                    paddingHorizontal: 7,
+                                    paddingVertical: 1.5,
+                                  }}
                                 >
-                                  {isCurrentUser && isRSBSAVerified
-                                    ? "RSBSA Verified Farmer"
-                                    : post.authorRole}
-                                </Text>
+                                  <Text
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: "700",
+                                      color: isVerifiedUser
+                                        ? "#2A734D"
+                                        : "#34594A",
+                                      textTransform: "capitalize",
+                                    }}
+                                  >
+                                    {isCurrentUser && isRSBSAVerified
+                                      ? "RSBSA Verified Farmer"
+                                      : post.authorRole}
+                                  </Text>
+                                </View>
                               </View>
                               <View className="flex-row items-center mt-0.5">
                                 {Boolean(
@@ -1918,14 +2216,29 @@ export default function UserProfile() {
                                     <Ionicons
                                       name="location"
                                       size={12}
-                                      color="#72AF5B"
+                                      color="#34594A"
                                     />
-                                    <Text className="text-xs text-gray-500 ml-1 mr-1.5">
+                                    <Text
+                                      style={{
+                                        fontSize: 11.5,
+                                        color: "#75867B",
+                                        marginLeft: 2,
+                                        marginRight: 6,
+                                        fontWeight: "500",
+                                      }}
+                                    >
                                       {post.location} •
                                     </Text>
                                   </>
                                 )}
-                                <Text className="text-xs text-gray-500 mr-2">
+                                <Text
+                                  style={{
+                                    fontSize: 11.5,
+                                    color: "#75867B",
+                                    marginRight: 6,
+                                    fontWeight: "500",
+                                  }}
+                                >
                                   {post.timeAgo}
                                 </Text>
                                 <Ionicons
@@ -1937,7 +2250,7 @@ export default function UserProfile() {
                                       : "globe-outline"
                                   }
                                   size={12}
-                                  color="#9ca3af"
+                                  color="#879386"
                                 />
                               </View>
                             </View>
@@ -1953,14 +2266,21 @@ export default function UserProfile() {
                             <Ionicons
                               name="ellipsis-horizontal"
                               size={20}
-                              color="#9ca3af"
+                              color="#879386"
                             />
                           </TouchableOpacity>
                         </View>
 
                         {/* Post Content */}
                         {!!post.content && (
-                          <Text className="text-gray-800 text-sm mb-3 leading-5">
+                          <Text
+                            style={{
+                              color: "#23382D",
+                              fontSize: 14.5,
+                              lineHeight: 21,
+                              marginBottom: 10,
+                            }}
+                          >
                             {post.content}
                           </Text>
                         )}
@@ -2162,7 +2482,7 @@ export default function UserProfile() {
                                 isBookmarked ? "bookmark" : "bookmark-outline"
                               }
                               size={24}
-                              color={isBookmarked ? "#72AF5B" : "#6b7280"}
+                              color={isBookmarked ? "#34594A" : "#6b7280"}
                             />
                           </TouchableOpacity>
                         </View>
@@ -2175,7 +2495,7 @@ export default function UserProfile() {
                             onPress={() => toggleExpandComments(post.id)}
                             className="mt-2.5 active:opacity-70"
                           >
-                            <Text className="text-xs font-semibold text-gray-500 hover:text-[#72AF5B]">
+                            <Text className="text-xs font-semibold text-gray-500 hover:text-[#34594A]">
                               View all{" "}
                               {postComments[post.id] !== undefined
                                 ? postComments[post.id].length
@@ -2205,7 +2525,7 @@ export default function UserProfile() {
                 <Text className="text-base font-semibold text-gray-900 mb-2">
                   Edit About
                 </Text>
-                <View className="border border-[#5cb85c] rounded-xl p-3 bg-gray-50 mb-3">
+                <View className="border border-[#34594A] rounded-xl p-3 bg-[#FAFBF9] mb-3">
                   <TextInput
                     value={aboutInput}
                     onChangeText={setAboutInput}
@@ -2237,7 +2557,8 @@ export default function UserProfile() {
                   <TouchableOpacity
                     onPress={handleSaveAbout}
                     disabled={isSavingAbout}
-                    className="px-5 py-2 rounded-xl bg-[#5cb85c] active:bg-[#4ea64e] flex-row items-center gap-1.5"
+                    style={{ backgroundColor: "#34594A" }}
+                    className="px-5 py-2 rounded-xl flex-row items-center gap-1.5 active:opacity-85"
                     accessibilityRole="button"
                     accessibilityLabel="Save about"
                   >
@@ -2275,8 +2596,9 @@ export default function UserProfile() {
                       setAboutInput(user?.about || user?.bio || "");
                       setIsEditingAbout(true);
                     }}
-                    className="mt-4 w-full bg-[#72AF5B]  rounded-xl py-2.5 flex-row items-center justify-center gap-2 active:bg-gray-200"
-                    activeOpacity={0.7}
+                    style={{ backgroundColor: "#34594A" }}
+                    className="mt-4 w-full rounded-xl py-2.5 flex-row items-center justify-center gap-2 active:opacity-85"
+                    activeOpacity={0.85}
                     accessibilityRole="button"
                     accessibilityLabel="Edit about"
                   >
@@ -2377,18 +2699,18 @@ export default function UserProfile() {
                 >
                   {loadingComments[activeCommentsPostId] ? (
                     <View className="py-16 items-center justify-center">
-                      <ActivityIndicator size="small" color="#72AF5B" />
+                      <ActivityIndicator size="small" color="#34594A" />
                       <Text className="text-xs text-gray-400 mt-2 font-medium">
                         Loading comments...
                       </Text>
                     </View>
                   ) : currentComments.length === 0 ? (
                     <View className="py-16 items-center justify-center px-6">
-                      <View className="w-14 h-14 rounded-full bg-emerald-50 items-center justify-center mb-3">
+                      <View className="w-14 h-14 rounded-full bg-[#EDF3EE] items-center justify-center mb-3">
                         <Ionicons
                           name="chatbubbles-outline"
                           size={28}
-                          color="#72AF5B"
+                          color="#34594A"
                         />
                       </View>
                       <Text className="text-sm font-bold text-gray-800">
@@ -2569,7 +2891,7 @@ export default function UserProfile() {
                                   >
                                     <Text
                                       numberOfLines={1}
-                                      className="text-xs text-gray-500 font-medium hover:text-[#72AF5B]"
+                                      className="text-xs text-gray-500 font-medium hover:text-[#34594A]"
                                     >
                                       Reply
                                     </Text>
@@ -2595,11 +2917,11 @@ export default function UserProfile() {
                                   activeOpacity={0.7}
                                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 >
-                                  <View className="w-5 h-[1.5px] bg-[#72AF5B] mr-2 rounded-full" />
+                                  <View className="w-5 h-[1.5px] bg-[#34594A] mr-2 rounded-full" />
                                   <Text
                                     numberOfLines={1}
                                     style={{ flexShrink: 0 }}
-                                    className="text-xs font-bold text-[#72AF5B]"
+                                    className="text-xs font-bold text-[#34594A]"
                                   >
                                     {childReplies.length === 1
                                       ? "View 1 reply"
@@ -2608,7 +2930,7 @@ export default function UserProfile() {
                                   <Ionicons
                                     name="chevron-down"
                                     size={13}
-                                    color="#72AF5B"
+                                    color="#34594A"
                                     style={{ marginLeft: 4 }}
                                   />
                                 </TouchableOpacity>
@@ -2633,7 +2955,7 @@ export default function UserProfile() {
                                     <Text
                                       numberOfLines={1}
                                       style={{ flexShrink: 0 }}
-                                      className="text-xs font-semibold text-gray-500 hover:text-[#72AF5B]"
+                                      className="text-xs font-semibold text-gray-500 hover:text-[#34594A]"
                                     >
                                       Hide replies
                                     </Text>
@@ -2662,12 +2984,12 @@ export default function UserProfile() {
                   className="px-4 pt-2.5 border-t border-gray-200 bg-white"
                 >
                   {replyingTo && (
-                    <View className="bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 flex-row justify-between items-center rounded-t-xl border-b-0 mb-1">
+                    <View className="bg-[#EDF3EE] border border-[#DCE6DF] px-3.5 py-1.5 flex-row justify-between items-center rounded-t-xl border-b-0 mb-1">
                       <View className="flex-row items-center gap-1.5 flex-1 pr-2">
                         <Ionicons
                           name="return-down-forward"
                           size={14}
-                          color="#72AF5B"
+                          color="#34594A"
                         />
                         <Text
                           className="text-xs text-gray-700"
@@ -2732,7 +3054,7 @@ export default function UserProfile() {
                       className={`ml-2 p-2 rounded-full items-center justify-center min-w-[32px] min-h-[32px] ${
                         (commentInputs[activeCommentsPostId] || "").trim() &&
                         !submittingComments[activeCommentsPostId]
-                          ? "bg-[#72AF5B] active:opacity-85"
+                          ? "bg-[#34594A] active:opacity-85"
                           : "bg-gray-200 opacity-60"
                       }`}
                     >
@@ -2994,8 +3316,8 @@ export default function UserProfile() {
                 accessibilityRole="button"
                 accessibilityLabel="Choose from Library"
               >
-                <View className="w-11 h-11 rounded-full bg-[#E2F0D9] items-center justify-center mr-3.5">
-                  <Ionicons name="images" size={22} color="#72AF5B" />
+                <View className="w-11 h-11 rounded-full bg-[#EDF3EE] items-center justify-center mr-3.5">
+                  <Ionicons name="images" size={22} color="#34594A" />
                 </View>
                 <View className="flex-1">
                   <Text className="text-[15px] font-semibold text-gray-900">
@@ -3151,7 +3473,7 @@ export default function UserProfile() {
       
 
       {/* Bottom Navigation Component */}
-      <BottomNavBar showFab={false} />
+      <BottomNavBar premium activeTab="Menu" showFab={false} />
 
       {/* Profile Options Bottom Sheet */}
       {isOptionsOpen && (

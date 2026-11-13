@@ -295,7 +295,7 @@ export default function Chats() {
           accessibilityRole="button"
           accessibilityLabel="New message"
         >
-          <Ionicons name="create-outline" size={26} color="#374151" />
+          <Ionicons name="create-outline" size={26} color="#34594A" />
         </TouchableOpacity>
       </View>
 
@@ -307,7 +307,7 @@ export default function Chats() {
           accessibilityRole="button"
           accessibilityLabel="Open chat sidebar menu"
         >
-          <Ionicons name="menu-outline" size={28} color="#374151" />
+          <Ionicons name="menu-outline" size={28} color="#34594A" />
         </TouchableOpacity>
 
         {/* Search Input */}
@@ -325,10 +325,10 @@ export default function Chats() {
               onPress={() => setSearchQuery("")}
               className="p-1 mr-1"
             >
-              <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+              <Ionicons name="close-circle" size={18} color="#34594A" />
             </TouchableOpacity>
           ) : null}
-          <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+          <Ionicons name="search-outline" size={20} color="#34594A" />
         </View>
       </View>
 
@@ -346,8 +346,8 @@ export default function Chats() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={() => fetchChatsData(true)}
-            colors={["#72AF5B"]}
-            tintColor="#72AF5B"
+            colors={["#34594A"]}
+            tintColor="#34594A"
           />
         }
       >
@@ -369,10 +369,10 @@ export default function Chats() {
                       resizeMode="cover"
                     />
                   ) : (
-                    <Ionicons name="person" size={28} color="#9CA3AF" />
+                    <Ionicons name="person" size={28} color="#34594A" />
                   )}
                 </View>
-                <View className="absolute -bottom-0.5 -right-0.5 bg-[#72AF5B] w-5 h-5 rounded-full items-center justify-center border-2 border-white">
+                <View className="absolute -bottom-0.5 -right-0.5 bg-[#34594A] w-5 h-5 rounded-full items-center justify-center border-2 border-white">
                   <Ionicons name="add" size={14} color="#FFFFFF" />
                 </View>
               </View>
@@ -398,11 +398,11 @@ export default function Chats() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <Ionicons name="person" size={28} color="#9CA3AF" />
+                      <Ionicons name="person" size={28} color="#34594A" />
                     )}
                   </View>
                   {activeUser.isOnline && (
-                    <View className="absolute bottom-0 right-0 bg-green-500 w-3.5 h-3.5 rounded-full border-2 border-white" />
+                    <View className="absolute bottom-0 right-0 bg-[#34594A] w-3.5 h-3.5 rounded-full border-2 border-white" />
                   )}
                 </View>
                 <Text
@@ -419,7 +419,7 @@ export default function Chats() {
         {/* 4. Conversations List */}
         {isLoading ? (
           <View className="py-16 items-center justify-center">
-            <ActivityIndicator size="large" color="#72AF5B" />
+            <ActivityIndicator size="large" color="#34594A" />
             <Text className="text-sm text-gray-500 mt-2 font-medium">
               Loading chats...
             </Text>
@@ -427,7 +427,7 @@ export default function Chats() {
         ) : filteredConversations.length === 0 ? (
           <View className="py-16 items-center justify-center px-6">
             <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-              <Ionicons name="chatbubbles-outline" size={32} color="#9CA3AF" />
+              <Ionicons name="chatbubbles-outline" size={32} color="#34594A" />
             </View>
             <Text className="text-base font-bold text-gray-800 mb-1">
               No Conversations Yet
@@ -456,11 +456,11 @@ export default function Chats() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <Ionicons name="person" size={28} color="#6B7280" />
+                      <Ionicons name="person" size={28} color="#34594A" />
                     )}
                   </View>
                   {chat.online && (
-                    <View className="absolute bottom-0 right-0 bg-green-500 w-3.5 h-3.5 rounded-full border-2 border-white" />
+                    <View className="absolute bottom-0 right-0 bg-[#34594A] w-3.5 h-3.5 rounded-full border-2 border-white" />
                   )}
                 </View>
 
@@ -480,13 +480,13 @@ export default function Chats() {
                   {chat.isTyping ? (
                     <View className="flex-row items-center gap-1.5">
                       <View className="flex-row items-center gap-0.5">
-                        <View className="w-1.5 h-1.5 rounded-full bg-[#72AF5B]" />
-                        <View className="w-1.5 h-1.5 rounded-full bg-[#72AF5B]/70" />
-                        <View className="w-1.5 h-1.5 rounded-full bg-[#72AF5B]/40" />
+                        <View className="w-1.5 h-1.5 rounded-full bg-[#34594A]" />
+                        <View className="w-1.5 h-1.5 rounded-full bg-[#34594A]/70" />
+                        <View className="w-1.5 h-1.5 rounded-full bg-[#34594A]/40" />
                       </View>
                       <Text
                         numberOfLines={1}
-                        className="text-sm font-semibold text-[#72AF5B] italic"
+                        className="text-sm font-semibold text-[#34594A] italic"
                       >
                         typing...
                       </Text>
@@ -510,7 +510,7 @@ export default function Chats() {
                   <Text
                     className={`text-xs ${
                       chat.isTyping
-                        ? "text-[#72AF5B] font-bold"
+                        ? "text-[#34594A] font-bold"
                         : chat.unread > 0
                           ? "text-red-500 font-bold"
                           : "text-gray-400 font-medium"
@@ -520,8 +520,8 @@ export default function Chats() {
                   </Text>
 
                   {chat.isTyping ? (
-                    <View className="px-1.5 py-0.5 rounded-full bg-[#72AF5B]/15">
-                      <Text className="text-[10px] text-[#72AF5B] font-bold">typing</Text>
+                    <View className="px-1.5 py-0.5 rounded-full bg-[#34594A]/15">
+                      <Text className="text-[10px] text-[#34594A] font-bold">typing</Text>
                     </View>
                   ) : chat.unread > 0 ? (
                     <View className="bg-red-500 rounded-full h-5 min-w-[20px] px-1.5 items-center justify-center">
@@ -534,7 +534,7 @@ export default function Chats() {
                       <Ionicons
                         name="checkmark-done"
                         size={16}
-                        color="#72AF5B"
+                        color="#34594A"
                       />
                     ) : chat.isDelivered ? (
                       <Ionicons
@@ -594,11 +594,11 @@ export default function Chats() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <Ionicons name="person" size={24} color="#6B7280" />
+                      <Ionicons name="person" size={24} color="#34594A" />
                     )}
                   </View>
                   {selectedChatForOptions.online && (
-                    <View className="absolute bottom-0 right-0 bg-green-500 w-3 h-3 rounded-full border-2 border-white" />
+                    <View className="absolute bottom-0 right-0 bg-[#34594A] w-3 h-3 rounded-full border-2 border-white" />
                   )}
                 </View>
                 <View className="flex-1">
@@ -614,7 +614,7 @@ export default function Chats() {
                   </Text>
                 </View>
                 {isActionInProgress && (
-                  <ActivityIndicator size="small" color="#72AF5B" className="ml-2" />
+                  <ActivityIndicator size="small" color="#34594A" className="ml-2" />
                 )}
               </View>
             )}
@@ -630,7 +630,7 @@ export default function Chats() {
                   className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100"
                 >
                   <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3.5">
-                    <Ionicons name="archive-outline" size={20} color="#374151" />
+                    <Ionicons name="archive-outline" size={20} color="#34594A" />
                   </View>
                   <View className="flex-1">
                     <Text className="text-base font-semibold text-gray-900">Archive</Text>
@@ -649,7 +649,7 @@ export default function Chats() {
                     <Ionicons
                       name={selectedChatForOptions.isMuted ? "notifications-outline" : "notifications-off-outline"}
                       size={20}
-                      color="#374151"
+                      color="#34594A"
                     />
                   </View>
                   <View className="flex-1">
@@ -670,7 +670,7 @@ export default function Chats() {
                   className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100"
                 >
                   <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3.5">
-                    <Ionicons name="shield-outline" size={20} color="#374151" />
+                    <Ionicons name="shield-outline" size={20} color="#34594A" />
                   </View>
                   <View className="flex-1">
                     <Text className="text-base font-semibold text-gray-900">
@@ -718,7 +718,7 @@ export default function Chats() {
       </Modal>
 
       {/* 6. Bottom Navigation Component */}
-      <BottomNavBar activeTab="Chat" showFab={false} />
+      <BottomNavBar accentColor="#34594A" activeTab="Chat" showFab={false} />
 
       {/* 7. Chat Sidebar Modal Component */}
       <ChatSidebarModal

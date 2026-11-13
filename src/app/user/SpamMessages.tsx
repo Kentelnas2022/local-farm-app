@@ -39,7 +39,7 @@ function SpamListItem({
             resizeMode="cover"
           />
         ) : (
-          <Ionicons name="person" size={26} color="#9CA3AF" />
+          <Ionicons name="person" size={26} color="#34594A" />
         )}
       </View>
 
@@ -129,7 +129,7 @@ export default function SpamMessages() {
           accessibilityRole="button"
           accessibilityLabel="Open menu"
         >
-          <Ionicons name="menu-outline" size={28} color="#374151" />
+          <Ionicons name="menu-outline" size={28} color="#34594A" />
         </TouchableOpacity>
 
         {/* Search Input Box */}
@@ -144,10 +144,10 @@ export default function SpamMessages() {
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery("")} className="p-1 mr-1">
-              <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+              <Ionicons name="close-circle" size={18} color="#34594A" />
             </TouchableOpacity>
           ) : null}
-          <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+          <Ionicons name="search-outline" size={20} color="#34594A" />
         </View>
       </View>
 
@@ -168,14 +168,14 @@ export default function SpamMessages() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={() => fetchSpam(true)}
-            colors={["#72AF5B"]}
-            tintColor="#72AF5B"
+            colors={["#34594A"]}
+            tintColor="#34594A"
           />
         }
       >
         {isLoading ? (
           <View className="py-16 items-center justify-center">
-            <ActivityIndicator size="large" color="#72AF5B" />
+            <ActivityIndicator size="large" color="#34594A" />
             <Text className="text-sm text-gray-500 mt-2 font-medium">
               Loading spam messages...
             </Text>
@@ -204,7 +204,7 @@ export default function SpamMessages() {
               <Ionicons
                 name="shield-checkmark-outline"
                 size={36}
-                color="#72AF5B"
+                color="#34594A"
               />
             </View>
             <Text className="text-gray-800 font-bold text-base mb-1">
@@ -218,7 +218,7 @@ export default function SpamMessages() {
       </ScrollView>
 
       {/* Bottom Navigation Bar */}
-      <BottomNavBar showFab={false} activeTab="Chat" />
+      <BottomNavBar accentColor="#34594A" showFab={false} activeTab="Chat" />
 
       {/* Sidebar Drawer */}
       <ChatSidebarModal

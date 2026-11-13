@@ -155,7 +155,7 @@ export default function SpamChatConversation() {
                 resizeMode="cover"
               />
             ) : (
-              <Ionicons name="person" size={22} color="#9CA3AF" />
+              <Ionicons name="person" size={22} color="#34594A" />
             )}
           </View>
 
@@ -185,7 +185,7 @@ export default function SpamChatConversation() {
       >
         {isLoading ? (
           <View className="items-center justify-center py-12">
-            <ActivityIndicator size="small" color="#72AF5B" />
+            <ActivityIndicator size="small" color="#34594A" />
           </View>
         ) : messages.length === 0 ? (
           <View className="items-center justify-center py-12">
@@ -215,7 +215,7 @@ export default function SpamChatConversation() {
                 <View
                   className={`px-4 py-2.5 max-w-[76%] rounded-2xl ${
                     isUser
-                      ? "bg-[#72AF5B] rounded-br-xs"
+                      ? "bg-[#34594A] rounded-br-xs"
                       : "bg-[#F0F0F0] rounded-bl-xs shadow-2xs"
                   }`}
                 >
@@ -238,10 +238,10 @@ export default function SpamChatConversation() {
         <TouchableOpacity
           onPress={handleArchive}
           disabled={Boolean(isActionTaken)}
-          className="flex-1 bg-gray-50 border border-[#72AF5B] rounded-xl py-3 items-center justify-center shadow-2xs active:bg-gray-100"
+          className="flex-1 bg-gray-50 border border-[#34594A] rounded-xl py-3 items-center justify-center shadow-2xs active:bg-gray-100"
           activeOpacity={0.8}
         >
-          <Text className="text-sm font-bold text-[#72AF5B] text-center">
+          <Text className="text-sm font-bold text-[#34594A] text-center">
             {isActionTaken === "Archived" ? "Archived ✓" : "Archive"}
           </Text>
         </TouchableOpacity>
@@ -262,7 +262,7 @@ export default function SpamChatConversation() {
         <TouchableOpacity
           onPress={handleAccept}
           disabled={Boolean(isActionTaken)}
-          className="flex-1 bg-[#72AF5B] rounded-xl py-3 items-center justify-center active:opacity-85 shadow-2xs"
+          className="flex-1 bg-[#34594A] rounded-xl py-3 items-center justify-center active:opacity-85 shadow-2xs"
           activeOpacity={0.8}
         >
           <Text className="text-sm font-bold text-white text-center">

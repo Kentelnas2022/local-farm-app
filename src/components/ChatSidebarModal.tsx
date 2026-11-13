@@ -122,7 +122,7 @@ export default function ChatSidebarModal({
                 accessibilityRole="button"
                 accessibilityLabel="Close sidebar"
               >
-                <Ionicons name="close" size={26} color="#374151" />
+                <Ionicons name="close" size={26} color="#34594A" />
               </TouchableOpacity>
             </View>
 
@@ -142,7 +142,7 @@ export default function ChatSidebarModal({
                     activeOpacity={0.8}
                     className={`py-3.5 px-4 rounded-xl flex-row items-center ${
                       isActive
-                        ? "bg-[#72AF5B]"
+                        ? "bg-[#34594A]"
                         : "bg-transparent active:bg-gray-100"
                     }`}
                   >

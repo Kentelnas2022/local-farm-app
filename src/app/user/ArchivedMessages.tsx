@@ -52,7 +52,7 @@ function ArchivedListItem({
             resizeMode="cover"
           />
         ) : (
-          <Ionicons name="person" size={26} color="#9CA3AF" />
+          <Ionicons name="person" size={26} color="#34594A" />
         )}
       </View>
 
@@ -203,7 +203,7 @@ export default function ArchivedMessages() {
           accessibilityRole="button"
           accessibilityLabel="Open menu"
         >
-          <Ionicons name="menu-outline" size={28} color="#374151" />
+          <Ionicons name="menu-outline" size={28} color="#34594A" />
         </TouchableOpacity>
 
         {/* Search Input Box */}
@@ -218,10 +218,10 @@ export default function ArchivedMessages() {
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery("")} className="p-1 mr-1">
-              <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+              <Ionicons name="close-circle" size={18} color="#34594A" />
             </TouchableOpacity>
           ) : null}
-          <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+          <Ionicons name="search-outline" size={20} color="#34594A" />
         </View>
       </View>
 
@@ -242,14 +242,14 @@ export default function ArchivedMessages() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={() => fetchArchived(true)}
-            colors={["#72AF5B"]}
-            tintColor="#72AF5B"
+            colors={["#34594A"]}
+            tintColor="#34594A"
           />
         }
       >
         {isLoading ? (
           <View className="py-16 items-center justify-center">
-            <ActivityIndicator size="large" color="#72AF5B" />
+            <ActivityIndicator size="large" color="#34594A" />
             <Text className="text-sm text-gray-500 mt-2 font-medium">
               Loading archived chats...
             </Text>
@@ -266,7 +266,7 @@ export default function ArchivedMessages() {
         ) : (
           <View className="items-center justify-center py-20 px-6">
             <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-              <Ionicons name="archive-outline" size={36} color="#9CA3AF" />
+              <Ionicons name="archive-outline" size={36} color="#34594A" />
             </View>
             <Text className="text-gray-800 font-bold text-base mb-1">
               No Archived Chats
@@ -301,7 +301,7 @@ export default function ArchivedMessages() {
                   onPress={() => selectedChat && handleUnarchive(selectedChat)}
                   className="flex-row items-center py-3.5 px-4 rounded-xl bg-gray-50 mb-2 active:bg-gray-100"
                 >
-                  <Ionicons name="arrow-undo-outline" size={20} color="#72AF5B" style={{ marginRight: 12 }} />
+                  <Ionicons name="arrow-undo-outline" size={20} color="#34594A" style={{ marginRight: 12 }} />
                   <Text className="text-sm font-semibold text-gray-800">
                     Unarchive (Move to Messages)
                   </Text>
@@ -339,7 +339,7 @@ export default function ArchivedMessages() {
       </Modal>
 
       {/* Bottom Navigation Bar */}
-      <BottomNavBar showFab={false} activeTab="Chat" />
+      <BottomNavBar accentColor="#34594A" showFab={false} activeTab="Chat" />
 
       {/* Sidebar Drawer */}
       <ChatSidebarModal

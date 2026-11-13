@@ -112,7 +112,7 @@ export default function Suggestions() {
           accessibilityRole="button"
           accessibilityLabel="Open sidebar menu"
         >
-          <Ionicons name="person-add-outline" size={26} color="#374151" />
+          <Ionicons name="person-add-outline" size={26} color="#34594A" />
         </TouchableOpacity>
 
         {/* Search Input Container */}
@@ -125,7 +125,7 @@ export default function Suggestions() {
             className="flex-1 text-base text-gray-800 pr-2 h-full font-medium"
             autoCapitalize="none"
           />
-          <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+          <Ionicons name="search-outline" size={20} color="#34594A" />
         </View>
       </View>
 
@@ -133,7 +133,7 @@ export default function Suggestions() {
       <View className="px-5 mb-3 flex-row justify-between items-center">
         <Text className="text-lg font-semibold text-gray-800">
           Suggestions{" "}
-          <Text className="text-[#72AF5B] font-bold">
+          <Text className="text-[#34594A] font-bold">
             ({filteredSuggestions.length})
           </Text>
         </Text>
@@ -153,14 +153,14 @@ export default function Suggestions() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={() => fetchSuggestions(true)}
-            colors={["#72AF5B"]}
-            tintColor="#72AF5B"
+            colors={["#34594A"]}
+            tintColor="#34594A"
           />
         }
       >
         {isLoading ? (
           <View className="py-16 items-center justify-center">
-            <ActivityIndicator size="large" color="#72AF5B" />
+            <ActivityIndicator size="large" color="#34594A" />
             <Text className="text-sm text-gray-500 mt-2 font-medium">
               Finding farmer suggestions...
             </Text>
@@ -168,7 +168,7 @@ export default function Suggestions() {
         ) : filteredSuggestions.length === 0 ? (
           <View className="py-16 items-center justify-center px-6">
             <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-              <Ionicons name="sparkles-outline" size={32} color="#9CA3AF" />
+              <Ionicons name="sparkles-outline" size={32} color="#34594A" />
             </View>
             <Text className="text-base font-bold text-gray-800 mb-1">
               No Suggestions Right Now
@@ -196,7 +196,7 @@ export default function Suggestions() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <Ionicons name="person" size={28} color="#6B7280" />
+                      <Ionicons name="person" size={28} color="#34594A" />
                     )}
                   </View>
 
@@ -211,7 +211,7 @@ export default function Suggestions() {
                       <Ionicons
                         name="people"
                         size={13}
-                        color="#6B7280"
+                        color="#34594A"
                         style={{ marginRight: 4 }}
                       />
                       <Text className="text-sm font-semibold text-gray-500">
@@ -238,7 +238,7 @@ export default function Suggestions() {
                         <TouchableOpacity
                           onPress={() => handleAddFriend(item)}
                           disabled={state === "loading"}
-                          className="flex-1 bg-[#72AF5B] py-2.5 px-3 rounded-xl flex-row items-center justify-center active:bg-[#62974e] shadow-2xs"
+                          className="flex-1 bg-[#34594A] py-2.5 px-3 rounded-xl flex-row items-center justify-center active:bg-[#2A4F3E] shadow-2xs"
                           activeOpacity={0.8}
                           accessibilityRole="button"
                           accessibilityLabel={`Add ${item.name} as friend`}
@@ -278,7 +278,7 @@ export default function Suggestions() {
       </ScrollView>
 
       {/* Bottom Navigation Component */}
-      <BottomNavBar activeTab="Connection" showFab={false} />
+      <BottomNavBar accentColor="#34594A" activeTab="Connection" showFab={false} />
 
       {/* Reusable Sidebar Drawer Menu */}
       <SidebarMenu

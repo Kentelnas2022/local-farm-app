@@ -15,6 +15,7 @@ export interface TabRoute {
 
 export interface NavigationProps {
   premium?: boolean;
+  accentColor?: string;
   activeTab?: "Home" | "Friends" | "Messages" | "Map" | "Menu" | "Chat" | "Connection" | string;
   activeTabName?: string;
   onFabPress?: () => void;
@@ -37,7 +38,7 @@ export interface NavigationProps {
   };
 }
 
-const ACTIVE_COLOR = "#72AF5B"; // LocalFarm green
+const ACTIVE_COLOR = "#34594A"; // LocalFarm green
 const INACTIVE_COLOR = "#9CA3AF"; // Neutral gray
 
 export function UserTabBar({
@@ -83,7 +84,7 @@ export function UserTabBar({
       {/* Floating Action Button (FAB) */}
       {showFab && (
         <TouchableOpacity
-          className="absolute right-4 h-14 w-14 rounded-full bg-[#72AF5B] items-center justify-center shadow-lg elevation-6 z-[60]"
+          className="absolute right-4 h-14 w-14 rounded-full bg-[#34594A] items-center justify-center shadow-lg elevation-6 z-[60]"
           style={{ position: "absolute", bottom: 72 + bottomInset, right: 16, zIndex: 60 }}
           activeOpacity={0.8}
           onPress={onFabPress}
@@ -185,13 +186,13 @@ export function UserTabBar({
               {/* Short Active Green Line Indicator at Top */}
               {isFocused && (
                 <View
-                  className="absolute top-0 w-8 h-[3.5px] bg-[#72AF5B] rounded-b-md"
+                  className="absolute top-0 w-8 h-[3.5px] rounded-b-md"
                   style={{
                     position: "absolute",
                     top: 0,
                     width: 34,
                     height: 3.5,
-                    backgroundColor: "#72AF5B",
+                    backgroundColor: ACTIVE_COLOR,
                     borderBottomLeftRadius: 3,
                     borderBottomRightRadius: 3,
                   }}
@@ -373,8 +374,8 @@ export default function Navigation(props?: NavigationProps) {
       {/* Floating Action Button (FAB) */}
       {showFab && (
         <TouchableOpacity
-          className="absolute right-4 h-14 w-14 rounded-full bg-[#72AF5B] items-center justify-center shadow-lg elevation-6 z-[60]"
-          style={{ position: "absolute", bottom: 72 + bottomInset, right: 20, zIndex: 60, ...(props?.premium ? { backgroundColor: "#3d6049", width: 56, height: 56, borderRadius: 28, borderWidth: 1, borderColor: "#6e886b", boxShadow: "0 6px 18px rgba(255, 255, 255, .65)", shadowColor: "#ffffff" } : {}) }}
+          className="absolute right-4 h-14 w-14 rounded-full bg-[#34594A] items-center justify-center shadow-lg elevation-6 z-[60]"
+          style={{ position: "absolute", bottom: 72 + bottomInset, right: 20, zIndex: 60, ...(props?.premium ? { backgroundColor: ACTIVE_COLOR, width: 56, height: 56, borderRadius: 28, borderWidth: 1, borderColor: "#6e886b", boxShadow: "0 6px 18px rgba(255, 255, 255, .65)", shadowColor: "#ffffff" } : {}) }}
           activeOpacity={0.8}
           onPress={props?.onFabPress}
           accessibilityRole="button"
@@ -398,7 +399,7 @@ export default function Navigation(props?: NavigationProps) {
             activeKey === tab.title ||
             activeKey.toLowerCase() === tab.title.toLowerCase();
 
-          const iconColor = props?.premium ? (isFocused ? "#3d6049" : "#879386") : isFocused ? ACTIVE_COLOR : INACTIVE_COLOR;
+          const iconColor = props?.accentColor ? (isFocused ? props.accentColor : INACTIVE_COLOR) : props?.premium ? (isFocused ? ACTIVE_COLOR : "#879386") : isFocused ? ACTIVE_COLOR : INACTIVE_COLOR;
 
           return (
             <TouchableOpacity
@@ -412,13 +413,13 @@ export default function Navigation(props?: NavigationProps) {
               {/* Short Active Green Line Indicator at Top Edge */}
               {isFocused && (
                 <View
-                  className="absolute top-0 w-8 h-[3.5px] bg-[#72AF5B] rounded-b-md"
+                  className="absolute top-0 w-8 h-[3.5px] rounded-b-md"
                   style={{
                     position: "absolute",
                     top: 0,
                     width: 34,
                     height: 3.5,
-                    backgroundColor: "#72AF5B",
+                    backgroundColor: props?.accentColor ?? (props?.premium ? ACTIVE_COLOR : ACTIVE_COLOR),
                     borderBottomLeftRadius: 3,
                     borderBottomRightRadius: 3,
                   }}

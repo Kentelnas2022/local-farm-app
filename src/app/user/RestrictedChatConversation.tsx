@@ -105,7 +105,7 @@ export default function RestrictedChatConversation() {
             {otherUserAvatar ? (
               <Image source={{ uri: otherUserAvatar }} className="w-full h-full" resizeMode="cover" />
             ) : (
-              <Ionicons name="person" size={22} color="#9CA3AF" />
+              <Ionicons name="person" size={22} color="#34594A" />
             )}
           </View>
 
@@ -129,7 +129,7 @@ export default function RestrictedChatConversation() {
       >
         {isLoading ? (
           <View className="items-center justify-center py-12">
-            <ActivityIndicator size="small" color="#72AF5B" />
+            <ActivityIndicator size="small" color="#34594A" />
           </View>
         ) : messages.length === 0 ? (
           <View className="items-center justify-center py-12">
@@ -150,7 +150,7 @@ export default function RestrictedChatConversation() {
                       {otherUserAvatar ? (
                         <Image source={{ uri: otherUserAvatar }} className="w-full h-full" resizeMode="cover" />
                       ) : (
-                        <Ionicons name="person" size={14} color="#9CA3AF" />
+                        <Ionicons name="person" size={14} color="#34594A" />
                       )}
                     </View>
                   )}
@@ -158,7 +158,7 @@ export default function RestrictedChatConversation() {
                   <View
                     className={`px-4 py-2.5 max-w-[76%] rounded-2xl ${
                       isUser
-                        ? "bg-[#72AF5B] rounded-br-xs"
+                        ? "bg-[#34594A] rounded-br-xs"
                         : "bg-[#F0F0F0] rounded-bl-xs shadow-2xs"
                     }`}
                   >

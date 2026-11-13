@@ -112,7 +112,7 @@ export default function NearbyUsers() {
           accessibilityRole="button"
           accessibilityLabel="Open menu"
         >
-          <Ionicons name="person-add-outline" size={26} color="#374151" />
+          <Ionicons name="person-add-outline" size={26} color="#34594A" />
         </TouchableOpacity>
 
         {/* Search Input */}
@@ -126,10 +126,10 @@ export default function NearbyUsers() {
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+              <Ionicons name="close-circle" size={18} color="#34594A" />
             </TouchableOpacity>
           ) : (
-            <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="search-outline" size={20} color="#34594A" />
           )}
         </View>
       </View>
@@ -150,7 +150,7 @@ export default function NearbyUsers() {
       {/* Content Area */}
       {isLoading ? (
         <View className="flex-1 items-center justify-center py-20">
-          <ActivityIndicator size="large" color="#72AF5B" />
+          <ActivityIndicator size="large" color="#34594A" />
           <Text className="text-gray-500 text-sm mt-3 font-medium">
             Finding nearby farmers and users...
           </Text>
@@ -164,14 +164,14 @@ export default function NearbyUsers() {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={() => fetchNearbyUsers(true)}
-              colors={["#72AF5B"]}
+              colors={["#34594A"]}
             />
           }
         >
           <View className="px-5">
             {filteredUsers.length === 0 ? (
               <View className="items-center justify-center py-16 px-4">
-                <Ionicons name="location-outline" size={48} color="#9CA3AF" />
+                <Ionicons name="location-outline" size={48} color="#34594A" />
                 <Text className="text-base font-semibold text-gray-700 mt-3">
                   {searchQuery
                     ? "No matching nearby members"
@@ -203,7 +203,7 @@ export default function NearbyUsers() {
                           resizeMode="cover"
                         />
                       ) : (
-                        <Ionicons name="person" size={30} color="#6B7280" />
+                        <Ionicons name="person" size={30} color="#34594A" />
                       )}
                     </View>
 
@@ -218,7 +218,7 @@ export default function NearbyUsers() {
                         <Ionicons
                           name="location"
                           size={13}
-                          color="#72AF5B"
+                          color="#34594A"
                           style={{ marginRight: 3 }}
                         />
                         <Text className="text-xs font-semibold text-gray-600">
@@ -240,13 +240,13 @@ export default function NearbyUsers() {
                         <TouchableOpacity
                           onPress={() => handleCancelRequest(item)}
                           disabled={isActionLoading}
-                          className="w-full bg-gray-50 border border-[#72AF5B] py-2.5 rounded-xl items-center justify-center active:bg-gray-200"
+                          className="w-full bg-gray-50 border border-[#34594A] py-2.5 rounded-xl items-center justify-center active:bg-gray-200"
                           activeOpacity={0.8}
                           accessibilityRole="button"
                           accessibilityLabel={`Cancel friend request to ${item.name}`}
                         >
                           {isActionLoading ? (
-                            <ActivityIndicator size="small" color="#72AF5B" />
+                            <ActivityIndicator size="small" color="#34594A" />
                           ) : (
                             <Text className="text-[#000000] font-semibold text-xs sm:text-sm">
                               Cancel Request
@@ -254,14 +254,14 @@ export default function NearbyUsers() {
                           )}
                         </TouchableOpacity>
                       ) : currentRel === "accepted" ? (
-                        <View className="w-full bg-green-50 border border-green-200 py-2 rounded-xl flex-row items-center justify-center">
+                        <View className="w-full bg-[#EDF3EE] border border-[#E3ECE5] py-2 rounded-xl flex-row items-center justify-center">
                           <Ionicons
                             name="checkmark-circle"
                             size={16}
-                            color="#72AF5B"
+                            color="#34594A"
                             style={{ marginRight: 4 }}
                           />
-                          <Text className="text-green-700 font-semibold text-xs sm:text-sm">
+                          <Text className="text-[#34594A] font-semibold text-xs sm:text-sm">
                             Friends
                           </Text>
                         </View>
@@ -271,7 +271,7 @@ export default function NearbyUsers() {
                           <TouchableOpacity
                             onPress={() => handleAddFriend(item)}
                             disabled={isActionLoading}
-                            className="flex-1 bg-[#72AF5B] py-2.5 px-3 rounded-xl flex-row items-center justify-center active:bg-[#62974e] shadow-2xs"
+                            className="flex-1 bg-[#34594A] py-2.5 px-3 rounded-xl flex-row items-center justify-center active:bg-[#2A4F3E] shadow-2xs"
                             activeOpacity={0.8}
                             accessibilityRole="button"
                             accessibilityLabel={`Add ${item.name} as friend`}
@@ -314,7 +314,7 @@ export default function NearbyUsers() {
           </View>
         </ScrollView>
       )}
-      <BottomNavBar showFab={false} />
+      <BottomNavBar accentColor="#34594A" showFab={false} />
       <SidebarMenu
         isVisible={isSidebarVisible}
         onClose={() => setSidebarVisible(false)}

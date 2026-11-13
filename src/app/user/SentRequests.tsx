@@ -95,8 +95,8 @@ export default function SentRequests() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={() => fetchSentRequests(true)}
-            colors={["#72AF5B"]}
-            tintColor="#72AF5B"
+            colors={["#34594A"]}
+            tintColor="#34594A"
           />
         }
       >
@@ -113,7 +113,7 @@ export default function SentRequests() {
             accessibilityRole="button"
             accessibilityLabel="Open sidebar menu"
           >
-            <Ionicons name="person-add-outline" size={26} color="#374151" />
+            <Ionicons name="person-add-outline" size={26} color="#34594A" />
           </TouchableOpacity>
 
           {/* Search Input */}
@@ -126,7 +126,7 @@ export default function SentRequests() {
               className="flex-1 text-base text-gray-800 pr-2 h-full font-medium"
               autoCapitalize="none"
             />
-            <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+            <Ionicons name="search-outline" size={20} color="#34594A" />
           </View>
         </View>
 
@@ -134,7 +134,7 @@ export default function SentRequests() {
         <View className="flex-row items-center px-5 py-2 mb-2">
           <Text className="text-lg font-semibold text-gray-900">
             Sent Request <Text className="text-gray-400">·</Text>{" "}
-            <Text className="text-[#72AF5B] font-bold">
+            <Text className="text-[#34594A] font-bold">
               {filteredRequests.length}
             </Text>
           </Text>
@@ -143,7 +143,7 @@ export default function SentRequests() {
         {/* Loading State */}
         {isLoading ? (
           <View className="py-16 items-center justify-center">
-            <ActivityIndicator size="large" color="#72AF5B" />
+            <ActivityIndicator size="large" color="#34594A" />
             <Text className="text-sm text-gray-500 mt-2 font-medium">
               Loading sent requests...
             </Text>
@@ -151,7 +151,7 @@ export default function SentRequests() {
         ) : filteredRequests.length === 0 ? (
           <View className="py-16 items-center justify-center px-6">
             <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-              <Ionicons name="paper-plane-outline" size={32} color="#9CA3AF" />
+              <Ionicons name="paper-plane-outline" size={32} color="#34594A" />
             </View>
             <Text className="text-base font-bold text-gray-800 mb-1">
               No Sent Requests
@@ -180,7 +180,7 @@ export default function SentRequests() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <Ionicons name="person" size={28} color="#6B7280" />
+                      <Ionicons name="person" size={28} color="#34594A" />
                     )}
                   </View>
 
@@ -195,7 +195,7 @@ export default function SentRequests() {
                           <Ionicons
                             name="people"
                             size={13}
-                            color="#6B7280"
+                            color="#34594A"
                             style={{ marginRight: 4 }}
                           />
                           <Text className="text-gray-500 text-sm font-medium">
@@ -205,7 +205,7 @@ export default function SentRequests() {
                       </View>
 
                       {/* Time Sent */}
-                      <Text className="text-[#72AF5B] font-medium text-sm">
+                      <Text className="text-[#34594A] font-medium text-sm">
                         {item.timeAgo || "Recently"}
                       </Text>
                     </View>
@@ -235,7 +235,7 @@ export default function SentRequests() {
         )}
       </ScrollView>
 
-      <BottomNavBar activeTab="Connection" showFab={false} />
+      <BottomNavBar accentColor="#34594A" activeTab="Connection" showFab={false} />
       <SidebarMenu
         isVisible={isSidebarVisible}
         onClose={() => setSidebarVisible(false)}

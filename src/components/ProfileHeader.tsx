@@ -68,7 +68,18 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         <TouchableOpacity
           onPress={onPressBack}
           activeOpacity={0.8}
-          className="absolute top-3 left-3 z-20 w-9 h-9 rounded-full bg-black/40 items-center justify-center"
+          style={{
+            position: "absolute",
+            top: 12,
+            left: 12,
+            zIndex: 20,
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: "rgba(25, 38, 30, 0.45)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
@@ -89,7 +100,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: "rgba(0, 0, 0, 0.4)",
+            backgroundColor: "rgba(25, 38, 30, 0.45)",
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -112,7 +123,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           width: 36,
           height: 36,
           borderRadius: 18,
-          backgroundColor: "rgba(0, 0, 0, 0.4)",
+          backgroundColor: "rgba(25, 38, 30, 0.45)",
           alignItems: "center",
           justifyContent: "center",
         }}
@@ -124,7 +135,24 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
 
       {/* Avatar */}
       <View className="absolute -bottom-10 left-4 z-10">
-        <View className="w-24 h-24 rounded-full border-4 border-white bg-gray-200 items-center justify-center overflow-hidden">
+        <View
+          style={{
+            width: 96,
+            height: 96,
+            borderRadius: 48,
+            borderWidth: 4,
+            borderColor: "#FFFFFF",
+            backgroundColor: "#EDF3EE",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+            shadowColor: "#1e2a22",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 6,
+            elevation: 3,
+          }}
+        >
           {avatarUri ? (
             <Image
               source={{ uri: avatarUri }}
@@ -132,7 +160,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               resizeMode="cover"
             />
           ) : (
-            <Ionicons name="person" size={48} color="#6B7280" />
+            <Ionicons name="person" size={48} color="#7A8D81" />
           )}
         </View>
 
@@ -140,21 +168,53 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         {isOwnProfile && onPressChangePicture && (
           <TouchableOpacity
             onPress={onPressChangePicture}
-            className="absolute bottom-0 right-0 w-7 h-7 bg-gray-200 rounded-full border-2 border-white items-center justify-center shadow-xs active:bg-gray-300"
+            style={{
+              position: "absolute",
+              bottom: 0,
+              right: 0,
+              width: 28,
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: "#F4F7F4",
+              borderWidth: 2,
+              borderColor: "#FFFFFF",
+              alignItems: "center",
+              justifyContent: "center",
+              shadowColor: "#1e2a22",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.1,
+              shadowRadius: 2,
+              elevation: 2,
+            }}
             accessibilityRole="button"
             accessibilityLabel="Change profile picture"
           >
-            <Ionicons name="camera" size={14} color="#1f2937" />
+            <Ionicons name="camera" size={13} color="#34594A" />
           </TouchableOpacity>
         )}
 
         {/* Verified Green Badge on top-right of avatar */}
         {isVerified && (
           <View
-            className="absolute -top-1 -right-1 w-7 h-7 bg-white rounded-full items-center justify-center shadow-md border-2 border-white"
+            style={{
+              position: "absolute",
+              top: -2,
+              right: -2,
+              width: 26,
+              height: 26,
+              backgroundColor: "#FFFFFF",
+              borderRadius: 13,
+              alignItems: "center",
+              justifyContent: "center",
+              shadowColor: "#000000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.12,
+              shadowRadius: 2,
+              elevation: 3,
+            }}
             accessibilityLabel="Verified RSBSA Grower"
           >
-            <Ionicons name="checkmark-circle" size={22} color="#10B981" />
+            <Ionicons name="checkmark-circle" size={22} color="#2A734D" />
           </View>
         )}
       </View>
