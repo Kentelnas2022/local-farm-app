@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useToast } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -23,6 +24,7 @@ import Navigation from "../../components/Navigation";
 import { TWO_FACTOR_STORAGE_KEY } from "./TwoFactorOtp";
 
 export default function TwoFactorAuth() {
+  const { themeColor } = useAppTheme();
   const { user, updateUser } = useAuth();
   const { showToast } = useToast();
   const [isEmailEnabled, setIsEmailEnabled] = useState(
@@ -200,12 +202,12 @@ export default function TwoFactorAuth() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white relative"
-      style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+      className="flex-1 bg-white relative dark:bg-[#181818] "
+      style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }}
     >
       {/* Main Content ScrollView */}
       <ScrollView
-        className="flex-1 bg-white"
+        className="flex-1 bg-white dark:bg-[#181818] "
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
       >
@@ -218,31 +220,31 @@ export default function TwoFactorAuth() {
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Ionicons name="arrow-undo" size={28} color="#000000" />
+            <Ionicons name="arrow-undo" size={28} color={themeColor("#000000", "#E6E6E6")} />
           </TouchableOpacity>
 
-          <Text className="text-lg font-bold text-gray-900">
+          <Text className="text-lg font-bold text-gray-900 dark:text-[#E6E6E6] ">
             Two Factor Authentication
           </Text>
         </View>
 
         {/* Hero Section */}
-        <View className="bg-[#e6f4ea] w-20 h-20 rounded-full items-center justify-center mx-auto mt-6 mb-4 shadow-sm shadow-[#77af5c]/20">
-          <Ionicons name="shield-checkmark" size={40} color="#77af5c" />
+        <View className="bg-[#e6f4ea] w-20 h-20 rounded-full items-center justify-center mx-auto mt-6 mb-4 shadow-sm shadow-[#77af5c]/20 dark:bg-[#181818] ">
+          <Ionicons name="shield-checkmark" size={40} color={themeColor("#77af5c", "#E6E6E6")} />
         </View>
 
-        <Text className="text-xl font-black text-gray-800 text-center mb-1.5">
+        <Text className="text-xl font-black text-gray-800 text-center mb-1.5 dark:text-[#E6E6E6] ">
           Two-factor Authentication
         </Text>
 
-        <Text className="text-xs text-gray-500 text-center px-8 mb-7 leading-5">
+        <Text className="text-xs text-gray-500 text-center px-8 mb-7 leading-5 dark:text-[#ADADAD] ">
           Add an extra layer of defense to keep your farm listings, orders, and account secure.
         </Text>
 
         {/* Options Section */}
         <View className="px-5">
           {/* Section Header */}
-          <Text className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-1">
+          <Text className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-1 dark:text-[#ADADAD] ">
             Verification Methods
           </Text>
 
@@ -250,8 +252,8 @@ export default function TwoFactorAuth() {
           <TouchableOpacity
             activeOpacity={0.88}
             onPress={handleOpenAppCard}
-            className={`bg-white rounded-2xl p-4 mb-4 border ${
-              isAppEnabled ? "border-[#77af5c] bg-[#F8FCF7]" : "border-gray-200"
+            className={`bg-white rounded-2xl p-4 mb-4 border  dark:bg-[#242424] ${
+              isAppEnabled ? "border-[#77af5c] bg-[#F8FCF7] dark:border-[#414141] dark:bg-[#181818] " : "border-gray-200 dark:border-[#414141] "
             } shadow-sm`}
             accessibilityRole="button"
             accessibilityLabel="Google Authenticator option"
@@ -261,7 +263,7 @@ export default function TwoFactorAuth() {
               <View className="flex-row items-center gap-3">
                 <View
                   className={`w-11 h-11 rounded-xl items-center justify-center ${
-                    isAppEnabled ? "bg-[#77af5c]" : "bg-[#E8F5E9]"
+                    isAppEnabled ? "bg-[#77af5c] dark:bg-[#E6E6E6] " : "bg-[#E8F5E9] dark:bg-[#181818] "
                   }`}
                 >
                   <Ionicons
@@ -271,23 +273,23 @@ export default function TwoFactorAuth() {
                   />
                 </View>
                 <View>
-                  <Text className="text-base font-bold text-gray-900">
+                  <Text className="text-base font-bold text-gray-900 dark:text-[#E6E6E6] ">
                     Authenticator App
                   </Text>
-                  <Text className="text-[11px] text-gray-400">
+                  <Text className="text-[11px] text-gray-400 dark:text-[#ADADAD] ">
                     Time-based security codes (TOTP)
                   </Text>
                 </View>
               </View>
 
               {isAppEnabled ? (
-                <View className="bg-[#E8F5E9] px-2.5 py-1 rounded-full border border-[#77af5c]/30 flex-row items-center gap-1">
-                  <View className="w-1.5 h-1.5 rounded-full bg-[#77af5c]" />
-                  <Text className="text-[11px] font-bold text-[#4B8A38]">Active</Text>
+                <View className="bg-[#E8F5E9] px-2.5 py-1 rounded-full border border-[#77af5c]/30 flex-row items-center gap-1 dark:bg-[#181818] dark:border-[#414141]/30 ">
+                  <View className="w-1.5 h-1.5 rounded-full bg-[#77af5c] dark:bg-[#E6E6E6] " />
+                  <Text className="text-[11px] font-bold text-[#4B8A38] dark:text-[#E6E6E6] ">Active</Text>
                 </View>
               ) : (
-                <View className="bg-[#E8F5E9] px-2.5 py-1 rounded-full border border-[#77af5c]/20">
-                  <Text className="text-[11px] font-bold text-[#4B8A38]">
+                <View className="bg-[#E8F5E9] px-2.5 py-1 rounded-full border border-[#77af5c]/20 dark:bg-[#181818] dark:border-[#414141]/20 ">
+                  <Text className="text-[11px] font-bold text-[#4B8A38] dark:text-[#E6E6E6] ">
                     Recommended
                   </Text>
                 </View>
@@ -295,56 +297,56 @@ export default function TwoFactorAuth() {
             </View>
 
             {/* Description - Google Authenticator only */}
-            <Text className="text-xs text-gray-600 leading-relaxed mb-3">
+            <Text className="text-xs text-gray-600 leading-relaxed mb-3 dark:text-[#ADADAD] ">
               Use Google Authenticator to generate secure dynamic verification codes directly on your device.
             </Text>
 
             {/* Google Authenticator Tag */}
             <View className="flex-row items-center mb-3">
-              <View className="flex-row items-center gap-1.5 bg-gray-100 px-2.5 py-1 rounded-lg border border-gray-200/80">
+              <View className="flex-row items-center gap-1.5 bg-gray-100 px-2.5 py-1 rounded-lg border border-gray-200/80 dark:bg-[#181818] dark:border-[#414141]/80 ">
                 <Ionicons name="logo-google" size={13} color="#4285F4" />
-                <Text className="text-[11px] font-semibold text-gray-700">
+                <Text className="text-[11px] font-semibold text-gray-700 dark:text-[#E6E6E6] ">
                   Google Authenticator
                 </Text>
               </View>
             </View>
 
             {/* Divider */}
-            <View className="h-[1px] bg-gray-100 mb-3" />
+            <View className="h-[1px] bg-gray-100 mb-3 dark:bg-[#181818] " />
 
             {/* Footer: Status & Action Link */}
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center gap-1.5">
                 <View
                   className={`w-2 h-2 rounded-full ${
-                    isAppEnabled ? "bg-[#77af5c]" : "bg-gray-300"
+                    isAppEnabled ? "bg-[#77af5c] dark:bg-[#E6E6E6] " : "bg-gray-300 dark:bg-[#303030] "
                   }`}
                 />
-                <Text className="text-xs font-medium text-gray-500">
+                <Text className="text-xs font-medium text-gray-500 dark:text-[#ADADAD] ">
                   {isAppEnabled ? "Paired with your device" : "Not configured"}
                 </Text>
               </View>
 
               <View className="flex-row items-center gap-1">
-                <Text className="text-xs font-bold text-[#77af5c]">
+                <Text className="text-xs font-bold text-[#77af5c] dark:text-[#E6E6E6] ">
                   {isAppEnabled ? "Manage" : "Set Up"}
                 </Text>
-                <Ionicons name="chevron-forward" size={14} color="#77af5c" />
+                <Ionicons name="chevron-forward" size={14} color={themeColor("#77af5c", "#E6E6E6")} />
               </View>
             </View>
           </TouchableOpacity>
 
           {/* Option 2: Email Address Card */}
           <View
-            className={`bg-white rounded-2xl p-4 mb-8 border ${
-              isEmailEnabled ? "border-[#77af5c] bg-[#F8FCF7]" : "border-gray-200"
+            className={`bg-white rounded-2xl p-4 mb-8 border  dark:bg-[#242424] ${
+              isEmailEnabled ? "border-[#77af5c] bg-[#F8FCF7] dark:border-[#414141] dark:bg-[#181818] " : "border-gray-200 dark:border-[#414141] "
             } shadow-sm`}
           >
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center gap-3 flex-1 pr-3">
                 <View
                   className={`w-11 h-11 rounded-xl items-center justify-center ${
-                    isEmailEnabled ? "bg-[#77af5c]" : "bg-gray-100"
+                    isEmailEnabled ? "bg-[#77af5c] dark:bg-[#E6E6E6] " : "bg-gray-100 dark:bg-[#181818] "
                   }`}
                 >
                   <Ionicons
@@ -355,17 +357,17 @@ export default function TwoFactorAuth() {
                 </View>
                 <View className="flex-1">
                   <View className="flex-row items-center gap-2">
-                    <Text className="text-base font-bold text-gray-900">
+                    <Text className="text-base font-bold text-gray-900 dark:text-[#E6E6E6] ">
                       Email Address
                     </Text>
                     {user?.twoFactorEnabled && user?.twoFactorMethod === "email" && (
-                      <View className="bg-[#E8F5E9] px-2 py-0.5 rounded-full border border-[#77af5c]/30 flex-row items-center gap-1">
-                        <View className="w-1.5 h-1.5 rounded-full bg-[#77af5c]" />
-                        <Text className="text-[10px] font-bold text-[#4B8A38]">Active</Text>
+                      <View className="bg-[#E8F5E9] px-2 py-0.5 rounded-full border border-[#77af5c]/30 flex-row items-center gap-1 dark:bg-[#181818] dark:border-[#414141]/30 ">
+                        <View className="w-1.5 h-1.5 rounded-full bg-[#77af5c] dark:bg-[#E6E6E6] " />
+                        <Text className="text-[10px] font-bold text-[#4B8A38] dark:text-[#E6E6E6] ">Active</Text>
                       </View>
                     )}
                   </View>
-                  <Text className="text-xs text-gray-500 mt-0.5" numberOfLines={1}>
+                  <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] " numberOfLines={1}>
                     Send one-time codes to {userEmail}
                   </Text>
                 </View>
@@ -383,7 +385,7 @@ export default function TwoFactorAuth() {
         </View>
 
         {/* Bottom Action Buttons */}
-        <View className="flex-row justify-between items-center border border-[#77af5c] rounded-full p-1.5 mx-5 mb-8">
+        <View className="flex-row justify-between items-center border border-[#77af5c] rounded-full p-1.5 mx-5 mb-8 dark:border-[#414141] ">
           <TouchableOpacity
             onPress={handleBack}
             className="active:opacity-70 px-4 py-2"
@@ -391,20 +393,20 @@ export default function TwoFactorAuth() {
             accessibilityRole="button"
             accessibilityLabel="Cancel"
           >
-            <Text className="text-sm font-bold text-gray-400">Cancel</Text>
+            <Text className="text-sm font-bold text-gray-400 dark:text-[#ADADAD] ">Cancel</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={handleSave}
-            className="bg-[#77af5c] rounded-full px-6 py-2.5 active:bg-[#66984e] flex-row items-center gap-2"
-            style={{ backgroundColor: "#77af5c" }}
+            className="bg-[#77af5c] rounded-full px-6 py-2.5 active:bg-[#66984e] flex-row items-center gap-2 dark:bg-[#E6E6E6] dark:active:bg-[#E6E6E6] "
+            style={{ backgroundColor: themeColor("#77af5c", "#E6E6E6") }}
             activeOpacity={0.8}
             disabled={isSaving}
             accessibilityRole="button"
             accessibilityLabel="Save Changes"
           >
-            {isSaving && <ActivityIndicator size="small" color="#FFFFFF" />}
-            <Text className="text-sm font-bold text-white">
+            {isSaving && <ActivityIndicator size="small" color={themeColor("#FFFFFF", "#181818")} />}
+            <Text className="text-sm font-bold text-white dark:text-[#181818] ">
               {isSaving ? "Saving..." : "Save Changes"}
             </Text>
           </TouchableOpacity>

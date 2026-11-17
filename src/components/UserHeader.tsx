@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useAuth } from "@/hooks/use-auth";
 import { getBadgeCountsApi } from "@/services/badge-service";
 import { getRSBSAApplication, RSBSAApplication } from "@/services/rsbsa-service";
@@ -9,6 +10,7 @@ import { NotificationModal } from "./NotificationModal";
 import { SearchModal } from "./SearchModal";
 
 const UserHeader = ({ premium = false }: { premium?: boolean }) => {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
   const { user } = useAuth();
   const [isNotifOpen, setNotifOpen] = useState(false);
@@ -51,10 +53,10 @@ const UserHeader = ({ premium = false }: { premium?: boolean }) => {
 
   return (
     <>
-      <View className="flex-row justify-between items-center px-4 py-3 bg-white border-b border-gray-100 z-30" style={premium ? { backgroundColor: "#faf9f5", borderBottomWidth: 0, paddingHorizontal: 22, paddingVertical: 10 } : undefined}>
+      <View className="flex-row justify-between items-center px-4 py-3 bg-white border-b border-gray-100 z-30 dark:bg-[#242424] dark:border-[#414141] " style={premium ? { backgroundColor: themeColor("#faf9f5", "#181818"), borderBottomWidth: 0, paddingHorizontal: 22, paddingVertical: 10 } : undefined}>
       {/* Left: Brand Logo */}
       <View className="flex-row items-center">
-        {premium ? <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}><Ionicons name="leaf" size={20} color="#49684b"/><Text style={{ color: "#30483b", fontSize: 19, fontWeight: "600", letterSpacing: -.7 }}>localfarm</Text></View> : <Image
+        {premium ? <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}><Ionicons name="leaf" size={20} color={themeColor("#49684b", "#E6E6E6")}/><Text style={{ color: themeColor("#30483b", "#E6E6E6"), fontSize: 19, fontWeight: "600", letterSpacing: -.7 }}>localfarm</Text></View> : <Image
           source={require("../../assets/images/LF3.png")}
           className="h-9 w-36"
           style={{ width: 135, height: 36 }}
@@ -67,14 +69,14 @@ const UserHeader = ({ premium = false }: { premium?: boolean }) => {
         {/* Notification Bell Trigger */}
         <TouchableOpacity
           onPress={() => setNotifOpen(true)}
-          className="relative p-1.5 rounded-full active:bg-gray-100"
+          className="relative p-1.5 rounded-full active:bg-gray-100 dark:active:bg-[#181818] "
           accessibilityRole="button"
           accessibilityLabel="Notifications"
         >
-          <Ionicons name={premium ? "notifications-outline" : "notifications"} size={22} color={premium ? "#4c6556" : "#72AF5B"} />
+          <Ionicons name={premium ? "notifications-outline" : "notifications"} size={22} color={themeColor(premium ? "#4c6556" : "#72AF5B", "#E6E6E6")} />
           {unreadCount > 0 && (
-            <View className="absolute -top-0.5 -right-0.5 bg-red-500 rounded-full w-4 h-4 items-center justify-center border border-white">
-              <Text className="text-white text-[10px] font-bold">
+            <View className="absolute -top-0.5 -right-0.5 bg-red-500 rounded-full w-4 h-4 items-center justify-center border border-white dark:border-[#414141] ">
+              <Text className="text-white text-[10px] font-bold dark:text-[#E6E6E6] ">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </Text>
             </View>
@@ -84,11 +86,11 @@ const UserHeader = ({ premium = false }: { premium?: boolean }) => {
         {/* Search Icon */}
         <TouchableOpacity
           onPress={() => setSearchOpen(true)}
-          className="p-1.5 rounded-full active:bg-gray-100"
+          className="p-1.5 rounded-full active:bg-gray-100 dark:active:bg-[#181818] "
           accessibilityRole="button"
           accessibilityLabel="Search"
         >
-          <Ionicons name="search-outline" size={22} color={premium ? "#4c6556" : "#333333"} />
+          <Ionicons name="search-outline" size={22} color={themeColor(premium ? "#4c6556" : "#333333", "#E6E6E6")} />
         </TouchableOpacity>
 
         {/* User Profile Avatar Icon */}
@@ -105,7 +107,7 @@ const UserHeader = ({ premium = false }: { premium?: boolean }) => {
               },
             } as any)
           }
-          className="relative w-8 h-8 rounded-full border border-[#72AF5B] items-center justify-center overflow-visible active:opacity-80 bg-gray-100"
+          className="relative w-8 h-8 rounded-full border border-[#72AF5B] items-center justify-center overflow-visible active:opacity-80 bg-gray-100 dark:border-[#414141] dark:bg-[#181818] "
           accessibilityRole="button"
           accessibilityLabel="Profile"
         >
@@ -117,11 +119,11 @@ const UserHeader = ({ premium = false }: { premium?: boolean }) => {
                 resizeMode="cover"
               />
             ) : (
-              <Ionicons name="person-outline" size={18} color="#333333" />
+              <Ionicons name="person-outline" size={18} color={themeColor("#333333", "#E6E6E6")} />
             )}
           </View>
           {isRSBSAVerified && (
-            <View className="absolute -bottom-1 -right-1 bg-white rounded-full w-3.5 h-3.5 items-center justify-center shadow-xs border border-white">
+            <View className="absolute -bottom-1 -right-1 bg-white rounded-full w-3.5 h-3.5 items-center justify-center shadow-xs border border-white dark:bg-[#242424] dark:border-[#414141] ">
               <Ionicons name="checkmark-circle" size={13} color="#10B981" />
             </View>
           )}

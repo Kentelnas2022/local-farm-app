@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import {
   DEFAULT_RSBSA_STATE,
   RSBSAApplication,
@@ -143,6 +144,8 @@ const SECURITY_OPTIONS: SecurityOption[] = [
 ];
 
 export default function Security() {
+  const { themeColor } = useAppTheme();
+  const styles = createStyles(themeColor);
   const router = useRouter();
 
   const [rsbsaApp, setRsbsaApp] = useState<RSBSAApplication>(DEFAULT_RSBSA_STATE);
@@ -194,7 +197,7 @@ export default function Security() {
         return {
           label: "Verified",
           bg: "#E8F5EE",
-          color: "#2E7D5B",
+          color: themeColor("#2E7D5B", "#E6E6E6"),
           icon: "checkmark-circle" as const,
         };
       case "pending":
@@ -208,7 +211,7 @@ export default function Security() {
         return {
           label: "Not Verified",
           bg: "#F3F5F2",
-          color: "#718376",
+          color: themeColor("#718376", "#E6E6E6"),
           icon: "alert-circle-outline" as const,
         };
     }
@@ -227,7 +230,7 @@ export default function Security() {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="chevron-back" size={20} color="#293E33" />
+          <Ionicons name="chevron-back" size={20} color={themeColor("#293E33", "#E6E6E6")} />
         </TouchableOpacity>
 
         <View style={styles.headerTitleWrap}>
@@ -256,7 +259,7 @@ export default function Security() {
           >
             <View style={styles.featuredTopRow}>
               <View style={styles.featuredIconBox}>
-                <Ionicons name="shield-checkmark" size={22} color="#34594A" />
+                <Ionicons name="shield-checkmark" size={22} color={themeColor("#34594A", "#E6E6E6")} />
               </View>
 
               <View style={{ flex: 1, minWidth: 0 }}>
@@ -292,7 +295,7 @@ export default function Security() {
                   ? "View Application Status"
                   : "View Benefits & Apply"}
               </Text>
-              <Ionicons name="arrow-forward" size={14} color="#34594A" />
+              <Ionicons name="arrow-forward" size={14} color={themeColor("#34594A", "#E6E6E6")} />
             </View>
           </TactileTouchable>
         </FadeEntrance>
@@ -326,7 +329,7 @@ export default function Security() {
                     accessibilityLabel={item.title}
                   >
                     <View style={styles.optionIconBox}>
-                      <Ionicons name={item.iconName} size={18} color="#34594A" />
+                      <Ionicons name={item.iconName} size={18} color={themeColor("#34594A", "#E6E6E6")} />
                     </View>
 
                     <View style={{ flex: 1, minWidth: 0 }}>
@@ -340,7 +343,7 @@ export default function Security() {
                       ) : null}
                     </View>
 
-                    <Ionicons name="chevron-forward" size={16} color="#A3B2A7" />
+                    <Ionicons name="chevron-forward" size={16} color={themeColor("#A3B2A7", "#E6E6E6")} />
                   </TactileTouchable>
 
                   {!isLast && <View style={styles.divider} />}
@@ -369,11 +372,11 @@ export default function Security() {
                 accessibilityRole="button"
                 accessibilityLabel="Close benefits modal"
               >
-                <Ionicons name="close" size={16} color="#FFFFFF" />
+                <Ionicons name="close" size={16} color={themeColor("#FFFFFF", "#181818")} />
               </TouchableOpacity>
 
               <View style={styles.modalEyebrowRow}>
-                <Ionicons name="shield-checkmark" size={14} color="#DCE8DF" />
+                <Ionicons name="shield-checkmark" size={14} color={themeColor("#DCE8DF", "#E6E6E6")} />
                 <Text style={styles.modalEyebrowText}>Department of Agriculture</Text>
               </View>
 
@@ -394,7 +397,7 @@ export default function Security() {
               <View style={{ gap: 9, marginBottom: 16 }}>
                 <View style={styles.perkCard}>
                   <View style={styles.perkIconBox}>
-                    <Ionicons name="checkmark-circle" size={18} color="#34594A" />
+                    <Ionicons name="checkmark-circle" size={18} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.perkTitle}>Official Green Checkmark Badge (✓)</Text>
@@ -406,7 +409,7 @@ export default function Security() {
 
                 <View style={styles.perkCard}>
                   <View style={styles.perkIconBox}>
-                    <Ionicons name="people" size={18} color="#34594A" />
+                    <Ionicons name="people" size={18} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.perkTitle}>Maximum Buyer & Wholesaler Trust</Text>
@@ -418,7 +421,7 @@ export default function Security() {
 
                 <View style={styles.perkCard}>
                   <View style={styles.perkIconBox}>
-                    <Ionicons name="trending-up" size={18} color="#34594A" />
+                    <Ionicons name="trending-up" size={18} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.perkTitle}>Priority Map & Discovery Placement</Text>
@@ -430,7 +433,7 @@ export default function Security() {
 
                 <View style={styles.perkCard}>
                   <View style={styles.perkIconBox}>
-                    <Ionicons name="shield" size={18} color="#34594A" />
+                    <Ionicons name="shield" size={18} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.perkTitle}>Protection from Farm Impersonation</Text>
@@ -442,7 +445,7 @@ export default function Security() {
 
                 <View style={styles.perkCard}>
                   <View style={styles.perkIconBox}>
-                    <Ionicons name="videocam" size={18} color="#34594A" />
+                    <Ionicons name="videocam" size={18} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.perkTitle}>Exclusive Live Video Broadcasting</Text>
@@ -459,7 +462,7 @@ export default function Security() {
               <View style={{ gap: 9, marginBottom: 16 }}>
                 <View style={styles.perkCard}>
                   <View style={styles.perkIconBox}>
-                    <Ionicons name="umbrella" size={18} color="#34594A" />
+                    <Ionicons name="umbrella" size={18} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.perkTitle}>Free Crop & Livestock Insurance (PCIC)</Text>
@@ -471,7 +474,7 @@ export default function Security() {
 
                 <View style={styles.perkCard}>
                   <View style={styles.perkIconBox}>
-                    <Ionicons name="leaf" size={18} color="#34594A" />
+                    <Ionicons name="leaf" size={18} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.perkTitle}>Subsidized Seeds & Fertilizer Vouchers</Text>
@@ -483,7 +486,7 @@ export default function Security() {
 
                 <View style={styles.perkCard}>
                   <View style={styles.perkIconBox}>
-                    <Ionicons name="cash-outline" size={18} color="#34594A" />
+                    <Ionicons name="cash-outline" size={18} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.perkTitle}>Financial Grants & Low-Interest Loans</Text>
@@ -496,7 +499,7 @@ export default function Security() {
 
               {/* Free Enrollment Info Note */}
               <View style={styles.freeEnrollmentBanner}>
-                <Ionicons name="information-circle" size={16} color="#77847B" />
+                <Ionicons name="information-circle" size={16} color={themeColor("#77847B", "#E6E6E6")} />
                 <Text style={styles.freeEnrollmentText}>
                   Registration is 100% Free at your City Agriculture Office (CAO) or Municipal Agriculture Office (MAO).
                 </Text>
@@ -535,10 +538,10 @@ export default function Security() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColor: (light: string, dark: string) => string) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
   },
   header: {
     flexDirection: "row",
@@ -546,15 +549,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 10,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderBottomWidth: 1,
-    borderBottomColor: "#EDF1EB",
+    borderBottomColor: themeColor("#EDF1EB", "#414141"),
   },
   backButton: {
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: "#F5F7F5",
+    backgroundColor: themeColor("#F5F7F5", "#181818"),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -567,7 +570,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     letterSpacing: -0.4,
-    color: "#293E33",
+    color: themeColor("#293E33", "#E6E6E6"),
     textAlign: "center",
   },
   scrollArea: {
@@ -582,7 +585,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.8,
-    color: "#77847B",
+    color: themeColor("#77847B", "#E6E6E6"),
     textTransform: "uppercase",
     marginBottom: 10,
     marginTop: 6,
@@ -591,12 +594,12 @@ const styles = StyleSheet.create({
 
   // Featured RSBSA Card (no green shadow, clean neutral border)
   featuredCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderRadius: 20,
     padding: 16,
     marginBottom: 18,
     borderWidth: 1,
-    borderColor: "#E5ECE6",
+    borderColor: themeColor("#E5ECE6", "#414141"),
   },
   featuredTopRow: {
     flexDirection: "row",
@@ -607,18 +610,18 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: "#EDF3EE",
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
     alignItems: "center",
     justifyContent: "center",
   },
   featuredTitle: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#293E33",
+    color: themeColor("#293E33", "#E6E6E6"),
   },
   featuredSubtitle: {
     fontSize: 12,
-    color: "#7A887F",
+    color: themeColor("#7A887F", "#E6E6E6"),
     marginTop: 2,
   },
   statusBadge: {
@@ -636,13 +639,13 @@ const styles = StyleSheet.create({
   featuredDescription: {
     fontSize: 12.5,
     lineHeight: 19,
-    color: "#607267",
+    color: themeColor("#607267", "#E6E6E6"),
     marginTop: 12,
     marginBottom: 14,
   },
   featuredFooter: {
     borderTopWidth: 1,
-    borderTopColor: "#EDF1EB",
+    borderTopColor: themeColor("#EDF1EB", "#414141"),
     paddingTop: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -651,15 +654,15 @@ const styles = StyleSheet.create({
   featuredLinkText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#34594A",
+    color: themeColor("#34594A", "#E6E6E6"),
   },
 
   // Grouped Account Security Card
   groupedCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#E5ECE6",
+    borderColor: themeColor("#E5ECE6", "#414141"),
     overflow: "hidden",
     marginBottom: 20,
   },
@@ -669,31 +672,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
   },
   optionIconBox: {
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: "#F5F7F3",
+    backgroundColor: themeColor("#F5F7F3", "#181818"),
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#E8EDE5",
+    borderColor: themeColor("#E8EDE5", "#414141"),
   },
   optionTitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#293E33",
+    color: themeColor("#293E33", "#E6E6E6"),
   },
   optionSubtitle: {
     fontSize: 11.5,
-    color: "#7A887F",
+    color: themeColor("#7A887F", "#E6E6E6"),
     marginTop: 2,
   },
   divider: {
     height: 1,
-    backgroundColor: "#EDF1EB",
+    backgroundColor: themeColor("#EDF1EB", "#181818"),
     marginHorizontal: 16,
   },
 
@@ -709,14 +712,14 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 390,
     maxHeight: "86%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#E5ECE6",
+    borderColor: themeColor("#E5ECE6", "#414141"),
     overflow: "hidden",
   },
   modalHeader: {
-    backgroundColor: "#34594A",
+    backgroundColor: themeColor("#34594A", "#E6E6E6"),
     padding: 20,
     position: "relative",
   },
@@ -742,26 +745,26 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.8,
     textTransform: "uppercase",
-    color: "#DCE8DF",
+    color: themeColor("#DCE8DF", "#E6E6E6"),
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
     letterSpacing: -0.3,
     marginBottom: 4,
   },
   modalSubtitle: {
     fontSize: 12,
     lineHeight: 18,
-    color: "#D2E3D6",
+    color: themeColor("#D2E3D6", "#E6E6E6"),
     paddingRight: 20,
   },
   modalGroupTitle: {
     fontSize: 10.5,
     fontWeight: "700",
     letterSpacing: 0.8,
-    color: "#77847B",
+    color: themeColor("#77847B", "#E6E6E6"),
     textTransform: "uppercase",
     marginBottom: 9,
   },
@@ -769,17 +772,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
-    backgroundColor: "#F6F9F5",
+    backgroundColor: themeColor("#F6F9F5", "#181818"),
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#E3ECE5",
+    borderColor: themeColor("#E3ECE5", "#414141"),
     padding: 12,
   },
   perkIconBox: {
     width: 30,
     height: 30,
     borderRadius: 10,
-    backgroundColor: "#EDF4EE",
+    backgroundColor: themeColor("#EDF4EE", "#181818"),
     alignItems: "center",
     justifyContent: "center",
     marginTop: 1,
@@ -787,49 +790,49 @@ const styles = StyleSheet.create({
   perkTitle: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#23382D",
+    color: themeColor("#23382D", "#E6E6E6"),
   },
   perkDesc: {
     fontSize: 11.5,
     lineHeight: 16,
-    color: "#6A7B70",
+    color: themeColor("#6A7B70", "#E6E6E6"),
     marginTop: 2,
   },
   freeEnrollmentBanner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#F4F7F3",
+    backgroundColor: themeColor("#F4F7F3", "#181818"),
     borderRadius: 12,
     padding: 11,
     borderWidth: 1,
-    borderColor: "#E5ECE6",
+    borderColor: themeColor("#E5ECE6", "#414141"),
     marginBottom: 16,
   },
   freeEnrollmentText: {
     fontSize: 11.5,
     lineHeight: 16,
-    color: "#607267",
+    color: themeColor("#607267", "#E6E6E6"),
     flex: 1,
   },
   modalActions: {
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: "#EDF1EB",
-    backgroundColor: "#FFFFFF",
+    borderTopColor: themeColor("#EDF1EB", "#414141"),
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     gap: 8,
   },
   modalPrimaryBtn: {
     minHeight: 46,
     borderRadius: 13,
-    backgroundColor: "#34594A",
+    backgroundColor: themeColor("#34594A", "#E6E6E6"),
     alignItems: "center",
     justifyContent: "center",
   },
   modalPrimaryBtnText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: themeColor("#FFFFFF", "#181818"),
   },
   modalSecondaryBtn: {
     minHeight: 40,
@@ -839,6 +842,6 @@ const styles = StyleSheet.create({
   modalSecondaryBtnText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#77847B",
+    color: themeColor("#77847B", "#E6E6E6"),
   },
 });

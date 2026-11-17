@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import {
   archiveConversationApi,
   ConversationItem,
@@ -18,7 +19,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
+  Pressable,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -35,16 +36,17 @@ function ArchivedListItem({
   onPress?: () => void;
   onLongPress?: () => void;
 }) {
+  const { themeColor } = useAppTheme();
   return (
     <TouchableOpacity
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={300}
-      className="flex-row items-center px-4 py-3.5 border-b border-gray-100 active:bg-gray-50"
+      className="flex-row items-center px-4 py-3.5 border-b border-gray-100 active:bg-gray-50 dark:border-[#414141] dark:active:bg-[#242424] "
       activeOpacity={0.7}
     >
       {/* Left Avatar */}
-      <View className="w-13 h-13 rounded-full bg-gray-200 mr-3.5 items-center justify-center overflow-hidden border border-gray-200">
+      <View className="w-13 h-13 rounded-full bg-gray-200 mr-3.5 items-center justify-center overflow-hidden border border-gray-200 dark:bg-[#181818] dark:border-[#414141] ">
         {item.avatarUrl ? (
           <Image
             source={{ uri: item.avatarUrl }}
@@ -52,21 +54,21 @@ function ArchivedListItem({
             resizeMode="cover"
           />
         ) : (
-          <Ionicons name="person" size={26} color="#34594A" />
+          <Ionicons name="person" size={26} color={themeColor("#34594A", "#E6E6E6")} />
         )}
       </View>
 
       {/* Middle Text Content: Name & Snippet */}
       <View className="flex-1 min-w-0 pr-2">
         <Text
-          className="text-base font-bold text-gray-900 mb-0.5 leading-tight"
+          className="text-base font-bold text-gray-900 mb-0.5 leading-tight dark:text-[#E6E6E6] "
           numberOfLines={1}
         >
           {item.name}
         </Text>
         <Text
           className={`text-sm ${
-            item.unread > 0 ? "font-bold text-gray-900" : "text-gray-500 font-normal"
+            item.unread > 0 ? "font-bold text-gray-900 dark:text-[#E6E6E6] " : "text-gray-500 font-normal dark:text-[#ADADAD] "
           } truncate`}
           numberOfLines={1}
         >
@@ -76,10 +78,10 @@ function ArchivedListItem({
 
       {/* Right: Time & Badge */}
       <View className="items-end justify-center min-w-[56px] flex-shrink-0 gap-1">
-        <Text className="text-xs text-gray-400 font-medium">{item.time}</Text>
+        <Text className="text-xs text-gray-400 font-medium dark:text-[#ADADAD] ">{item.time}</Text>
         {item.unread > 0 && (
           <View className="bg-red-600 h-5 min-w-[20px] rounded-full items-center justify-center px-1 shadow-2xs">
-            <Text className="text-white text-[11px] font-bold text-center leading-tight">
+            <Text className="text-white text-[11px] font-bold text-center leading-tight dark:text-[#E6E6E6] ">
               {item.unread}
             </Text>
           </View>
@@ -90,6 +92,7 @@ function ArchivedListItem({
 }
 
 export default function ArchivedMessages() {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSidebarVisible, setSidebarVisible] = useState(false);
@@ -185,12 +188,12 @@ export default function ArchivedMessages() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white relative h-full"
+      className="flex-1 bg-white relative h-full dark:bg-[#181818] "
       style={{ flex: 1, position: "relative", minHeight: "100%" }}
     >
       {/* 1. Header */}
-      <View className="flex-row items-center justify-between px-5 pt-4 pb-2 bg-white">
-        <Text className="text-3xl font-bold text-gray-900 tracking-tight">
+      <View className="flex-row items-center justify-between px-5 pt-4 pb-2 bg-white dark:bg-[#242424] ">
+        <Text className="text-3xl font-bold text-gray-900 tracking-tight dark:text-[#E6E6E6] ">
           Chats
         </Text>
       </View>
@@ -203,39 +206,39 @@ export default function ArchivedMessages() {
           accessibilityRole="button"
           accessibilityLabel="Open menu"
         >
-          <Ionicons name="menu-outline" size={28} color="#34594A" />
+          <Ionicons name="menu-outline" size={28} color={themeColor("#34594A", "#E6E6E6")} />
         </TouchableOpacity>
 
         {/* Search Input Box */}
-        <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 h-11 border border-gray-100">
+        <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 h-11 border border-gray-100 dark:bg-[#181818] dark:border-[#414141] ">
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search..."
-            placeholderTextColor="#9CA3AF"
-            className="flex-1 text-base text-gray-800 pr-2 h-full font-medium"
+            placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+            className="flex-1 text-base text-gray-800 pr-2 h-full font-medium dark:text-[#E6E6E6] "
             autoCapitalize="none"
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery("")} className="p-1 mr-1">
-              <Ionicons name="close-circle" size={18} color="#34594A" />
+              <Ionicons name="close-circle" size={18} color={themeColor("#34594A", "#E6E6E6")} />
             </TouchableOpacity>
           ) : null}
-          <Ionicons name="search-outline" size={20} color="#34594A" />
+          <Ionicons name="search-outline" size={20} color={themeColor("#34594A", "#E6E6E6")} />
         </View>
       </View>
 
       {/* Section Title */}
-      <View className="px-5 py-2 flex-row items-center justify-between border-b border-gray-50">
-        <Text className="text-lg font-bold text-gray-900">Archived</Text>
-        <Text className="text-xs text-gray-400 font-medium">
+      <View className="px-5 py-2 flex-row items-center justify-between border-b border-gray-50 dark:border-[#414141] ">
+        <Text className="text-lg font-bold text-gray-900 dark:text-[#E6E6E6] ">Archived</Text>
+        <Text className="text-xs text-gray-400 font-medium dark:text-[#ADADAD] ">
           {archivedList.length} {archivedList.length === 1 ? "conversation" : "conversations"}
         </Text>
       </View>
 
       {/* Archived Scroll List */}
       <ScrollView
-        className="flex-1 bg-white"
+        className="flex-1 bg-white dark:bg-[#181818] "
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 110 }}
         refreshControl={
@@ -249,8 +252,8 @@ export default function ArchivedMessages() {
       >
         {isLoading ? (
           <View className="py-16 items-center justify-center">
-            <ActivityIndicator size="large" color="#34594A" />
-            <Text className="text-sm text-gray-500 mt-2 font-medium">
+            <ActivityIndicator size="large" color={themeColor("#34594A", "#E6E6E6")} />
+            <Text className="text-sm text-gray-500 mt-2 font-medium dark:text-[#ADADAD] ">
               Loading archived chats...
             </Text>
           </View>
@@ -265,13 +268,13 @@ export default function ArchivedMessages() {
           ))
         ) : (
           <View className="items-center justify-center py-20 px-6">
-            <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-              <Ionicons name="archive-outline" size={36} color="#34594A" />
+            <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3 dark:bg-[#181818] ">
+              <Ionicons name="archive-outline" size={36} color={themeColor("#34594A", "#E6E6E6")} />
             </View>
-            <Text className="text-gray-800 font-bold text-base mb-1">
+            <Text className="text-gray-800 font-bold text-base mb-1 dark:text-[#E6E6E6] ">
               No Archived Chats
             </Text>
-            <Text className="text-gray-500 text-xs text-center max-w-xs">
+            <Text className="text-gray-500 text-xs text-center max-w-xs dark:text-[#ADADAD] ">
               Long-press any conversation in your inbox and tap "Archive Chat" to hide it here.
             </Text>
           </View>
@@ -285,24 +288,23 @@ export default function ArchivedMessages() {
         animationType="fade"
         onRequestClose={() => setSelectedChat(null)}
       >
-        <TouchableWithoutFeedback onPress={() => setSelectedChat(null)}>
-          <View className="flex-1 bg-black/40 justify-end">
-            <TouchableWithoutFeedback>
-              <View className="bg-white rounded-t-3xl p-5 pb-8 shadow-2xl">
-                <Text className="text-base font-bold text-gray-900 mb-1">
+        <Pressable onPress={() => setSelectedChat(null)} className="flex-1 bg-black/40 justify-end">
+          <Pressable onPress={(e) => e.stopPropagation()}>
+              <View className="bg-white rounded-t-3xl p-5 pb-8 shadow-2xl dark:bg-[#242424] ">
+                <Text className="text-base font-bold text-gray-900 mb-1 dark:text-[#E6E6E6] ">
                   {selectedChat?.name}
                 </Text>
-                <Text className="text-xs text-gray-400 mb-4">
+                <Text className="text-xs text-gray-400 mb-4 dark:text-[#ADADAD] ">
                   Choose an action for this archived conversation
                 </Text>
 
                 {/* Unarchive Button */}
                 <TouchableOpacity
                   onPress={() => selectedChat && handleUnarchive(selectedChat)}
-                  className="flex-row items-center py-3.5 px-4 rounded-xl bg-gray-50 mb-2 active:bg-gray-100"
+                  className="flex-row items-center py-3.5 px-4 rounded-xl bg-gray-50 mb-2 active:bg-gray-100 dark:bg-[#242424] dark:active:bg-[#181818] "
                 >
-                  <Ionicons name="arrow-undo-outline" size={20} color="#34594A" style={{ marginRight: 12 }} />
-                  <Text className="text-sm font-semibold text-gray-800">
+                  <Ionicons name="arrow-undo-outline" size={20} color={themeColor("#34594A", "#E6E6E6")} style={{ marginRight: 12 }} />
+                  <Text className="text-sm font-semibold text-gray-800 dark:text-[#E6E6E6] ">
                     Unarchive (Move to Messages)
                   </Text>
                 </TouchableOpacity>
@@ -314,10 +316,10 @@ export default function ArchivedMessages() {
                     setSelectedChat(null);
                     if (c) handleOpenConversation(c);
                   }}
-                  className="flex-row items-center py-3.5 px-4 rounded-xl bg-gray-50 mb-2 active:bg-gray-100"
+                  className="flex-row items-center py-3.5 px-4 rounded-xl bg-gray-50 mb-2 active:bg-gray-100 dark:bg-[#242424] dark:active:bg-[#181818] "
                 >
                   <Ionicons name="chatbubble-outline" size={20} color="#3B82F6" style={{ marginRight: 12 }} />
-                  <Text className="text-sm font-semibold text-gray-800">
+                  <Text className="text-sm font-semibold text-gray-800 dark:text-[#E6E6E6] ">
                     Open Conversation
                   </Text>
                 </TouchableOpacity>
@@ -325,7 +327,7 @@ export default function ArchivedMessages() {
                 {/* Delete Button */}
                 <TouchableOpacity
                   onPress={() => selectedChat && handleDelete(selectedChat)}
-                  className="flex-row items-center py-3.5 px-4 rounded-xl bg-red-50 active:bg-red-100"
+                  className="flex-row items-center py-3.5 px-4 rounded-xl bg-red-50 active:bg-red-100 dark:bg-[#181818] dark:active:bg-[#181818] "
                 >
                   <Ionicons name="trash-outline" size={20} color="#DC2626" style={{ marginRight: 12 }} />
                   <Text className="text-sm font-semibold text-red-600">
@@ -333,9 +335,8 @@ export default function ArchivedMessages() {
                   </Text>
                 </TouchableOpacity>
               </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
+            </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Bottom Navigation Bar */}

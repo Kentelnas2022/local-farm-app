@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useToast } from "@/context/toast-context";
 import {
   createSavedCollectionApi,
@@ -15,7 +16,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Dimensions,
+  useWindowDimensions,
   Easing,
   Image,
   Modal,
@@ -32,18 +33,14 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import SaveToCollectionModal from "@/components/SaveToCollectionModal";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GRID_GAP = 2;
 const NUM_COLUMNS = 3;
-const TILE_SIZE = (SCREEN_WIDTH - GRID_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS;
 
 const COLLECTION_PADDING = 16;
 const COLLECTION_GAP = 12;
-const COLLECTION_CARD_WIDTH =
-  (SCREEN_WIDTH - COLLECTION_PADDING * 2 - COLLECTION_GAP) / 2;
 
 // Smooth subtle entrance for premium feel
-function FadeEntrance({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+function FadeEntrance({ children, delay = 0, width }: { children: React.ReactNode; delay?: number; width?: number }) {
   const progress = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(10)).current;
 
@@ -67,7 +64,7 @@ function FadeEntrance({ children, delay = 0 }: { children: React.ReactNode; dela
   }, [delay, progress, translateY]);
 
   return (
-    <Animated.View style={{ opacity: progress, transform: [{ translateY }] }}>
+    <Animated.View style={{ width, opacity: progress, transform: [{ translateY }] }}>
       {children}
     </Animated.View>
   );
@@ -129,6 +126,13 @@ function TactileTouchable({
 }
 
 export default function SavedPosts() {
+  const { width: windowWidth } = useWindowDimensions();
+  const [contentWidth, setContentWidth] = useState<number | null>(null);
+  const screenWidth = contentWidth ?? windowWidth;
+  const TILE_SIZE = Math.max(1, (screenWidth - GRID_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS);
+  const COLLECTION_CARD_WIDTH = Math.max(1, Math.floor((screenWidth - COLLECTION_PADDING * 2 - COLLECTION_GAP) / 2));
+  const { themeColor } = useAppTheme();
+  const styles = createStyles(themeColor);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showToast } = useToast();
@@ -402,9 +406,9 @@ export default function SavedPosts() {
       return (
         <View
           style={{ width: size, height: size }}
-          className="bg-[#FAFAFA] items-center justify-center rounded-lg border border-gray-200"
+          className="bg-[#FAFAFA] items-center justify-center rounded-lg border border-gray-200 dark:bg-[#242424] dark:border-[#414141] "
         >
-          <Ionicons name="bookmark-outline" size={36} color="#DBDBDB" />
+          <Ionicons name="bookmark-outline" size={36} color={themeColor("#DBDBDB", "#E6E6E6")} />
         </View>
       );
     }
@@ -424,7 +428,7 @@ export default function SavedPosts() {
     return (
       <View
         style={{ width: size, height: size, borderRadius: 8 }}
-        className="overflow-hidden bg-gray-100 flex-row flex-wrap gap-[1px]"
+        className="overflow-hidden bg-gray-100 flex-row flex-wrap gap-[1px] dark:bg-[#181818] "
       >
         {imageUrls.slice(0, 4).map((url, idx) => (
           <Image
@@ -439,7 +443,13 @@ export default function SavedPosts() {
   };
 
   return (
-    <View style={[styles.root, { paddingTop: Math.max(insets.top, 14) }]}>
+    <View
+      style={[styles.root, { paddingTop: Math.max(insets.top, 14) }]}
+      onLayout={({ nativeEvent }) => {
+        const width = nativeEvent.layout.width;
+        if (width > 0) setContentWidth(width);
+      }}
+    >
       {/* 1. Calm Minimalist Header with proper notch clearance */}
       <View style={styles.headerBar}>
         <TactileTouchable
@@ -458,7 +468,7 @@ export default function SavedPosts() {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="chevron-back" size={21} color="#34594A" />
+          <Ionicons name="chevron-back" size={21} color={themeColor("#34594A", "#E6E6E6")} />
         </TactileTouchable>
 
         {/* Header Title */}
@@ -478,7 +488,7 @@ export default function SavedPosts() {
               accessibilityRole="button"
               accessibilityLabel="Collection options"
             >
-              <Ionicons name="ellipsis-horizontal" size={19} color="#34594A" />
+              <Ionicons name="ellipsis-horizontal" size={19} color={themeColor("#34594A", "#E6E6E6")} />
             </TactileTouchable>
           )}
 
@@ -491,7 +501,7 @@ export default function SavedPosts() {
             accessibilityRole="button"
             accessibilityLabel="Create collection"
           >
-            <Ionicons name="add" size={22} color="#34594A" />
+            <Ionicons name="add" size={22} color={themeColor("#34594A", "#E6E6E6")} />
           </TactileTouchable>
         </View>
       </View>
@@ -500,6 +510,8 @@ export default function SavedPosts() {
       {!activeCollectionName && (
         <View style={styles.tabSwitcherContainer}>
           <TouchableOpacity
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === "collections" }}
             onPress={() => setActiveTab("collections")}
             style={[
               styles.tabButton,
@@ -510,7 +522,7 @@ export default function SavedPosts() {
             <Ionicons
               name="grid-outline"
               size={13}
-              color={activeTab === "collections" ? "#FFFFFF" : "#6E8074"}
+              color={themeColor(activeTab === "collections" ? "#FFFFFF" : "#6E8074", activeTab === "collections" ? "#E6E6E6" : "#ADADAD")}
             />
             <Text
               style={[
@@ -523,6 +535,8 @@ export default function SavedPosts() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === "grid" }}
             onPress={() => setActiveTab("grid")}
             style={[
               styles.tabButton,
@@ -533,7 +547,7 @@ export default function SavedPosts() {
             <Ionicons
               name="images-outline"
               size={13}
-              color={activeTab === "grid" ? "#FFFFFF" : "#6E8074"}
+              color={themeColor(activeTab === "grid" ? "#FFFFFF" : "#6E8074", activeTab === "grid" ? "#E6E6E6" : "#ADADAD")}
             />
             <Text
               style={[
@@ -549,7 +563,7 @@ export default function SavedPosts() {
 
       {/* 3. Calm Privacy Hint Notice Capsule */}
       <View style={styles.privacyPill}>
-        <Ionicons name="lock-closed" size={10} color="#52705E" />
+        <Ionicons name="lock-closed" size={10} color={themeColor("#52705E", "#ADADAD")} />
         <Text style={styles.privacyText}>
           Only you can see what you&apos;ve saved
         </Text>
@@ -564,21 +578,21 @@ export default function SavedPosts() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#34594A"]}
-            tintColor="#34594A"
+            colors={[themeColor("#34594A", "#E6E6E6")]}
+            tintColor={themeColor("#34594A", "#E6E6E6")}
           />
         }
       >
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="#34594A" />
+            <ActivityIndicator size="small" color={themeColor("#34594A", "#E6E6E6")} />
           </View>
         ) : savedPosts.length === 0 ? (
           /* Empty State - Foolish Minimalist & Organic */
           <FadeEntrance delay={40}>
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconCircle}>
-                <Ionicons name="bookmark-outline" size={34} color="#34594A" />
+                <Ionicons name="bookmark-outline" size={34} color={themeColor("#34594A", "#E6E6E6")} />
               </View>
               <Text style={styles.emptyTitle}>Save Posts</Text>
               <Text style={styles.emptySubtitle}>
@@ -597,7 +611,7 @@ export default function SavedPosts() {
           <View style={{ padding: COLLECTION_PADDING }}>
             <View style={styles.collectionsGrid}>
               {/* Card 1: All Posts Collection */}
-              <FadeEntrance delay={20}>
+              <FadeEntrance delay={20} width={COLLECTION_CARD_WIDTH}>
                 <TactileTouchable
                   onPress={() => {
                     setActiveCollectionName(null);
@@ -630,7 +644,7 @@ export default function SavedPosts() {
                 const previewImgs = getCollectionPreviewImages(colName);
 
                 return (
-                  <FadeEntrance key={colName} delay={35 + index * 20}>
+                  <FadeEntrance key={colName} delay={35 + index * 20} width={COLLECTION_CARD_WIDTH}>
                     <TactileTouchable
                       onPress={() => {
                         setActiveCollectionName(colName);
@@ -659,7 +673,7 @@ export default function SavedPosts() {
                           <Ionicons
                             name="ellipsis-vertical"
                             size={14}
-                            color="#7A8B7F"
+                            color={themeColor("#7A8B7F", "#E6E6E6")}
                           />
                         </TouchableOpacity>
                       </View>
@@ -669,7 +683,7 @@ export default function SavedPosts() {
               })}
 
               {/* Card 3: "+ New Collection" Placeholder Tile */}
-              <FadeEntrance delay={80}>
+              <FadeEntrance delay={80} width={COLLECTION_CARD_WIDTH}>
                 <TactileTouchable
                   onPress={() => {
                     setSelectedPostForFolder(null);
@@ -684,7 +698,7 @@ export default function SavedPosts() {
                   ]}
                 >
                   <View style={styles.newCollectionIconCircle}>
-                    <Ionicons name="add" size={24} color="#34594A" />
+                    <Ionicons name="add" size={24} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
                   <Text style={styles.newCollectionText}>
                     New Collection
@@ -698,7 +712,7 @@ export default function SavedPosts() {
           <View>
             {visiblePosts.length === 0 ? (
               <View style={styles.emptyGridContainer}>
-                <Ionicons name="images-outline" size={38} color="#A2B2A7" />
+                <Ionicons name="images-outline" size={38} color={themeColor("#A2B2A7", "#E6E6E6")} />
                 <Text style={styles.emptyGridTitle}>
                   No Posts Saved
                 </Text>
@@ -761,7 +775,7 @@ export default function SavedPosts() {
                       {/* Top-Right Badge: Shared Post Indicator */}
                       {post.isShared && (
                         <View style={styles.sharedBadge}>
-                          <Ionicons name="arrow-redo" size={9} color="#FFFFFF" />
+                          <Ionicons name="arrow-redo" size={9} color={themeColor("#FFFFFF", "#E6E6E6")} />
                         </View>
                       )}
                     </TouchableOpacity>
@@ -780,14 +794,14 @@ export default function SavedPosts() {
         animationType="slide"
         onRequestClose={() => setSelectedPostForDetail(null)}
       >
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }}>
           {/* Header */}
           <View style={styles.modalHeader}>
             <TactileTouchable
               onPress={() => setSelectedPostForDetail(null)}
               style={styles.backButton}
             >
-              <Ionicons name="chevron-back" size={20} color="#34594A" />
+              <Ionicons name="chevron-back" size={20} color={themeColor("#34594A", "#E6E6E6")} />
             </TactileTouchable>
 
             <Text style={styles.modalHeaderTitle}>Post</Text>
@@ -801,12 +815,12 @@ export default function SavedPosts() {
               }}
               style={styles.headerActionBtn}
             >
-              <Ionicons name="folder-outline" size={20} color="#34594A" />
+              <Ionicons name="folder-outline" size={20} color={themeColor("#34594A", "#E6E6E6")} />
             </TactileTouchable>
           </View>
 
           {selectedPostForDetail && (
-            <ScrollView style={{ flex: 1, backgroundColor: "#FFFFFF" }} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }} showsVerticalScrollIndicator={false}>
               {/* Author Header */}
               <View style={styles.postAuthorRow}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -818,7 +832,7 @@ export default function SavedPosts() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <Ionicons name="person" size={16} color="#7A8D80" />
+                      <Ionicons name="person" size={16} color={themeColor("#7A8D80", "#ADADAD")} />
                     )}
                   </View>
                   <View>
@@ -838,7 +852,7 @@ export default function SavedPosts() {
                   }}
                   style={{ padding: 6 }}
                 >
-                  <Ionicons name="ellipsis-horizontal" size={18} color="#6E8074" />
+                  <Ionicons name="ellipsis-horizontal" size={18} color={themeColor("#6E8074", "#ADADAD")} />
                 </TouchableOpacity>
               </View>
 
@@ -846,7 +860,7 @@ export default function SavedPosts() {
               {(selectedPostForDetail.imageUrl ||
                 selectedPostForDetail.originalPost?.imageUrl) ? (
                 <View
-                  style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH, backgroundColor: "#F3F6F3" }}
+                  style={{ width: windowWidth, height: windowWidth, backgroundColor: themeColor("#F3F6F3", "#181818") }}
                 >
                   <Image
                     source={{
@@ -884,7 +898,7 @@ export default function SavedPosts() {
                     <Ionicons
                       name="chatbubble-outline"
                       size={22}
-                      color="#23382D"
+                      color={themeColor("#23382D", "#E6E6E6")}
                     />
                   </TouchableOpacity>
 
@@ -898,7 +912,7 @@ export default function SavedPosts() {
                     <Ionicons
                       name="paper-plane-outline"
                       size={22}
-                      color="#23382D"
+                      color={themeColor("#23382D", "#E6E6E6")}
                     />
                   </TouchableOpacity>
                 </View>
@@ -912,21 +926,21 @@ export default function SavedPosts() {
                   activeOpacity={0.6}
                   accessibilityLabel="Save to collection"
                 >
-                  <Ionicons name="bookmark" size={23} color="#34594A" />
+                  <Ionicons name="bookmark" size={23} color={themeColor("#34594A", "#E6E6E6")} />
                 </TouchableOpacity>
               </View>
 
               {/* Likes Count */}
               <View style={{ paddingHorizontal: 16, marginBottom: 4 }}>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: "#23382D" }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: themeColor("#23382D", "#E6E6E6") }}>
                   {selectedPostForDetail.likes || 0} likes
                 </Text>
               </View>
 
               {/* Caption */}
               <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
-                <Text style={{ fontSize: 13, lineHeight: 19, color: "#2E4237" }}>
-                  <Text style={{ fontWeight: "700", color: "#1D3025" }}>
+                <Text style={{ fontSize: 13, lineHeight: 19, color: themeColor("#2E4237", "#E6E6E6") }}>
+                  <Text style={{ fontWeight: "700", color: themeColor("#1D3025", "#E6E6E6") }}>
                     {selectedPostForDetail.authorName}{" "}
                   </Text>
                   {selectedPostForDetail.content}
@@ -943,12 +957,12 @@ export default function SavedPosts() {
                     }}
                     style={{ marginBottom: 6 }}
                   >
-                    <Text style={{ fontSize: 12, color: "#7A8D80" }}>
+                    <Text style={{ fontSize: 12, color: themeColor("#7A8D80", "#ADADAD") }}>
                       View all {selectedPostForDetail.comments} comments
                     </Text>
                   </TouchableOpacity>
                 )}
-                <Text style={{ fontSize: 10, color: "#92A297", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                <Text style={{ fontSize: 10, color: themeColor("#92A297", "#ADADAD"), textTransform: "uppercase", letterSpacing: 0.5 }}>
                   {selectedPostForDetail.timeAgo} • Saved in{" "}
                   {selectedPostForDetail.collectionName || "All Saved"}
                 </Text>
@@ -974,7 +988,7 @@ export default function SavedPosts() {
             style={styles.dialogCard}
           >
             <View style={styles.dialogIconBox}>
-              <Ionicons name="folder-outline" size={24} color="#34594A" />
+              <Ionicons name="folder-outline" size={24} color={themeColor("#34594A", "#E6E6E6")} />
             </View>
 
             <Text style={styles.dialogTitle}>
@@ -988,7 +1002,7 @@ export default function SavedPosts() {
               value={newCollectionName}
               onChangeText={setNewCollectionName}
               placeholder="Collection name"
-              placeholderTextColor="#8E9E93"
+              placeholderTextColor={themeColor("#8E9E93", "#ADADAD")}
               autoFocus
               style={styles.dialogInput}
             />
@@ -1077,7 +1091,7 @@ export default function SavedPosts() {
                 }}
                 style={styles.sheetRow}
               >
-                <Ionicons name="pencil-outline" size={18} color="#34594A" />
+                <Ionicons name="pencil-outline" size={18} color={themeColor("#34594A", "#E6E6E6")} />
                 <Text style={styles.sheetRowText}>
                   Rename Collection
                 </Text>
@@ -1132,7 +1146,7 @@ export default function SavedPosts() {
                 autoFocus={true}
                 style={styles.dialogInput}
                 placeholder="Collection name"
-                placeholderTextColor="#8E9E93"
+                placeholderTextColor={themeColor("#8E9E93", "#ADADAD")}
               />
               <View style={styles.dialogButtonsRow}>
                 <TactileTouchable
@@ -1150,7 +1164,7 @@ export default function SavedPosts() {
                   ]}
                 >
                   {isRenaming ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
+                    <ActivityIndicator size="small" color={themeColor("#ffffff", "#E6E6E6")} />
                   ) : (
                     <Text style={styles.dialogConfirmBtnText}>Save</Text>
                   )}
@@ -1164,10 +1178,10 @@ export default function SavedPosts() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColor: (light: string, dark: string) => string) => StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#F7F9F7", // Calm organic background matching Reservations & Profile
+    backgroundColor: themeColor("#F7F9F7", "#181818"), // Calm organic background matching Reservations & Profile
   },
   headerBar: {
     flexDirection: "row",
@@ -1176,15 +1190,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 10,
-    backgroundColor: "#F7F9F7",
+    backgroundColor: themeColor("#F7F9F7", "#181818"),
   },
   backButton: {
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderWidth: 1,
-    borderColor: "#E5ECE6",
+    borderColor: themeColor("#E5ECE6", "#414141"),
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#293E33",
@@ -1197,7 +1211,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     letterSpacing: -0.4,
-    color: "#23382D", // Calm deep forest
+    color: themeColor("#23382D", "#E6E6E6"), // Calm deep forest
   },
   headerRightActions: {
     flexDirection: "row",
@@ -1208,9 +1222,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderWidth: 1,
-    borderColor: "#E5ECE6",
+    borderColor: themeColor("#E5ECE6", "#414141"),
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#293E33",
@@ -1226,17 +1240,17 @@ const styles = StyleSheet.create({
   searchInner: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 40,
     borderWidth: 1,
-    borderColor: "#E1E8E3",
+    borderColor: themeColor("#E1E8E3", "#414141"),
   },
   searchInput: {
     flex: 1,
     fontSize: 13,
-    color: "#23382D",
+    color: themeColor("#23382D", "#E6E6E6"),
     marginLeft: 8,
     height: "100%",
   },
@@ -1247,7 +1261,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 8,
     padding: 3,
-    backgroundColor: "#EBF1EC",
+    backgroundColor: themeColor("#EBF1EC", "#181818"),
     borderRadius: 12,
   },
   tabButton: {
@@ -1262,7 +1276,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
   },
   tabButtonActive: {
-    backgroundColor: "#34594A",
+    backgroundColor: themeColor("#34594A", "#303030"),
     shadowColor: "#293E33",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.12,
@@ -1272,10 +1286,10 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#6E8074",
+    color: themeColor("#6E8074", "#ADADAD"),
   },
   tabTextActive: {
-    color: "#FFFFFF",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
   },
 
   // Privacy Pill
@@ -1283,18 +1297,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#EDF3EE",
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 16,
     alignSelf: "center",
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#E2ECE4",
+    borderColor: themeColor("#E2ECE4", "#414141"),
   },
   privacyText: {
     fontSize: 10.5,
-    color: "#52705E",
+    color: themeColor("#52705E", "#ADADAD"),
     marginLeft: 5,
     fontWeight: "500",
   },
@@ -1320,9 +1334,9 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 26,
-    backgroundColor: "#EDF3EE",
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
     borderWidth: 1,
-    borderColor: "#DEE8E0",
+    borderColor: themeColor("#DEE8E0", "#414141"),
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 18,
@@ -1336,14 +1350,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     letterSpacing: -0.3,
-    color: "#23382D",
+    color: themeColor("#23382D", "#E6E6E6"),
     marginBottom: 6,
     textAlign: "center",
   },
   emptySubtitle: {
     fontSize: 12.5,
     lineHeight: 18,
-    color: "#738579",
+    color: themeColor("#738579", "#ADADAD"),
     textAlign: "center",
     marginBottom: 24,
     maxWidth: 280,
@@ -1352,7 +1366,7 @@ const styles = StyleSheet.create({
     minHeight: 46,
     paddingHorizontal: 26,
     borderRadius: 14,
-    backgroundColor: "#34594A", // Uniform calm primary button
+    backgroundColor: themeColor("#34594A", "#303030"), // Uniform calm primary button
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#293E33",
@@ -1364,7 +1378,7 @@ const styles = StyleSheet.create({
   exploreButtonText: {
     fontSize: 13.5,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
     letterSpacing: -0.2,
   },
 
@@ -1385,19 +1399,19 @@ const styles = StyleSheet.create({
   collectionTitle: {
     fontSize: 13.5,
     fontWeight: "600",
-    color: "#23382D",
+    color: themeColor("#23382D", "#E6E6E6"),
     letterSpacing: -0.2,
   },
   collectionSubtitle: {
     fontSize: 11,
-    color: "#778A7E",
+    color: themeColor("#778A7E", "#E6E6E6"),
     marginTop: 1,
   },
   moreDotsBtn: {
     width: 26,
     height: 26,
     borderRadius: 8,
-    backgroundColor: "#EDF3EE",
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1406,19 +1420,19 @@ const styles = StyleSheet.create({
   newCollectionPlaceholder: {
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: "#C5D4C9",
+    borderColor: themeColor("#C5D4C9", "#414141"),
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F1F6F2",
+    backgroundColor: themeColor("#F1F6F2", "#181818"),
   },
   newCollectionIconCircle: {
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderWidth: 1,
-    borderColor: "#D9E5DC",
+    borderColor: themeColor("#D9E5DC", "#414141"),
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 6,
@@ -1426,7 +1440,7 @@ const styles = StyleSheet.create({
   newCollectionText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#34594A",
+    color: themeColor("#34594A", "#E6E6E6"),
   },
 
   // Photo Grid
@@ -1435,27 +1449,27 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   tileBox: {
-    backgroundColor: "#EBF1EC",
+    backgroundColor: themeColor("#EBF1EC", "#181818"),
     overflow: "hidden",
   },
   textTileBox: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     padding: 8,
     justifyContent: "space-between",
     borderWidth: 1,
-    borderColor: "#E5ECE6",
+    borderColor: themeColor("#E5ECE6", "#414141"),
   },
   textTileContent: {
     fontSize: 10,
-    color: "#293E33",
+    color: themeColor("#293E33", "#E6E6E6"),
     lineHeight: 14,
     fontWeight: "500",
   },
   textTileAuthor: {
     fontSize: 9,
-    color: "#778A7E",
+    color: themeColor("#778A7E", "#E6E6E6"),
     fontWeight: "600",
   },
   sharedBadge: {
@@ -1475,13 +1489,13 @@ const styles = StyleSheet.create({
   emptyGridTitle: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#23382D",
+    color: themeColor("#23382D", "#E6E6E6"),
     marginTop: 10,
     marginBottom: 4,
   },
   emptyGridSubtitle: {
     fontSize: 12,
-    color: "#778A7E",
+    color: themeColor("#778A7E", "#E6E6E6"),
     textAlign: "center",
     maxWidth: 240,
   },
@@ -1490,9 +1504,9 @@ const styles = StyleSheet.create({
   modalHeader: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderBottomWidth: 1,
-    borderBottomColor: "#EDF2EE",
+    borderBottomColor: themeColor("#EDF2EE", "#414141"),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1500,7 +1514,7 @@ const styles = StyleSheet.create({
   modalHeaderTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#23382D",
+    color: themeColor("#23382D", "#E6E6E6"),
   },
   postAuthorRow: {
     paddingHorizontal: 16,
@@ -1513,21 +1527,21 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: "#EDF3EE",
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#E1EAE3",
+    borderColor: themeColor("#E1EAE3", "#414141"),
   },
   postAuthorName: {
     fontSize: 13.5,
     fontWeight: "700",
-    color: "#23382D",
+    color: themeColor("#23382D", "#E6E6E6"),
   },
   postAuthorSubtext: {
     fontSize: 11,
-    color: "#7A8D80",
+    color: themeColor("#7A8D80", "#ADADAD"),
   },
   postActionsBar: {
     paddingHorizontal: 16,
@@ -1549,7 +1563,7 @@ const styles = StyleSheet.create({
   dialogCard: {
     width: "100%",
     maxWidth: 340,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderRadius: 24,
     padding: 22,
     alignItems: "center",
@@ -1563,7 +1577,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 16,
-    backgroundColor: "#EDF3EE",
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
@@ -1571,25 +1585,25 @@ const styles = StyleSheet.create({
   dialogTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#23382D",
+    color: themeColor("#23382D", "#E6E6E6"),
     marginBottom: 4,
   },
   dialogSubtitle: {
     fontSize: 12,
-    color: "#7A8D80",
+    color: themeColor("#7A8D80", "#ADADAD"),
     textAlign: "center",
     marginBottom: 16,
   },
   dialogInput: {
     width: "100%",
-    backgroundColor: "#F6F9F6",
+    backgroundColor: themeColor("#F6F9F6", "#181818"),
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 11,
     fontSize: 13.5,
-    color: "#23382D",
+    color: themeColor("#23382D", "#E6E6E6"),
     borderWidth: 1,
-    borderColor: "#E2ECE4",
+    borderColor: themeColor("#E2ECE4", "#414141"),
     marginBottom: 18,
   },
   dialogButtonsRow: {
@@ -1602,24 +1616,24 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 48,
     borderRadius: 14,
-    backgroundColor: "#F1F5F2",
+    backgroundColor: themeColor("#F1F5F2", "#181818"),
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#E2ECE4",
+    borderColor: themeColor("#E2ECE4", "#414141"),
   },
   dialogCancelBtnText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#5E7265",
+    color: themeColor("#5E7265", "#E6E6E6"),
   },
   dialogConfirmBtn: {
     flex: 1,
     minHeight: 48,
     borderRadius: 14,
-    backgroundColor: "#34594A",
+    backgroundColor: themeColor("#34594A", "#303030"),
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 12,
@@ -1633,17 +1647,17 @@ const styles = StyleSheet.create({
   dialogConfirmBtnText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
   },
 
   // Bottom Sheet
   bottomSheetOverlay: {
     flex: 1,
     backgroundColor: "rgba(22, 38, 29, 0.4)",
-    justifyContent: "end",
+    justifyContent: "flex-end",
   },
   bottomSheetCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
@@ -1656,13 +1670,13 @@ const styles = StyleSheet.create({
   sheetHandle: {
     width: 36,
     height: 4,
-    backgroundColor: "#D9E3DC",
+    backgroundColor: themeColor("#D9E3DC", "#303030"),
     borderRadius: 2,
   },
   sheetTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#23382D",
+    color: themeColor("#23382D", "#E6E6E6"),
     textAlign: "center",
     marginBottom: 14,
   },
@@ -1672,26 +1686,26 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 12,
-    backgroundColor: "#F7FAF7",
+    backgroundColor: themeColor("#F7FAF7", "#181818"),
     marginBottom: 6,
   },
   sheetRowText: {
     fontSize: 13.5,
     fontWeight: "600",
-    color: "#293E33",
+    color: themeColor("#293E33", "#E6E6E6"),
     marginLeft: 12,
   },
   sheetCancelBtn: {
     marginTop: 10,
     minHeight: 44,
     borderRadius: 12,
-    backgroundColor: "#F1F5F2",
+    backgroundColor: themeColor("#F1F5F2", "#181818"),
     alignItems: "center",
     justifyContent: "center",
   },
   sheetCancelBtnText: {
     fontSize: 13.5,
     fontWeight: "600",
-    color: "#5E7265",
+    color: themeColor("#5E7265", "#E6E6E6"),
   },
 });

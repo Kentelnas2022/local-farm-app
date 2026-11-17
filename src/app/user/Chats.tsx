@@ -1,3 +1,5 @@
+import { useAppTheme } from "@/context/theme-context";
+import PresenceDot from "@/components/PresenceDot";
 import { useAuth } from "@/hooks/use-auth";
 import { blockUser } from "@/services/blocked-users-service";
 import {
@@ -26,7 +28,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
+  Pressable,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -35,6 +37,7 @@ import ChatSidebarModal from "../../components/ChatSidebarModal";
 import BottomNavBar from "../../components/Navigation";
 
 export default function Chats() {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
   const { user } = useAuth();
 
@@ -89,7 +92,7 @@ export default function Chats() {
         userId: chat.otherUserId,
         name: chat.name,
         avatarUrl: chat.avatarUrl || "",
-        online: "true",
+        online: String(chat.online),
       },
     } as any);
   };
@@ -101,7 +104,7 @@ export default function Chats() {
         userId: activeUser.id,
         name: activeUser.fullName || activeUser.name,
         avatarUrl: activeUser.avatarUrl || "",
-        online: "true",
+        online: String(activeUser.isOnline),
       },
     } as any);
   };
@@ -283,19 +286,19 @@ export default function Chats() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white relative h-full"
+      className="flex-1 bg-white relative h-full dark:bg-[#181818] "
       style={{ flex: 1, position: "relative", minHeight: "100%", overflow: "hidden" }}
     >
       {/* 1. Header Section */}
-      <View className="flex-row justify-between items-center px-5 pt-4 pb-2 bg-white">
-        <Text className="text-3xl font-bold text-gray-900">Chats</Text>
+      <View className="flex-row justify-between items-center px-5 pt-4 pb-2 bg-white dark:bg-[#242424] ">
+        <Text className="text-3xl font-bold text-gray-900 dark:text-[#E6E6E6] ">Chats</Text>
         <TouchableOpacity
           onPress={() => router.push("/user/People" as any)}
           className="p-1 active:opacity-70"
           accessibilityRole="button"
           accessibilityLabel="New message"
         >
-          <Ionicons name="create-outline" size={26} color="#34594A" />
+          <Ionicons name="create-outline" size={26} color={themeColor("#34594A", "#E6E6E6")} />
         </TouchableOpacity>
       </View>
 
@@ -307,17 +310,17 @@ export default function Chats() {
           accessibilityRole="button"
           accessibilityLabel="Open chat sidebar menu"
         >
-          <Ionicons name="menu-outline" size={28} color="#34594A" />
+          <Ionicons name="menu-outline" size={28} color={themeColor("#34594A", "#E6E6E6")} />
         </TouchableOpacity>
 
         {/* Search Input */}
-        <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 h-11 border border-gray-100">
+        <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 h-11 border border-gray-100 dark:bg-[#181818] dark:border-[#414141] ">
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search..."
-            placeholderTextColor="#9CA3AF"
-            className="flex-1 text-base text-gray-800 pr-2 h-full font-medium"
+            placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+            className="flex-1 text-base text-gray-800 pr-2 h-full font-medium dark:text-[#E6E6E6] "
             autoCapitalize="none"
           />
           {searchQuery ? (
@@ -325,16 +328,16 @@ export default function Chats() {
               onPress={() => setSearchQuery("")}
               className="p-1 mr-1"
             >
-              <Ionicons name="close-circle" size={18} color="#34594A" />
+              <Ionicons name="close-circle" size={18} color={themeColor("#34594A", "#E6E6E6")} />
             </TouchableOpacity>
           ) : null}
-          <Ionicons name="search-outline" size={20} color="#34594A" />
+          <Ionicons name="search-outline" size={20} color={themeColor("#34594A", "#E6E6E6")} />
         </View>
       </View>
 
       {/* Main Content Area */}
       <ScrollView
-        className="flex-1 bg-white"
+        className="flex-1 bg-white dark:bg-[#181818] "
         showsVerticalScrollIndicator={false}
         bounces={false}
         overScrollMode="never"
@@ -352,7 +355,7 @@ export default function Chats() {
         }
       >
         {/* 3. Active Users Horizontal Carousel */}
-        <View className="py-2 border-b border-gray-50">
+        <View className="py-2 border-b border-gray-50 dark:border-[#414141] ">
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -361,7 +364,7 @@ export default function Chats() {
             {/* Self "Me (+)" Item */}
             <View className="items-center mr-4">
               <View className="relative">
-                <View className="h-14 w-14 rounded-full bg-gray-200 items-center justify-center border border-gray-200 overflow-hidden">
+                <View className="h-14 w-14 rounded-full bg-gray-200 items-center justify-center border border-gray-200 overflow-hidden dark:bg-[#181818] dark:border-[#414141] ">
                   {user?.avatarUrl ? (
                     <Image
                       source={{ uri: user.avatarUrl }}
@@ -369,14 +372,14 @@ export default function Chats() {
                       resizeMode="cover"
                     />
                   ) : (
-                    <Ionicons name="person" size={28} color="#34594A" />
+                    <Ionicons name="person" size={28} color={themeColor("#34594A", "#E6E6E6")} />
                   )}
                 </View>
-                <View className="absolute -bottom-0.5 -right-0.5 bg-[#34594A] w-5 h-5 rounded-full items-center justify-center border-2 border-white">
-                  <Ionicons name="add" size={14} color="#FFFFFF" />
+                <View className="absolute -bottom-0.5 -right-0.5 bg-[#34594A] w-5 h-5 rounded-full items-center justify-center border-2 border-white dark:bg-[#E6E6E6] dark:border-[#414141] ">
+                  <Ionicons name="add" size={14} color={themeColor("#FFFFFF", "#181818")} />
                 </View>
               </View>
-              <Text className="text-xs font-semibold text-gray-800 mt-1.5">
+              <Text className="text-xs font-semibold text-gray-800 mt-1.5 dark:text-[#E6E6E6] ">
                 Me
               </Text>
             </View>
@@ -390,7 +393,7 @@ export default function Chats() {
                 activeOpacity={0.8}
               >
                 <View className="relative">
-                  <View className="h-14 w-14 rounded-full bg-gray-200 items-center justify-center border border-gray-200 overflow-hidden">
+                  <View className="h-14 w-14 rounded-full bg-gray-200 items-center justify-center border border-gray-200 overflow-hidden dark:bg-[#181818] dark:border-[#414141] ">
                     {activeUser.avatarUrl ? (
                       <Image
                         source={{ uri: activeUser.avatarUrl }}
@@ -398,18 +401,21 @@ export default function Chats() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <Ionicons name="person" size={28} color="#34594A" />
+                      <Ionicons name="person" size={28} color={themeColor("#34594A", "#E6E6E6")} />
                     )}
                   </View>
-                  {activeUser.isOnline && (
-                    <View className="absolute bottom-0 right-0 bg-[#34594A] w-3.5 h-3.5 rounded-full border-2 border-white" />
-                  )}
+                  <View className="absolute bottom-0 right-0">
+                    <PresenceDot online={activeUser.isOnline} />
+                  </View>
                 </View>
                 <Text
                   numberOfLines={1}
-                  className="text-xs font-medium text-gray-700 mt-1.5 max-w-[60px] text-center"
+                  className="text-xs font-medium text-gray-700 mt-1.5 max-w-[60px] text-center dark:text-[#E6E6E6] "
                 >
                   {activeUser.name}
+                </Text>
+                <Text style={{ fontSize: 10, marginTop: 2, color: activeUser.isOnline ? "#15803D" : "#64748B" }}>
+                  {activeUser.isOnline ? "Online" : "Offline"}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -419,20 +425,20 @@ export default function Chats() {
         {/* 4. Conversations List */}
         {isLoading ? (
           <View className="py-16 items-center justify-center">
-            <ActivityIndicator size="large" color="#34594A" />
-            <Text className="text-sm text-gray-500 mt-2 font-medium">
+            <ActivityIndicator size="large" color={themeColor("#34594A", "#E6E6E6")} />
+            <Text className="text-sm text-gray-500 mt-2 font-medium dark:text-[#ADADAD] ">
               Loading chats...
             </Text>
           </View>
         ) : filteredConversations.length === 0 ? (
           <View className="py-16 items-center justify-center px-6">
-            <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-              <Ionicons name="chatbubbles-outline" size={32} color="#34594A" />
+            <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3 dark:bg-[#181818] ">
+              <Ionicons name="chatbubbles-outline" size={32} color={themeColor("#34594A", "#E6E6E6")} />
             </View>
-            <Text className="text-base font-bold text-gray-800 mb-1">
+            <Text className="text-base font-bold text-gray-800 mb-1 dark:text-[#E6E6E6] ">
               No Conversations Yet
             </Text>
-            <Text className="text-xs text-gray-500 text-center">
+            <Text className="text-xs text-gray-500 text-center dark:text-[#ADADAD] ">
               Tap on an active user above or search for farmers to start chatting.
             </Text>
           </View>
@@ -443,12 +449,12 @@ export default function Chats() {
                 key={chat.id}
                 onPress={() => handleOpenConversation(chat)}
                 onLongPress={() => handleOpenOptionsModal(chat)}
-                className="py-3.5 border-b border-gray-100 flex-row items-center justify-between active:bg-gray-50 rounded-xl px-1"
+                className="py-3.5 border-b border-gray-100 flex-row items-center justify-between active:bg-gray-50 rounded-xl px-1 dark:border-[#414141] dark:active:bg-[#242424] "
                 activeOpacity={0.7}
               >
                 {/* Left: Avatar with Online Indicator */}
                 <View className="relative mr-3.5">
-                  <View className="h-14 w-14 rounded-full bg-gray-200 items-center justify-center border border-gray-200 overflow-hidden">
+                  <View className="h-14 w-14 rounded-full bg-gray-200 items-center justify-center border border-gray-200 overflow-hidden dark:bg-[#181818] dark:border-[#414141] ">
                     {chat.avatarUrl ? (
                       <Image
                         source={{ uri: chat.avatarUrl }}
@@ -456,12 +462,12 @@ export default function Chats() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <Ionicons name="person" size={28} color="#34594A" />
+                      <Ionicons name="person" size={28} color={themeColor("#34594A", "#E6E6E6")} />
                     )}
                   </View>
-                  {chat.online && (
-                    <View className="absolute bottom-0 right-0 bg-[#34594A] w-3.5 h-3.5 rounded-full border-2 border-white" />
-                  )}
+                  <View className="absolute bottom-0 right-0">
+                    <PresenceDot online={chat.online} />
+                  </View>
                 </View>
 
                 {/* Middle: Name & Last Message Snippet */}
@@ -469,24 +475,29 @@ export default function Chats() {
                   <View className="flex-row items-center gap-1.5 mb-1">
                     <Text
                       onLongPress={() => handleOpenOptionsModal(chat)}
-                      className="font-bold text-gray-900 text-base leading-tight"
+                      className="font-bold text-gray-900 text-base leading-tight dark:text-[#E6E6E6] "
+                      style={{ flexShrink: 1 }}
+                      numberOfLines={1}
                     >
                       {chat.name}
                     </Text>
+                    <Text style={{ fontSize: 11, color: chat.online ? "#15803D" : "#64748B" }}>
+                      {chat.online ? "Online" : "Offline"}
+                    </Text>
                     {chat.isMuted && (
-                      <Ionicons name="notifications-off" size={13} color="#9CA3AF" />
+                      <Ionicons name="notifications-off" size={13} color={themeColor("#9CA3AF", "#ADADAD")} />
                     )}
                   </View>
                   {chat.isTyping ? (
                     <View className="flex-row items-center gap-1.5">
                       <View className="flex-row items-center gap-0.5">
-                        <View className="w-1.5 h-1.5 rounded-full bg-[#34594A]" />
-                        <View className="w-1.5 h-1.5 rounded-full bg-[#34594A]/70" />
-                        <View className="w-1.5 h-1.5 rounded-full bg-[#34594A]/40" />
+                        <View className="w-1.5 h-1.5 rounded-full bg-[#34594A] dark:bg-[#E6E6E6] " />
+                        <View className="w-1.5 h-1.5 rounded-full bg-[#34594A]/70 dark:bg-[#E6E6E6]/70 " />
+                        <View className="w-1.5 h-1.5 rounded-full bg-[#34594A]/40 dark:bg-[#E6E6E6]/40 " />
                       </View>
                       <Text
                         numberOfLines={1}
-                        className="text-sm font-semibold text-[#34594A] italic"
+                        className="text-sm font-semibold text-[#34594A] italic dark:text-[#E6E6E6] "
                       >
                         typing...
                       </Text>
@@ -496,8 +507,8 @@ export default function Chats() {
                       numberOfLines={1}
                       className={`text-sm ${
                         chat.unread > 0
-                          ? "font-bold text-gray-900"
-                          : "text-gray-500 font-normal"
+                          ? "font-bold text-gray-900 dark:text-[#E6E6E6] "
+                          : "text-gray-500 font-normal dark:text-[#ADADAD] "
                       }`}
                     >
                       {chat.snippet || "Start a conversation"}
@@ -510,22 +521,22 @@ export default function Chats() {
                   <Text
                     className={`text-xs ${
                       chat.isTyping
-                        ? "text-[#34594A] font-bold"
+                        ? "text-[#34594A] font-bold dark:text-[#E6E6E6] "
                         : chat.unread > 0
                           ? "text-red-500 font-bold"
-                          : "text-gray-400 font-medium"
+                          : "text-gray-400 font-medium dark:text-[#ADADAD] "
                     }`}
                   >
                     {chat.time}
                   </Text>
 
                   {chat.isTyping ? (
-                    <View className="px-1.5 py-0.5 rounded-full bg-[#34594A]/15">
-                      <Text className="text-[10px] text-[#34594A] font-bold">typing</Text>
+                    <View className="px-1.5 py-0.5 rounded-full bg-[#34594A]/15 dark:bg-[#E6E6E6]/15 ">
+                      <Text className="text-[10px] text-[#34594A] font-bold dark:text-[#E6E6E6] ">typing</Text>
                     </View>
                   ) : chat.unread > 0 ? (
                     <View className="bg-red-500 rounded-full h-5 min-w-[20px] px-1.5 items-center justify-center">
-                      <Text className="text-white text-[11px] font-bold">
+                      <Text className="text-white text-[11px] font-bold dark:text-[#E6E6E6] ">
                         {chat.unread > 9 ? "9+" : chat.unread}
                       </Text>
                     </View>
@@ -534,19 +545,19 @@ export default function Chats() {
                       <Ionicons
                         name="checkmark-done"
                         size={16}
-                        color="#34594A"
+                        color={themeColor("#34594A", "#E6E6E6")}
                       />
                     ) : chat.isDelivered ? (
                       <Ionicons
                         name="checkmark-done"
                         size={16}
-                        color="#9CA3AF"
+                        color={themeColor("#9CA3AF", "#ADADAD")}
                       />
                     ) : (
                       <Ionicons
                         name="checkmark"
                         size={15}
-                        color="#9CA3AF"
+                        color={themeColor("#9CA3AF", "#ADADAD")}
                       />
                     )
                   ) : null}
@@ -566,27 +577,25 @@ export default function Chats() {
         statusBarTranslucent={true}
       >
         <View className="flex-1 justify-end bg-black/50">
-          <TouchableWithoutFeedback onPress={handleCloseOptionsModal}>
-            <View style={StyleSheet.absoluteFill} />
-          </TouchableWithoutFeedback>
+          <Pressable onPress={handleCloseOptionsModal} style={StyleSheet.absoluteFill} />
 
           <View
-            className="bg-white rounded-t-3xl pt-3 pb-8 px-5 w-full max-w-lg mx-auto shadow-2xl"
+            className="bg-white rounded-t-3xl pt-3 pb-8 px-5 w-full max-w-lg mx-auto shadow-2xl dark:bg-[#242424] "
             style={{
-              backgroundColor: "#FFFFFF",
+              backgroundColor: themeColor("#FFFFFF", "#242424"),
               borderTopLeftRadius: 28,
               borderTopRightRadius: 28,
               elevation: 25,
             }}
           >
             {/* Grabber Handle */}
-            <View className="w-10 h-1 bg-gray-300 rounded-full self-center mb-3" />
+            <View className="w-10 h-1 bg-gray-300 rounded-full self-center mb-3 dark:bg-[#303030] " />
 
             {/* Target Contact Header Preview */}
             {selectedChatForOptions && (
-              <View className="flex-row items-center pb-3.5 border-b border-gray-100 mb-2">
+              <View className="flex-row items-center pb-3.5 border-b border-gray-100 mb-2 dark:border-[#414141] ">
                 <View className="relative mr-3.5">
-                  <View className="h-12 w-12 rounded-full bg-gray-200 items-center justify-center border border-gray-200 overflow-hidden">
+                  <View className="h-12 w-12 rounded-full bg-gray-200 items-center justify-center border border-gray-200 overflow-hidden dark:bg-[#181818] dark:border-[#414141] ">
                     {selectedChatForOptions.avatarUrl ? (
                       <Image
                         source={{ uri: selectedChatForOptions.avatarUrl }}
@@ -594,27 +603,27 @@ export default function Chats() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <Ionicons name="person" size={24} color="#34594A" />
+                      <Ionicons name="person" size={24} color={themeColor("#34594A", "#E6E6E6")} />
                     )}
                   </View>
-                  {selectedChatForOptions.online && (
-                    <View className="absolute bottom-0 right-0 bg-[#34594A] w-3 h-3 rounded-full border-2 border-white" />
-                  )}
+                  <View className="absolute bottom-0 right-0">
+                    <PresenceDot online={selectedChatForOptions.online} />
+                  </View>
                 </View>
                 <View className="flex-1">
-                  <Text className="text-base font-bold text-gray-900 leading-tight" numberOfLines={1}>
+                  <Text className="text-base font-bold text-gray-900 leading-tight dark:text-[#E6E6E6] " numberOfLines={1}>
                     {selectedChatForOptions.name}
                   </Text>
-                  <Text className="text-xs text-gray-500 mt-0.5" numberOfLines={1}>
+                  <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] " numberOfLines={1}>
                     {selectedChatForOptions.username
-                      ? `@${selectedChatForOptions.username}`
+                      ? `@${selectedChatForOptions.username} · ${selectedChatForOptions.online ? "Online" : "Offline"}`
                       : selectedChatForOptions.online
-                        ? "Active now"
-                        : "Local Farm member"}
+                        ? "Online"
+                        : "Offline"}
                   </Text>
                 </View>
                 {isActionInProgress && (
-                  <ActivityIndicator size="small" color="#34594A" className="ml-2" />
+                  <ActivityIndicator size="small" color={themeColor("#34594A", "#E6E6E6")} className="ml-2" />
                 )}
               </View>
             )}
@@ -627,14 +636,14 @@ export default function Chats() {
                   onPress={() => handleArchiveConversation(selectedChatForOptions)}
                   disabled={isActionInProgress}
                   activeOpacity={0.7}
-                  className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100"
+                  className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100 dark:active:bg-[#181818] "
                 >
-                  <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3.5">
-                    <Ionicons name="archive-outline" size={20} color="#34594A" />
+                  <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3.5 dark:bg-[#181818] ">
+                    <Ionicons name="archive-outline" size={20} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-base font-semibold text-gray-900">Archive</Text>
-                    <Text className="text-xs text-gray-500">Hide conversation from chats</Text>
+                    <Text className="text-base font-semibold text-gray-900 dark:text-[#E6E6E6] ">Archive</Text>
+                    <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">Hide conversation from chats</Text>
                   </View>
                 </TouchableOpacity>
 
@@ -643,20 +652,20 @@ export default function Chats() {
                   onPress={() => handleToggleMuteConversation(selectedChatForOptions)}
                   disabled={isActionInProgress}
                   activeOpacity={0.7}
-                  className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100"
+                  className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100 dark:active:bg-[#181818] "
                 >
-                  <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3.5">
+                  <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3.5 dark:bg-[#181818] ">
                     <Ionicons
                       name={selectedChatForOptions.isMuted ? "notifications-outline" : "notifications-off-outline"}
                       size={20}
-                      color="#34594A"
+                      color={themeColor("#34594A", "#E6E6E6")}
                     />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-base font-semibold text-gray-900">
+                    <Text className="text-base font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                       {selectedChatForOptions.isMuted ? "Unmute notifications" : "Mute notifications"}
                     </Text>
-                    <Text className="text-xs text-gray-500">
+                    <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">
                       {selectedChatForOptions.isMuted ? "Receive message alerts again" : "Silence message alerts"}
                     </Text>
                   </View>
@@ -667,16 +676,16 @@ export default function Chats() {
                   onPress={() => handleToggleRestrictConversation(selectedChatForOptions)}
                   disabled={isActionInProgress}
                   activeOpacity={0.7}
-                  className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100"
+                  className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100 dark:active:bg-[#181818] "
                 >
-                  <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3.5">
-                    <Ionicons name="shield-outline" size={20} color="#34594A" />
+                  <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3.5 dark:bg-[#181818] ">
+                    <Ionicons name="shield-outline" size={20} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-base font-semibold text-gray-900">
+                    <Text className="text-base font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                       {selectedChatForOptions.isRestricted ? "Unrestrict" : "Restrict"}
                     </Text>
-                    <Text className="text-xs text-gray-500">Move to Restricted Accounts</Text>
+                    <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">Move to Restricted Accounts</Text>
                   </View>
                 </TouchableOpacity>
 
@@ -685,9 +694,9 @@ export default function Chats() {
                   onPress={() => handleBlockConversation(selectedChatForOptions)}
                   disabled={isActionInProgress}
                   activeOpacity={0.7}
-                  className="flex-row items-center py-3 px-2 rounded-xl active:bg-red-50"
+                  className="flex-row items-center py-3 px-2 rounded-xl active:bg-red-50 dark:active:bg-[#181818] "
                 >
-                  <View className="w-10 h-10 rounded-full bg-red-50 items-center justify-center mr-3.5">
+                  <View className="w-10 h-10 rounded-full bg-red-50 items-center justify-center mr-3.5 dark:bg-[#181818] ">
                     <Ionicons name="ban-outline" size={20} color="#DC2626" />
                   </View>
                   <View className="flex-1">
@@ -701,9 +710,9 @@ export default function Chats() {
                   onPress={() => handleDeleteConversation(selectedChatForOptions)}
                   disabled={isActionInProgress}
                   activeOpacity={0.7}
-                  className="flex-row items-center py-3 px-2 rounded-xl active:bg-red-50"
+                  className="flex-row items-center py-3 px-2 rounded-xl active:bg-red-50 dark:active:bg-[#181818] "
                 >
-                  <View className="w-10 h-10 rounded-full bg-red-50 items-center justify-center mr-3.5">
+                  <View className="w-10 h-10 rounded-full bg-red-50 items-center justify-center mr-3.5 dark:bg-[#181818] ">
                     <Ionicons name="trash-outline" size={20} color="#DC2626" />
                   </View>
                   <View className="flex-1">

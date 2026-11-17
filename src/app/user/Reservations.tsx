@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   AccessibilityInfo,
@@ -53,6 +54,8 @@ function ReservationEntrance({ children, delay = 0 }: { children: React.ReactNod
 }
 
 export default function ReservationsScreen() {
+  const { themeColor } = useAppTheme();
+  const styles = createStyles(themeColor);
   const router = useRouter();
   const { showToast } = useToast();
   const params = useLocalSearchParams<{
@@ -236,13 +239,13 @@ export default function ReservationsScreen() {
 
   const getStatusBadge = (status: HarvestReservation["status"]) => {
     const badges = {
-      pending: { bg: "#F7F2E8", color: "#8A7042", label: "Pending approval", icon: "time-outline" },
-      confirmed: { bg: "#EDF2F5", color: "#587184", label: "Confirmed", icon: "checkmark-circle-outline" },
-      ready_for_pickup: { bg: "#EDF3EE", color: "#52785D", label: "Ready for pickup", icon: "cube-outline" },
-      completed: { bg: "#EDF3EE", color: "#52785D", label: "Completed", icon: "shield-checkmark-outline" },
-      cancelled: { bg: "#F8EEEE", color: "#986C6C", label: "Cancelled", icon: "close-circle-outline" },
+      pending: { bg: themeColor("#F7F2E8", "#332E24"), color: themeColor("#8A7042", "#D3BC8D"), label: "Pending approval", icon: "time-outline" },
+      confirmed: { bg: themeColor("#EDF2F5", "#293139"), color: themeColor("#587184", "#B7CAD8"), label: "Confirmed", icon: "checkmark-circle-outline" },
+      ready_for_pickup: { bg: themeColor("#EDF3EE", "#29332D"), color: themeColor("#52785D", "#E6E6E6"), label: "Ready for pickup", icon: "cube-outline" },
+      completed: { bg: themeColor("#EDF3EE", "#29332D"), color: themeColor("#52785D", "#E6E6E6"), label: "Completed", icon: "shield-checkmark-outline" },
+      cancelled: { bg: themeColor("#F8EEEE", "#362A2A"), color: themeColor("#986C6C", "#D5AAAA"), label: "Cancelled", icon: "close-circle-outline" },
     };
-    return badges[status] || { bg: "#F1F3F2", color: "#6D7C73", label: status, icon: "ellipse-outline" };
+    return badges[status] || { bg: themeColor("#F1F3F2", "#303030"), color: themeColor("#6D7C73", "#E6E6E6"), label: status, icon: "ellipse-outline" };
   };
 
   return (
@@ -256,7 +259,7 @@ export default function ReservationsScreen() {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="chevron-back" size={21} color="#34594A" />
+          <Ionicons name="chevron-back" size={21} color={themeColor("#34594A", "#E6E6E6")} />
         </TouchableOpacity>
 
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
@@ -271,7 +274,7 @@ export default function ReservationsScreen() {
           style={styles.refreshIconBtn}
           activeOpacity={0.7}
         >
-          <Ionicons name="refresh" size={18} color="#4B5563" />
+          <Ionicons name="refresh" size={18} color={themeColor("#4B5563", "#ADADAD")} />
         </TouchableOpacity>
       </View>
 
@@ -279,12 +282,12 @@ export default function ReservationsScreen() {
       {filterPostId && (
         <View style={styles.postFilterBanner}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-            <Ionicons name="leaf" size={18} color="#34594A" />
+            <Ionicons name="leaf" size={18} color={themeColor("#34594A", "#E6E6E6")} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 10, fontWeight: "700", color: "#34594A", textTransform: "uppercase" }}>
+              <Text style={{ fontSize: 10, fontWeight: "700", color: themeColor("#34594A", "#E6E6E6"), textTransform: "uppercase" }}>
                 Filtered By Crop Post
               </Text>
-              <Text style={{ fontSize: 13, fontWeight: "700", color: "#111827" }} numberOfLines={1}>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: themeColor("#111827", "#E6E6E6") }} numberOfLines={1}>
                 {params.cropName || `Post #${filterPostId}`}
               </Text>
             </View>
@@ -294,8 +297,8 @@ export default function ReservationsScreen() {
             style={styles.viewAllFilterBtn}
             activeOpacity={0.7}
           >
-            <Text style={{ fontSize: 11, fontWeight: "700", color: "#ffffff" }}>View All</Text>
-            <Ionicons name="close-circle" size={14} color="#ffffff" />
+            <Text style={{ fontSize: 11, fontWeight: "700", color: themeColor("#ffffff", "#E6E6E6") }}>View All</Text>
+            <Ionicons name="close-circle" size={14} color={themeColor("#ffffff", "#E6E6E6")} />
           </TouchableOpacity>
         </View>
       )}
@@ -315,7 +318,7 @@ export default function ReservationsScreen() {
           <Ionicons
             name="people-outline"
             size={16}
-            color={activeRole === "seller" ? "#ffffff" : "#6B7280"}
+            color={themeColor(activeRole === "seller" ? "#ffffff" : "#6B7280", activeRole === "seller" ? "#E6E6E6" : "#ADADAD")}
           />
           <Text
             style={[
@@ -340,7 +343,7 @@ export default function ReservationsScreen() {
           <Ionicons
             name="basket-outline"
             size={16}
-            color={activeRole === "buyer" ? "#ffffff" : "#6B7280"}
+            color={themeColor(activeRole === "buyer" ? "#ffffff" : "#6B7280", activeRole === "buyer" ? "#E6E6E6" : "#ADADAD")}
           />
           <Text
             style={[
@@ -425,8 +428,8 @@ export default function ReservationsScreen() {
       >
         {isLoading && !isRefreshing ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#34594A" />
-            <Text style={{ marginTop: 12, color: "#6B7280", fontSize: 13 }}>Loading reservations...</Text>
+            <ActivityIndicator size="large" color={themeColor("#34594A", "#E6E6E6")} />
+            <Text style={{ marginTop: 12, color: themeColor("#6B7280", "#ADADAD"), fontSize: 13 }}>Loading reservations...</Text>
           </View>
         ) : filteredReservations.length === 0 ? (
           <View style={styles.emptyContainer}>
@@ -434,7 +437,7 @@ export default function ReservationsScreen() {
               <Ionicons
                 name={activeRole === "seller" ? "people-outline" : "basket-outline"}
                 size={38}
-                color="#779381"
+                color={themeColor("#779381", "#E6E6E6")}
               />
             </View>
             <Text style={styles.emptyTitle}>
@@ -456,8 +459,8 @@ export default function ReservationsScreen() {
                 style={styles.browseButton}
                 activeOpacity={0.8}
               >
-                <Ionicons name="newspaper-outline" size={18} color="#ffffff" />
-                <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 14 }}>Explore local harvests</Text>
+                <Ionicons name="newspaper-outline" size={18} color={themeColor("#ffffff", "#E6E6E6")} />
+                <Text style={{ color: themeColor("#ffffff", "#E6E6E6"), fontWeight: "700", fontSize: 14 }}>Explore local harvests</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -485,7 +488,7 @@ export default function ReservationsScreen() {
                     style={styles.codePill}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="copy-outline" size={13} color="#4B5563" />
+                    <Ionicons name="copy-outline" size={13} color={themeColor("#4B5563", "#ADADAD")} />
                     <Text style={styles.codeText}>{res.reservation_code}</Text>
                   </TouchableOpacity>
 
@@ -501,7 +504,7 @@ export default function ReservationsScreen() {
                     {otherPersonAvatar ? (
                       <Image source={{ uri: otherPersonAvatar }} style={styles.avatarImg} />
                     ) : (
-                      <Ionicons name="person" size={20} color="#9CA3AF" />
+                      <Ionicons name="person" size={20} color={themeColor("#9CA3AF", "#ADADAD")} />
                     )}
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
@@ -527,7 +530,7 @@ export default function ReservationsScreen() {
                         activeOpacity={0.7}
                         accessibilityLabel="Call"
                       >
-                        <Ionicons name="call" size={15} color="#34594A" />
+                        <Ionicons name="call" size={15} color={themeColor("#34594A", "#E6E6E6")} />
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
@@ -542,7 +545,7 @@ export default function ReservationsScreen() {
                       activeOpacity={0.7}
                       accessibilityLabel="Message"
                     >
-                      <Ionicons name="chatbubble-ellipses" size={15} color="#34594A" />
+                      <Ionicons name="chatbubble-ellipses" size={15} color={themeColor("#34594A", "#E6E6E6")} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -552,7 +555,7 @@ export default function ReservationsScreen() {
                   <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
                       <View style={styles.cropIcon}>
-                        <Ionicons name="leaf" size={14} color="#34594A" />
+                        <Ionicons name="leaf" size={14} color={themeColor("#34594A", "#E6E6E6")} />
                       </View>
                       <Text style={styles.cropTitle} numberOfLines={2}>
                         {res.crop_name}
@@ -565,14 +568,14 @@ export default function ReservationsScreen() {
 
                   <View style={styles.specsRow}>
                     <Text style={styles.specsText}>
-                      Reserved: <Text style={{ fontWeight: "700", color: "#111827" }}>{res.quantity} {res.unit || "kg"}</Text> @ ₱{Number(res.price_per_unit).toFixed(2)}/{res.unit || "kg"}
+                      Reserved: <Text style={{ fontWeight: "700", color: themeColor("#111827", "#E6E6E6") }}>{res.quantity} {res.unit || "kg"}</Text> @ ₱{Number(res.price_per_unit).toFixed(2)}/{res.unit || "kg"}
                     </Text>
                   </View>
 
                   {res.actual_weighed_quantity != null && (
                     <View style={{ marginTop: 4, flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Ionicons name="scale" size={13} color="#52785D" />
-                      <Text style={{ fontSize: 11, fontWeight: "700", color: "#52785D" }}>
+                      <Ionicons name="scale" size={13} color={themeColor("#52785D", "#E6E6E6")} />
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: themeColor("#52785D", "#E6E6E6") }}>
                         Scale Verified: {res.actual_weighed_quantity} {res.unit || "kg"} (Settled: ₱{Number(res.final_settled_amount).toFixed(2)})
                       </Text>
                     </View>
@@ -580,13 +583,13 @@ export default function ReservationsScreen() {
 
                   <View style={styles.metaRow}>
                     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
-                      <Ionicons name="calendar-outline" size={12} color="#6B7280" />
+                      <Ionicons name="calendar-outline" size={12} color={themeColor("#6B7280", "#ADADAD")} />
                       <Text style={styles.metaText}>
                         Harvest: {res.harvest_date ? new Date(res.harvest_date).toLocaleDateString() : "Upcoming"}
                       </Text>
                     </View>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1 }}>
-                      <Ionicons name="location-outline" size={12} color="#6B7280" />
+                      <Ionicons name="location-outline" size={12} color={themeColor("#6B7280", "#ADADAD")} />
                       <Text style={[styles.metaText, { flex: 1 }]}>
                         {res.pickup_location || "Local Market Hub"}
                       </Text>
@@ -596,7 +599,7 @@ export default function ReservationsScreen() {
                   {/* Buyer Notes */}
                   {res.buyer_notes && (
                     <View style={styles.notesBubble}>
-                      <Ionicons name="chatbox-ellipses-outline" size={13} color="#6B7280" />
+                      <Ionicons name="chatbox-ellipses-outline" size={13} color={themeColor("#6B7280", "#ADADAD")} />
                       <Text style={styles.notesText} numberOfLines={2}>
                         "{res.buyer_notes}"
                       </Text>
@@ -607,7 +610,7 @@ export default function ReservationsScreen() {
                 {/* Card Action Footer */}
                 <View style={styles.cardFooter}>
                   {isProcessing ? (
-                    <ActivityIndicator size="small" color="#34594A" style={{ marginVertical: 6 }} />
+                    <ActivityIndicator size="small" color={themeColor("#34594A", "#E6E6E6")} style={{ marginVertical: 6 }} />
                   ) : isSeller ? (
                     // SELLER ACTIONS (Farmer managing incoming reservations)
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, width: "100%" }}>
@@ -618,7 +621,7 @@ export default function ReservationsScreen() {
                             style={[styles.actionBtn, styles.btnConfirm]}
                             activeOpacity={0.8}
                           >
-                            <Ionicons name="checkmark-circle" size={15} color="#ffffff" />
+                            <Ionicons name="checkmark-circle" size={15} color={themeColor("#ffffff", "#E6E6E6")} />
                             <Text style={styles.btnTextWhite}>Confirm booking</Text>
                           </TouchableOpacity>
 
@@ -627,7 +630,7 @@ export default function ReservationsScreen() {
                             style={[styles.actionBtn, styles.btnCancel]}
                             activeOpacity={0.8}
                           >
-                            <Ionicons name="close" size={15} color="#986C6C" />
+                            <Ionicons name="close" size={15} color={themeColor("#986C6C", "#D5AAAA")} />
                             <Text style={styles.btnTextRed}>Decline</Text>
                           </TouchableOpacity>
                         </>
@@ -640,7 +643,7 @@ export default function ReservationsScreen() {
                             style={[styles.actionBtn, styles.btnReady]}
                             activeOpacity={0.8}
                           >
-                            <Ionicons name="cube" size={15} color="#ffffff" />
+                            <Ionicons name="cube" size={15} color={themeColor("#ffffff", "#E6E6E6")} />
                             <Text style={styles.btnTextWhite}>Mark ready</Text>
                           </TouchableOpacity>
 
@@ -649,7 +652,7 @@ export default function ReservationsScreen() {
                             style={[styles.actionBtn, styles.btnWeigh]}
                             activeOpacity={0.8}
                           >
-                            <Ionicons name="scale" size={15} color="#34594A" />
+                            <Ionicons name="scale" size={15} color={themeColor("#34594A", "#E6E6E6")} />
                             <Text style={styles.btnTextGreen}>Weigh in</Text>
                           </TouchableOpacity>
                         </>
@@ -661,7 +664,7 @@ export default function ReservationsScreen() {
                           style={[styles.actionBtn, styles.btnConfirm, { flex: 1 }]}
                           activeOpacity={0.8}
                         >
-                          <Ionicons name="scale" size={16} color="#ffffff" />
+                          <Ionicons name="scale" size={16} color={themeColor("#ffffff", "#E6E6E6")} />
                           <Text style={styles.btnTextWhite}>Complete pickup</Text>
                         </TouchableOpacity>
                       )}
@@ -672,8 +675,8 @@ export default function ReservationsScreen() {
                           style={[styles.actionBtn, styles.btnReceipt, { flex: 1 }]}
                           activeOpacity={0.8}
                         >
-                          <Ionicons name="receipt-outline" size={15} color="#52785D" />
-                          <Text style={{ fontSize: 12, fontWeight: "700", color: "#52785D" }}>
+                          <Ionicons name="receipt-outline" size={15} color={themeColor("#52785D", "#E6E6E6")} />
+                          <Text style={{ fontSize: 12, fontWeight: "700", color: themeColor("#52785D", "#E6E6E6") }}>
                             View Digital Scale Receipt
                           </Text>
                         </TouchableOpacity>
@@ -687,7 +690,7 @@ export default function ReservationsScreen() {
                         style={[styles.actionBtn, styles.btnConfirm, { flex: 1 }]}
                         activeOpacity={0.8}
                       >
-                        <Ionicons name="qr-code-outline" size={16} color="#ffffff" />
+                        <Ionicons name="qr-code-outline" size={16} color={themeColor("#ffffff", "#E6E6E6")} />
                         <Text style={styles.btnTextWhite}>Pickup receipt</Text>
                       </TouchableOpacity>
 
@@ -736,78 +739,78 @@ export default function ReservationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
-  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10, backgroundColor: "#FFFFFF" },
-  backButton: { width: 36, height: 36, borderRadius: 12, backgroundColor: "#F5F7F5", alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 18, fontWeight: "700", letterSpacing: -0.4, color: "#293E33", textAlign: "center" },
-  refreshIconBtn: { width: 36, height: 36, borderRadius: 12, borderWidth: 1, borderColor: "#E7ECE8", alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
-  postFilterBanner: { marginHorizontal: 16, marginBottom: 8, padding: 10, borderRadius: 12, backgroundColor: "#F4F7F3", flexDirection: "row", alignItems: "center", gap: 8 },
-  viewAllFilterBtn: { backgroundColor: "#34594A", paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, flexDirection: "row", alignItems: "center", gap: 4 },
-  segmentedContainer: { flexDirection: "row", marginHorizontal: 16, marginBottom: 10, padding: 4, backgroundColor: "#F3F5F2", borderRadius: 14 },
+const createStyles = (themeColor: (light: string, dark: string) => string) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: themeColor("#FFFFFF", "#181818") },
+  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10, backgroundColor: themeColor("#FFFFFF", "#181818") },
+  backButton: { width: 36, height: 36, borderRadius: 12, backgroundColor: themeColor("#F5F7F5", "#181818"), alignItems: "center", justifyContent: "center" },
+  headerTitle: { fontSize: 18, fontWeight: "700", letterSpacing: -0.4, color: themeColor("#293E33", "#E6E6E6"), textAlign: "center" },
+  refreshIconBtn: { width: 36, height: 36, borderRadius: 12, borderWidth: 1, borderColor: themeColor("#E7ECE8", "#414141"), alignItems: "center", justifyContent: "center", backgroundColor: themeColor("#FFFFFF", "#242424") },
+  postFilterBanner: { marginHorizontal: 16, marginBottom: 8, padding: 10, borderRadius: 12, backgroundColor: themeColor("#F4F7F3", "#181818"), flexDirection: "row", alignItems: "center", gap: 8 },
+  viewAllFilterBtn: { backgroundColor: themeColor("#34594A", "#303030"), paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, flexDirection: "row", alignItems: "center", gap: 4 },
+  segmentedContainer: { flexDirection: "row", marginHorizontal: 16, marginBottom: 10, padding: 4, backgroundColor: themeColor("#F3F5F2", "#181818"), borderRadius: 14 },
   segmentButton: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 42, paddingHorizontal: 6, paddingVertical: 9, borderRadius: 11 },
-  segmentButtonActive: { backgroundColor: "#34594A", shadowColor: "#293E33", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.10, shadowRadius: 5, elevation: 2 },
-  segmentText: { fontSize: 12, fontWeight: "600", color: "#728076", flexShrink: 1, textAlign: "center" },
-  segmentTextActive: { color: "#FFFFFF", fontWeight: "600" },
+  segmentButtonActive: { backgroundColor: themeColor("#34594A", "#303030"), shadowColor: "#293E33", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.10, shadowRadius: 5, elevation: 2 },
+  segmentText: { fontSize: 12, fontWeight: "600", color: themeColor("#728076", "#ADADAD"), flexShrink: 1, textAlign: "center" },
+  segmentTextActive: { color: themeColor("#FFFFFF", "#E6E6E6"), fontWeight: "600" },
   filterPill: { flexDirection: "row", alignItems: "center", gap: 4, minHeight: 30, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
-  filterPillActive: { backgroundColor: "#EDF3EE", borderColor: "#EDF3EE" },
-  filterPillInactive: { backgroundColor: "#FFFFFF", borderColor: "#EDF0EC" },
+  filterPillActive: { backgroundColor: themeColor("#EDF3EE", "#383838"), borderColor: themeColor("#EDF3EE", "#414141") },
+  filterPillInactive: { backgroundColor: themeColor("#FFFFFF", "#242424"), borderColor: themeColor("#EDF0EC", "#414141") },
   filterPillText: { fontSize: 11 },
-  filterPillTextActive: { color: "#34594A", fontWeight: "600" },
-  filterPillTextInactive: { color: "#77847B", fontWeight: "500" },
+  filterPillTextActive: { color: themeColor("#34594A", "#E6E6E6"), fontWeight: "600" },
+  filterPillTextInactive: { color: themeColor("#77847B", "#ADADAD"), fontWeight: "500" },
   countBadge: { paddingHorizontal: 4, paddingVertical: 1, borderRadius: 5 },
-  countBadgeActive: { backgroundColor: "#DCE8DF" },
-  countBadgeInactive: { backgroundColor: "#F3F5F2" },
+  countBadgeActive: { backgroundColor: themeColor("#DCE8DF", "#303030") },
+  countBadgeInactive: { backgroundColor: themeColor("#F3F5F2", "#181818") },
   countBadgeText: { fontSize: 9, fontWeight: "600" },
-  countBadgeTextActive: { color: "#34594A" },
-  countBadgeTextInactive: { color: "#728076" },
+  countBadgeTextActive: { color: themeColor("#34594A", "#E6E6E6") },
+  countBadgeTextInactive: { color: themeColor("#728076", "#ADADAD") },
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 60 },
   emptyContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, paddingTop: 40, paddingBottom: 70 },
-  emptyIconCircle: { width: 82, height: 82, borderRadius: 28, backgroundColor: "#F1F5EF", alignItems: "center", justifyContent: "center", marginBottom: 24 },
-  emptyTitle: { fontSize: 18, fontWeight: "600", letterSpacing: -0.3, color: "#293E33", textAlign: "center", marginBottom: 10 },
-  emptySubtitle: { fontSize: 13, color: "#7A887F", textAlign: "center", lineHeight: 21, marginBottom: 24, maxWidth: 290 },
-  browseButton: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#34594A", paddingHorizontal: 20, paddingVertical: 14, borderRadius: 14 },
-  clearFiltersButton: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, backgroundColor: "#EDF3EE" },
+  emptyIconCircle: { width: 82, height: 82, borderRadius: 28, backgroundColor: themeColor("#F1F5EF", "#181818"), alignItems: "center", justifyContent: "center", marginBottom: 24 },
+  emptyTitle: { fontSize: 18, fontWeight: "600", letterSpacing: -0.3, color: themeColor("#293E33", "#E6E6E6"), textAlign: "center", marginBottom: 10 },
+  emptySubtitle: { fontSize: 13, color: themeColor("#7A887F", "#ADADAD"), textAlign: "center", lineHeight: 21, marginBottom: 24, maxWidth: 290 },
+  browseButton: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: themeColor("#34594A", "#303030"), paddingHorizontal: 20, paddingVertical: 14, borderRadius: 14 },
+  clearFiltersButton: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, backgroundColor: themeColor("#EDF3EE", "#181818") },
   cardContainer: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderRadius: 20,
     padding: 16,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "#E5ECE6",
+    borderColor: themeColor("#E5ECE6", "#414141"),
   },
   cardHeader: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
   codePill: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 4, borderRadius: 8 },
-  codeText: { fontSize: 10, fontWeight: "600", color: "#75857A", letterSpacing: 0.5 },
+  codeText: { fontSize: 10, fontWeight: "600", color: themeColor("#75857A", "#ADADAD"), letterSpacing: 0.5 },
   statusBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 20 },
   statusText: { fontSize: 10, fontWeight: "600" },
   personRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 },
-  avatarWrap: { width: 42, height: 42, borderRadius: 15, backgroundColor: "#F0F4EF", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  avatarWrap: { width: 42, height: 42, borderRadius: 15, backgroundColor: themeColor("#F0F4EF", "#181818"), alignItems: "center", justifyContent: "center", overflow: "hidden" },
   avatarImg: { width: "100%", height: "100%" },
-  personName: { fontSize: 14, fontWeight: "600", color: "#293E33", maxWidth: "100%" },
-  roleTag: { backgroundColor: "#F0F4EF", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5 },
-  roleTagText: { fontSize: 9, fontWeight: "500", color: "#718376" },
-  personSubtext: { fontSize: 11, color: "#7A887F", marginTop: 4 },
-  roundActionBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: "#F5F7F3", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#E8EDE5" },
-  detailsBox: { backgroundColor: "#FFFFFF", paddingTop: 14, borderTopWidth: 1, borderTopColor: "#EDF1EB" },
-  cropIcon: { width: 28, height: 28, borderRadius: 9, backgroundColor: "#EDF3E9", alignItems: "center", justifyContent: "center" },
-  cropTitle: { fontSize: 14, lineHeight: 20, fontWeight: "600", color: "#293E33", flex: 1 },
-  amountTotal: { fontSize: 17, fontWeight: "700", letterSpacing: -0.4, color: "#34594A" },
-  amountCaption: { marginTop: 3, fontSize: 9, color: "#7A887F" },
+  personName: { fontSize: 14, fontWeight: "600", color: themeColor("#293E33", "#E6E6E6"), maxWidth: "100%" },
+  roleTag: { backgroundColor: themeColor("#F0F4EF", "#181818"), paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5 },
+  roleTagText: { fontSize: 9, fontWeight: "500", color: themeColor("#718376", "#ADADAD") },
+  personSubtext: { fontSize: 11, color: themeColor("#7A887F", "#ADADAD"), marginTop: 4 },
+  roundActionBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: themeColor("#F5F7F3", "#181818"), alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: themeColor("#E8EDE5", "#414141") },
+  detailsBox: { backgroundColor: themeColor("#FFFFFF", "#242424"), paddingTop: 14, borderTopWidth: 1, borderTopColor: themeColor("#EDF1EB", "#414141") },
+  cropIcon: { width: 28, height: 28, borderRadius: 9, backgroundColor: themeColor("#EDF3E9", "#181818"), alignItems: "center", justifyContent: "center" },
+  cropTitle: { fontSize: 14, lineHeight: 20, fontWeight: "600", color: themeColor("#293E33", "#E6E6E6"), flex: 1 },
+  amountTotal: { fontSize: 17, fontWeight: "700", letterSpacing: -0.4, color: themeColor("#34594A", "#E6E6E6") },
+  amountCaption: { marginTop: 3, fontSize: 9, color: themeColor("#7A887F", "#ADADAD") },
   specsRow: { flexDirection: "row", alignItems: "center" },
-  specsText: { fontSize: 12, lineHeight: 20, color: "#718075" },
-  metaRow: { gap: 10, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: "#EDF1EB" },
-  metaText: { fontSize: 11, lineHeight: 17, color: "#718075", fontWeight: "400" },
-  notesBubble: { marginTop: 12, padding: 10, borderRadius: 10, backgroundColor: "#F7F9F5", flexDirection: "row", alignItems: "flex-start", gap: 6 },
-  notesText: { fontSize: 11, lineHeight: 17, color: "#718075", flex: 1 },
-  cardFooter: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: "#EDF1EB" },
+  specsText: { fontSize: 12, lineHeight: 20, color: themeColor("#718075", "#ADADAD") },
+  metaRow: { gap: 10, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: themeColor("#EDF1EB", "#414141") },
+  metaText: { fontSize: 11, lineHeight: 17, color: themeColor("#718075", "#ADADAD"), fontWeight: "400" },
+  notesBubble: { marginTop: 12, padding: 10, borderRadius: 10, backgroundColor: themeColor("#F7F9F5", "#181818"), flexDirection: "row", alignItems: "flex-start", gap: 6 },
+  notesText: { fontSize: 11, lineHeight: 17, color: themeColor("#718075", "#ADADAD"), flex: 1 },
+  cardFooter: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: themeColor("#EDF1EB", "#414141") },
   actionBtn: { minHeight: 42, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6 },
-  btnConfirm: { backgroundColor: "#34594A", flex: 1, minWidth: 130 },
-  btnReady: { backgroundColor: "#34594A", flex: 1, minWidth: 110 },
-  btnCancel: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#EDDEDE", paddingHorizontal: 14 },
-  btnWeigh: { backgroundColor: "#F1F5EF", borderWidth: 1, borderColor: "#E3EADF", flex: 1, minWidth: 110 },
-  btnReceipt: { backgroundColor: "#F1F5EF", borderWidth: 1, borderColor: "#E3EADF" },
-  btnTextWhite: { fontSize: 12, fontWeight: "600", color: "#FFFFFF", flexShrink: 1, textAlign: "center" },
-  btnTextRed: { fontSize: 12, fontWeight: "600", color: "#986C6C" },
-  btnTextGreen: { fontSize: 12, fontWeight: "600", color: "#34594A", flexShrink: 1, textAlign: "center" },
+  btnConfirm: { backgroundColor: themeColor("#34594A", "#303030"), flex: 1, minWidth: 130 },
+  btnReady: { backgroundColor: themeColor("#34594A", "#303030"), flex: 1, minWidth: 110 },
+  btnCancel: { backgroundColor: themeColor("#FFFFFF", "#242424"), borderWidth: 1, borderColor: themeColor("#EDDEDE", "#414141"), paddingHorizontal: 14 },
+  btnWeigh: { backgroundColor: themeColor("#F1F5EF", "#181818"), borderWidth: 1, borderColor: themeColor("#E3EADF", "#414141"), flex: 1, minWidth: 110 },
+  btnReceipt: { backgroundColor: themeColor("#F1F5EF", "#181818"), borderWidth: 1, borderColor: themeColor("#E3EADF", "#414141") },
+  btnTextWhite: { fontSize: 12, fontWeight: "600", color: themeColor("#FFFFFF", "#E6E6E6"), flexShrink: 1, textAlign: "center" },
+  btnTextRed: { fontSize: 12, fontWeight: "600", color: themeColor("#986C6C", "#D5AAAA") },
+  btnTextGreen: { fontSize: 12, fontWeight: "600", color: themeColor("#34594A", "#E6E6E6"), flexShrink: 1, textAlign: "center" },
 });

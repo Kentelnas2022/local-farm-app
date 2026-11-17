@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { ConversationItem, getConversationsApi } from "@/services/chat-service";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -24,14 +25,15 @@ function RequestListItem({
   item: ConversationItem;
   onPress?: () => void;
 }) {
+  const { themeColor } = useAppTheme();
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="flex-row items-center px-4 py-3.5 border-b border-gray-100 active:bg-gray-50"
+      className="flex-row items-center px-4 py-3.5 border-b border-gray-100 active:bg-gray-50 dark:border-[#414141] dark:active:bg-[#242424] "
       activeOpacity={0.7}
     >
       {/* Left Avatar */}
-      <View className="w-13 h-13 rounded-full bg-gray-200 mr-3.5 items-center justify-center overflow-hidden border border-gray-200">
+      <View className="w-13 h-13 rounded-full bg-gray-200 mr-3.5 items-center justify-center overflow-hidden border border-gray-200 dark:bg-[#181818] dark:border-[#414141] ">
         {item.avatarUrl ? (
           <Image
             source={{ uri: item.avatarUrl }}
@@ -39,21 +41,21 @@ function RequestListItem({
             resizeMode="cover"
           />
         ) : (
-          <Ionicons name="person" size={26} color="#34594A" />
+          <Ionicons name="person" size={26} color={themeColor("#34594A", "#E6E6E6")} />
         )}
       </View>
 
       {/* Middle Text Content: Name & Snippet */}
       <View className="flex-1 min-w-0 pr-2">
         <Text
-          className="text-base font-bold text-gray-900 mb-0.5 leading-tight"
+          className="text-base font-bold text-gray-900 mb-0.5 leading-tight dark:text-[#E6E6E6] "
           numberOfLines={1}
         >
           {item.name}
         </Text>
         <Text
           className={`text-sm ${
-            item.unread > 0 ? "font-bold text-gray-900" : "text-gray-500 font-normal"
+            item.unread > 0 ? "font-bold text-gray-900 dark:text-[#E6E6E6] " : "text-gray-500 font-normal dark:text-[#ADADAD] "
           } truncate`}
           numberOfLines={1}
         >
@@ -63,10 +65,10 @@ function RequestListItem({
 
       {/* Right: Time & Unread Badge */}
       <View className="items-end justify-center min-w-[56px] flex-shrink-0 gap-1">
-        <Text className="text-xs text-gray-400 font-medium">{item.time}</Text>
+        <Text className="text-xs text-gray-400 font-medium dark:text-[#ADADAD] ">{item.time}</Text>
         {item.unread > 0 ? (
           <View className="bg-red-500 rounded-full h-5 min-w-[20px] px-1.5 items-center justify-center">
-            <Text className="text-white text-[11px] font-bold">
+            <Text className="text-white text-[11px] font-bold dark:text-[#E6E6E6] ">
               {item.unread > 9 ? "9+" : item.unread}
             </Text>
           </View>
@@ -77,6 +79,7 @@ function RequestListItem({
 }
 
 export default function MessageRequests() {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSidebarVisible, setSidebarVisible] = useState(false);
@@ -114,12 +117,12 @@ export default function MessageRequests() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white relative h-full"
+      className="flex-1 bg-white relative h-full dark:bg-[#181818] "
       style={{ flex: 1, position: "relative", minHeight: "100%" }}
     >
       {/* 1. Header */}
-      <View className="flex-row items-center justify-between px-5 pt-4 pb-2 bg-white">
-        <Text className="text-3xl font-bold text-gray-900 tracking-tight">
+      <View className="flex-row items-center justify-between px-5 pt-4 pb-2 bg-white dark:bg-[#242424] ">
+        <Text className="text-3xl font-bold text-gray-900 tracking-tight dark:text-[#E6E6E6] ">
           Chats
         </Text>
       </View>
@@ -132,39 +135,39 @@ export default function MessageRequests() {
           accessibilityRole="button"
           accessibilityLabel="Open menu"
         >
-          <Ionicons name="menu-outline" size={28} color="#34594A" />
+          <Ionicons name="menu-outline" size={28} color={themeColor("#34594A", "#E6E6E6")} />
         </TouchableOpacity>
 
         {/* Search Input Box */}
-        <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 h-11 border border-gray-100">
+        <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 h-11 border border-gray-100 dark:bg-[#181818] dark:border-[#414141] ">
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search..."
-            placeholderTextColor="#9CA3AF"
-            className="flex-1 text-base text-gray-800 pr-2 h-full font-medium"
+            placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+            className="flex-1 text-base text-gray-800 pr-2 h-full font-medium dark:text-[#E6E6E6] "
             autoCapitalize="none"
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery("")} className="p-1 mr-1">
-              <Ionicons name="close-circle" size={18} color="#34594A" />
+              <Ionicons name="close-circle" size={18} color={themeColor("#34594A", "#E6E6E6")} />
             </TouchableOpacity>
           ) : null}
-          <Ionicons name="search-outline" size={20} color="#34594A" />
+          <Ionicons name="search-outline" size={20} color={themeColor("#34594A", "#E6E6E6")} />
         </View>
       </View>
 
       {/* Section Title */}
-      <View className="px-5 py-2 flex-row items-center justify-between border-b border-gray-50">
-        <Text className="text-lg font-bold text-gray-900">Message Request</Text>
-        <Text className="text-xs text-gray-400 font-medium">
+      <View className="px-5 py-2 flex-row items-center justify-between border-b border-gray-50 dark:border-[#414141] ">
+        <Text className="text-lg font-bold text-gray-900 dark:text-[#E6E6E6] ">Message Request</Text>
+        <Text className="text-xs text-gray-400 font-medium dark:text-[#ADADAD] ">
           {requests.length} {requests.length === 1 ? "request" : "requests"}
         </Text>
       </View>
 
       {/* Message Requests List */}
       <ScrollView
-        className="flex-1 bg-white"
+        className="flex-1 bg-white dark:bg-[#181818] "
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 110 }}
         refreshControl={
@@ -178,8 +181,8 @@ export default function MessageRequests() {
       >
         {isLoading ? (
           <View className="py-16 items-center justify-center">
-            <ActivityIndicator size="large" color="#34594A" />
-            <Text className="text-sm text-gray-500 mt-2 font-medium">
+            <ActivityIndicator size="large" color={themeColor("#34594A", "#E6E6E6")} />
+            <Text className="text-sm text-gray-500 mt-2 font-medium dark:text-[#ADADAD] ">
               Loading requests...
             </Text>
           </View>
@@ -204,13 +207,13 @@ export default function MessageRequests() {
           ))
         ) : (
           <View className="items-center justify-center py-20 px-6">
-            <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-              <Ionicons name="chatbubbles-outline" size={32} color="#34594A" />
+            <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3 dark:bg-[#181818] ">
+              <Ionicons name="chatbubbles-outline" size={32} color={themeColor("#34594A", "#E6E6E6")} />
             </View>
-            <Text className="text-gray-800 font-bold text-base mb-1">
+            <Text className="text-gray-800 font-bold text-base mb-1 dark:text-[#E6E6E6] ">
               No Message Requests
             </Text>
-            <Text className="text-gray-500 text-xs text-center max-w-xs">
+            <Text className="text-gray-500 text-xs text-center max-w-xs dark:text-[#ADADAD] ">
               Messages from people who aren't your connections will appear here.
             </Text>
           </View>

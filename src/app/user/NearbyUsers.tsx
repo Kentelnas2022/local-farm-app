@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useToast } from "@/context/toast-context";
 import {
   cancelFriendRequestApi,
@@ -23,6 +24,7 @@ import BottomNavBar from "../../components/Navigation";
 import SidebarMenu from "../../components/SidebarMenu";
 
 export default function NearbyUsers() {
+  const { themeColor } = useAppTheme();
   const { showToast } = useToast();
   const [isSidebarVisible, setSidebarVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -61,8 +63,13 @@ export default function NearbyUsers() {
       setUserStates((prev) => ({ ...prev, [item.id]: "pending_sent" }));
       showToast(`Friend request sent to ${item.name}!`, "success");
     } catch (err: any) {
-      setUserStates((prev) => ({ ...prev, [item.id]: undefined }));
-      showToast(err.message || "Failed to send friend request.", "error");
+      if (err?.message?.toLowerCase().includes("already pending")) {
+        setUserStates((prev) => ({ ...prev, [item.id]: "pending_sent" }));
+        showToast("Friend request is already pending.", "info");
+      } else {
+        setUserStates((prev) => ({ ...prev, [item.id]: undefined }));
+        showToast(err.message || "Failed to send friend request.", "error");
+      }
     }
   };
 
@@ -96,12 +103,12 @@ export default function NearbyUsers() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white relative h-full"
+      className="flex-1 bg-white relative h-full dark:bg-[#181818] "
       style={{ flex: 1, position: "relative", minHeight: "100%" }}
     >
       {/* Header Section */}
       <View className="px-5 pt-4 pb-2">
-        <Text className="text-3xl font-bold text-gray-900">Connection</Text>
+        <Text className="text-3xl font-bold text-gray-900 dark:text-[#E6E6E6] ">Connection</Text>
       </View>
 
       {/* Search Bar */}
@@ -112,35 +119,35 @@ export default function NearbyUsers() {
           accessibilityRole="button"
           accessibilityLabel="Open menu"
         >
-          <Ionicons name="person-add-outline" size={26} color="#34594A" />
+          <Ionicons name="person-add-outline" size={26} color={themeColor("#34594A", "#E6E6E6")} />
         </TouchableOpacity>
 
         {/* Search Input */}
-        <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 h-11 border border-gray-100">
+        <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 h-11 border border-gray-100 dark:bg-[#181818] dark:border-[#414141] ">
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search nearby members..."
-            placeholderTextColor="#9CA3AF"
-            className="flex-1 text-base text-gray-800 pr-2 h-full"
+            placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+            className="flex-1 text-base text-gray-800 pr-2 h-full dark:text-[#E6E6E6] "
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <Ionicons name="close-circle" size={18} color="#34594A" />
+              <Ionicons name="close-circle" size={18} color={themeColor("#34594A", "#E6E6E6")} />
             </TouchableOpacity>
           ) : (
-            <Ionicons name="search-outline" size={20} color="#34594A" />
+            <Ionicons name="search-outline" size={20} color={themeColor("#34594A", "#E6E6E6")} />
           )}
         </View>
       </View>
 
       {/* Sub-Header */}
       <View className="px-5 mb-3 flex-row items-center justify-between">
-        <Text className="text-lg font-semibold text-gray-800">
+        <Text className="text-lg font-semibold text-gray-800 dark:text-[#E6E6E6] ">
           Nearby Users
         </Text>
         {!isLoading && filteredUsers.length > 0 && (
-          <Text className="text-xs font-semibold text-gray-500">
+          <Text className="text-xs font-semibold text-gray-500 dark:text-[#ADADAD] ">
             {filteredUsers.length}{" "}
             {filteredUsers.length === 1 ? "person" : "people"} nearby
           </Text>
@@ -150,14 +157,14 @@ export default function NearbyUsers() {
       {/* Content Area */}
       {isLoading ? (
         <View className="flex-1 items-center justify-center py-20">
-          <ActivityIndicator size="large" color="#34594A" />
-          <Text className="text-gray-500 text-sm mt-3 font-medium">
+          <ActivityIndicator size="large" color={themeColor("#34594A", "#E6E6E6")} />
+          <Text className="text-gray-500 text-sm mt-3 font-medium dark:text-[#ADADAD] ">
             Finding nearby farmers and users...
           </Text>
         </View>
       ) : (
         <ScrollView
-          className="flex-1 bg-white"
+          className="flex-1 bg-white dark:bg-[#181818] "
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100 }}
           refreshControl={
@@ -171,13 +178,13 @@ export default function NearbyUsers() {
           <View className="px-5">
             {filteredUsers.length === 0 ? (
               <View className="items-center justify-center py-16 px-4">
-                <Ionicons name="location-outline" size={48} color="#34594A" />
-                <Text className="text-base font-semibold text-gray-700 mt-3">
+                <Ionicons name="location-outline" size={48} color={themeColor("#34594A", "#E6E6E6")} />
+                <Text className="text-base font-semibold text-gray-700 mt-3 dark:text-[#E6E6E6] ">
                   {searchQuery
                     ? "No matching nearby members"
                     : "No nearby users found"}
                 </Text>
-                <Text className="text-xs text-gray-500 text-center mt-1">
+                <Text className="text-xs text-gray-500 text-center mt-1 dark:text-[#ADADAD] ">
                   {searchQuery
                     ? "Try adjusting your search keywords."
                     : "When new members join Local Farm in your area, they will appear here."}
@@ -192,10 +199,10 @@ export default function NearbyUsers() {
                 return (
                   <View
                     key={item.id}
-                    className="py-3.5 border-b border-gray-100 flex-row items-start justify-between"
+                    className="py-3.5 border-b border-gray-100 flex-row items-start justify-between dark:border-[#414141] "
                   >
                     {/* Circular Avatar */}
-                    <View className="h-14 w-14 rounded-full bg-gray-100 items-center justify-center mr-3.5 border border-gray-200 overflow-hidden">
+                    <View className="h-14 w-14 rounded-full bg-gray-100 items-center justify-center mr-3.5 border border-gray-200 overflow-hidden dark:bg-[#181818] dark:border-[#414141] ">
                       {item.avatarUrl ? (
                         <Image
                           source={{ uri: item.avatarUrl }}
@@ -203,13 +210,13 @@ export default function NearbyUsers() {
                           resizeMode="cover"
                         />
                       ) : (
-                        <Ionicons name="person" size={30} color="#34594A" />
+                        <Ionicons name="person" size={30} color={themeColor("#34594A", "#E6E6E6")} />
                       )}
                     </View>
 
                     {/* Info & Action Buttons Container */}
                     <View className="flex-1">
-                      <Text className="font-bold text-gray-900 text-base leading-tight mb-1">
+                      <Text className="font-bold text-gray-900 text-base leading-tight mb-1 dark:text-[#E6E6E6] ">
                         {item.name}
                       </Text>
 
@@ -218,16 +225,16 @@ export default function NearbyUsers() {
                         <Ionicons
                           name="location"
                           size={13}
-                          color="#34594A"
+                          color={themeColor("#34594A", "#E6E6E6")}
                           style={{ marginRight: 3 }}
                         />
-                        <Text className="text-xs font-semibold text-gray-600">
+                        <Text className="text-xs font-semibold text-gray-600 dark:text-[#ADADAD] ">
                           {item.distance}
                         </Text>
                         {item.location &&
                           item.location !== "Iligan City, Philippines" && (
                             <Text
-                              className="text-xs text-gray-400 ml-1.5"
+                              className="text-xs text-gray-400 ml-1.5 dark:text-[#ADADAD] "
                               numberOfLines={1}
                             >
                               • {item.location}
@@ -240,28 +247,28 @@ export default function NearbyUsers() {
                         <TouchableOpacity
                           onPress={() => handleCancelRequest(item)}
                           disabled={isActionLoading}
-                          className="w-full bg-gray-50 border border-[#34594A] py-2.5 rounded-xl items-center justify-center active:bg-gray-200"
+                          className="w-full bg-gray-50 border border-[#34594A] py-2.5 rounded-xl items-center justify-center active:bg-gray-200 dark:bg-[#242424] dark:border-[#414141] dark:active:bg-[#181818] "
                           activeOpacity={0.8}
                           accessibilityRole="button"
                           accessibilityLabel={`Cancel friend request to ${item.name}`}
                         >
                           {isActionLoading ? (
-                            <ActivityIndicator size="small" color="#34594A" />
+                            <ActivityIndicator size="small" color={themeColor("#34594A", "#E6E6E6")} />
                           ) : (
-                            <Text className="text-[#000000] font-semibold text-xs sm:text-sm">
+                            <Text className="text-[#000000] font-semibold text-xs sm:text-sm dark:text-[#E6E6E6] ">
                               Cancel Request
                             </Text>
                           )}
                         </TouchableOpacity>
                       ) : currentRel === "accepted" ? (
-                        <View className="w-full bg-[#EDF3EE] border border-[#E3ECE5] py-2 rounded-xl flex-row items-center justify-center">
+                        <View className="w-full bg-[#EDF3EE] border border-[#E3ECE5] py-2 rounded-xl flex-row items-center justify-center dark:bg-[#181818] dark:border-[#414141] ">
                           <Ionicons
                             name="checkmark-circle"
                             size={16}
-                            color="#34594A"
+                            color={themeColor("#34594A", "#E6E6E6")}
                             style={{ marginRight: 4 }}
                           />
-                          <Text className="text-[#34594A] font-semibold text-xs sm:text-sm">
+                          <Text className="text-[#34594A] font-semibold text-xs sm:text-sm dark:text-[#E6E6E6] ">
                             Friends
                           </Text>
                         </View>
@@ -271,7 +278,7 @@ export default function NearbyUsers() {
                           <TouchableOpacity
                             onPress={() => handleAddFriend(item)}
                             disabled={isActionLoading}
-                            className="flex-1 bg-[#34594A] py-2.5 px-3 rounded-xl flex-row items-center justify-center active:bg-[#2A4F3E] shadow-2xs"
+                            className="flex-1 bg-[#34594A] py-2.5 px-3 rounded-xl flex-row items-center justify-center active:bg-[#2A4F3E] shadow-2xs dark:bg-[#E6E6E6] dark:active:bg-[#E6E6E6] "
                             activeOpacity={0.8}
                             accessibilityRole="button"
                             accessibilityLabel={`Add ${item.name} as friend`}
@@ -279,10 +286,10 @@ export default function NearbyUsers() {
                             {isActionLoading ? (
                               <ActivityIndicator
                                 size="small"
-                                color="#ffffff"
+                                color={themeColor("#ffffff", "#181818")}
                               />
                             ) : (
-                              <Text className="text-white font-bold text-sm sm:text-sm">
+                              <Text className="text-white font-bold text-sm sm:text-sm dark:text-[#181818] ">
                                 Add friend
                               </Text>
                             )}
@@ -292,13 +299,13 @@ export default function NearbyUsers() {
                           <TouchableOpacity
                             onPress={() => handleNotInterested(item.id)}
                             disabled={isActionLoading}
-                            className="flex-1 bg-gray-200 py-2.5 px-2 rounded-xl flex-row items-center justify-center active:bg-gray-300"
+                            className="flex-1 bg-gray-200 py-2.5 px-2 rounded-xl flex-row items-center justify-center active:bg-gray-300 dark:bg-[#181818] dark:active:bg-[#303030] "
                             activeOpacity={0.8}
                             accessibilityRole="button"
                             accessibilityLabel={`Not interested in ${item.name}`}
                           >
                             <Text
-                              className="text-gray-700 font-semibold text-sm sm:text-sm text-center"
+                              className="text-gray-700 font-semibold text-sm sm:text-sm text-center dark:text-[#E6E6E6] "
                               numberOfLines={1}
                             >
                               Not Interested

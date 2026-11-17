@@ -1,3 +1,5 @@
+import { useAppTheme } from "@/context/theme-context";
+import CalmEntrance from "./CalmEntrance";
 import { useToast } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -22,12 +24,14 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   Animated,
   Dimensions,
   Image,
   Modal,
   PanResponder,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -42,6 +46,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import LeafletMap from "./LeafletMap";
+import DraggableToolRow from "./DraggableToolRow";
 import LiveBroadcasterModal from "./LiveBroadcasterModal";
 
 export interface CreatePostModalProps {
@@ -208,6 +213,7 @@ export default function CreatePostModal({
   onClose,
   onPost,
 }: CreatePostModalProps) {
+  const { themeColor } = useAppTheme();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [activeView, setActiveView] = useState<ViewMode>("POST_FORM");
@@ -390,10 +396,21 @@ export default function CreatePostModal({
     }
   };
 
+  const [showPhotoOptions, setShowPhotoOptions] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled().then((value) => {
+      if (mounted) setReduceMotion(value);
+    }).catch(() => {});
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => { mounted = false; subscription.remove(); };
+  }, []);
   // Swipe-down-to-dismiss animated gesture
   const [translateY] = useState(() => new Animated.Value(0));
 
   const handleClose = useCallback(() => {
+    setShowPhotoOptions(false);
     setShowRsbsaLockModal(false);
     setActiveView("POST_FORM");
     translateY.setValue(0);
@@ -420,13 +437,13 @@ export default function CreatePostModal({
             Animated.timing(translateY, {
               toValue: Dimensions.get("window").height,
               duration: 200,
-              useNativeDriver: true,
+              useNativeDriver: Platform.OS !== "web",
             }).start(() => handleClose());
           } else {
             Animated.spring(translateY, {
               toValue: 0,
               bounciness: 4,
-              useNativeDriver: true,
+              useNativeDriver: Platform.OS !== "web",
             }).start();
           }
         },
@@ -716,7 +733,7 @@ export default function CreatePostModal({
     <Modal
       visible={isVisible}
       transparent={true}
-      animationType="slide"
+      animationType={reduceMotion ? "none" : "slide"}
       statusBarTranslucent={true}
       onRequestClose={() => {
         if (showRsbsaLockModal) {
@@ -733,7 +750,7 @@ export default function CreatePostModal({
           className="flex-1 justify-end"
           style={{
             flex: 1,
-            backgroundColor: "rgba(0, 0, 0, 0.45)",
+            backgroundColor: "rgba(24, 39, 31, 0.38)",
             justifyContent: "flex-end",
           }}
         >
@@ -750,7 +767,7 @@ export default function CreatePostModal({
             style={[
               {
                 transform: [{ translateY }],
-                backgroundColor: "#FFFFFF",
+                backgroundColor: themeColor("#FDFEFC", "#242424"),
                 borderTopLeftRadius: 32,
                 borderTopRightRadius: 32,
                 overflow: "hidden",
@@ -758,35 +775,37 @@ export default function CreatePostModal({
                 maxHeight: "92%",
                 shadowColor: "#000000",
                 shadowOffset: { width: 0, height: -6 },
-                shadowOpacity: 0.16,
-                shadowRadius: 14,
+                shadowOpacity: 0.10,
+                shadowRadius: 24,
                 elevation: 25,
               },
             ]}
           >
+            <View style={{ alignItems: "center", paddingTop: 10 }}><View style={{ width: 34, height: 4, borderRadius: 2, backgroundColor: themeColor("#DCE3DA", "#303030") }} /></View>
             {/* Header Section */}
             <View 
               {...panResponder.panHandlers}
-              className="flex-row justify-between items-center px-5 pt-4 pb-3"
+              className="flex-row justify-between items-center px-5 pt-3 pb-4"
               style={{
                 borderBottomWidth: 1,
-                borderBottomColor: "#E5E7EB",
-                backgroundColor: "#FFFFFF",
+                borderBottomColor: themeColor("#EDF0E9", "#414141"),
+                backgroundColor: themeColor("#FDFEFC", "#242424"),
               }}
             >
               {/* Close Button X */}
               <TouchableOpacity
                 onPress={handleClose}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                className="p-1 -ml-1 rounded-full active:opacity-70"
+                className="rounded-full active:opacity-70"
+                style={{ width: 38, height: 38, backgroundColor: themeColor("#F0F3ED", "#181818"), alignItems: "center", justifyContent: "center" }}
                 accessibilityRole="button"
                 accessibilityLabel="Close"
               >
-                <Ionicons name="close" size={24} color="#1F2937" />
+                <Ionicons name="close" size={20} color={themeColor("#526458", "#E6E6E6")} />
               </TouchableOpacity>
 
               {/* Title */}
-              <Text className="font-bold text-lg text-gray-900 text-center">
+              <Text className="font-semibold text-base text-[#2C4033] text-center dark:text-[#E6E6E6] ">
                 Create Post
               </Text>
 
@@ -794,13 +813,13 @@ export default function CreatePostModal({
               <TouchableOpacity
                 onPress={handlePostSubmit}
                 disabled={isSubmitting}
-                className="px-5 py-1.5 rounded-full active:opacity-80 flex-row items-center justify-center min-w-[68px]"
-                style={{ backgroundColor: "#65B152" }}
+                className="px-5 py-2.5 rounded-xl active:opacity-80 flex-row items-center justify-center min-w-[68px]"
+                style={{ backgroundColor: themeColor("#456B57", "#E6E6E6") }}
               >
                 {isSubmitting ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={themeColor("#FDFEFC", "#E6E6E6")} />
                 ) : (
-                  <Text className="text-white font-bold text-sm">Post</Text>
+                  <Text className="text-white font-bold text-sm dark:text-[#E6E6E6] ">Post</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -809,15 +828,16 @@ export default function CreatePostModal({
             <ScrollView
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
-              className="px-5 pt-4"
-              contentContainerStyle={{ paddingBottom: 16 }}
+              className="px-5 pt-5"
+              style={{ flexShrink: 1 }}
+              contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 20) }}
             >
               {/* User Profile & Badges */}
-              <View className="flex-row items-center mb-3">
+              <View className="flex-row items-center mb-5">
                 {/* Avatar */}
                 <View 
                   className="h-12 w-12 rounded-full items-center justify-center mr-3 overflow-hidden"
-                  style={{ backgroundColor: "#D1D5DB" }}
+                  style={{ backgroundColor: themeColor("#E7EDE2", "#181818") }}
                 >
                   {user?.avatarUrl ? (
                     <Image
@@ -826,13 +846,13 @@ export default function CreatePostModal({
                       resizeMode="cover"
                     />
                   ) : (
-                    <Ionicons name="person" size={26} color="#FFFFFF" />
+                    <Ionicons name="person" size={24} color={themeColor("#68816B", "#E6E6E6")} />
                   )}
                 </View>
 
                 {/* Info Stack */}
                 <View className="flex-1">
-                  <Text className="font-bold text-base text-gray-900 leading-5">
+                  <Text className="font-bold text-base text-gray-900 leading-5 dark:text-[#E6E6E6] ">
                     {user?.name ||
                       user?.fullName ||
                       user?.username ||
@@ -845,45 +865,46 @@ export default function CreatePostModal({
                       className="flex-row items-center mt-0.5"
                       activeOpacity={0.7}
                     >
-                      <Ionicons name="pricetag" size={11} color="#65B152" style={{ marginRight: 3 }} />
-                      <Text className="text-xs text-[#65B152] font-semibold" numberOfLines={1}>
+                      <Ionicons name="pricetag" size={11} color={themeColor("#456B57", "#E6E6E6")} style={{ marginRight: 3 }} />
+                      <Text className="text-xs text-[#456B57] font-semibold dark:text-[#E6E6E6] " numberOfLines={1}>
                         with {taggedUserIds.length} {taggedUserIds.length === 1 ? "person" : "people"} tagged
                       </Text>
                     </TouchableOpacity>
                   )}
 
                   {/* 3 Badges Row matching design */}
-                  <View className="flex-row items-center gap-1.5 mt-1.5 flex-wrap">
+                  <DraggableToolRow horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ marginTop: 8 }} contentContainerStyle={{ alignItems: "center", gap: 6, paddingRight: 16 }}>
+
                     {/* Privacy Selector Trigger */}
                     <TouchableOpacity
                       onPress={() => setActiveView("PRIVACY")}
-                      className="flex-row items-center px-2.5 py-1 rounded-full gap-1 active:opacity-80"
-                      style={{ backgroundColor: "#E5E7EB" }}
+                      className="flex-row items-center px-2.5 py-1.5 rounded-lg gap-1 active:opacity-80"
+                      style={{ backgroundColor: themeColor("#F0F3ED", "#181818"), borderWidth: 1, borderColor: themeColor("#E6EBE1", "#414141") }}
                     >
                       <Ionicons
                         name={getPrivacyIcon(privacySetting)}
                         size={12}
-                        color="#4B5563"
+                        color={themeColor("#4B5563", "#ADADAD")}
                       />
-                      <Text className="text-[11px] text-gray-700 font-medium">
+                      <Text className="text-[11px] text-gray-700 font-medium dark:text-[#E6E6E6] ">
                         {privacySetting}
                       </Text>
-                      <Ionicons name="chevron-down" size={10} color="#4B5563" />
+                      <Ionicons name="chevron-down" size={10} color={themeColor("#4B5563", "#ADADAD")} />
                     </TouchableOpacity>
 
                     {/* Add Location Trigger */}
                     <TouchableOpacity
                       onPress={() => setActiveView("ADD_LOCATION")}
-                      className="flex-row items-center px-2.5 py-1 rounded-full gap-1 active:opacity-80 max-w-[140px]"
-                      style={{ backgroundColor: "#E5E7EB" }}
+                      className="flex-row items-center px-2.5 py-1.5 rounded-lg gap-1 active:opacity-80 max-w-[140px]"
+                      style={{ backgroundColor: themeColor("#F0F3ED", "#181818"), borderWidth: 1, borderColor: themeColor("#E6EBE1", "#414141") }}
                     >
                       <Ionicons
                         name="location-outline"
                         size={12}
-                        color="#4B5563"
+                        color={themeColor("#4B5563", "#ADADAD")}
                       />
                       <Text
-                        className="text-[11px] text-gray-700 font-medium"
+                        className="text-[11px] text-gray-700 font-medium dark:text-[#E6E6E6] "
                         numberOfLines={1}
                       >
                         {selectedLocation || "Add location"}
@@ -902,107 +923,114 @@ export default function CreatePostModal({
                           <Ionicons
                             name="close-circle"
                             size={12}
-                            color="#4B5563"
+                            color={themeColor("#4B5563", "#ADADAD")}
                           />
                         </TouchableOpacity>
                       )}
                     </TouchableOpacity>
 
+                    <TouchableOpacity
+                      onPress={() => setActiveView("TAG_PEOPLE")}
+                      accessibilityRole="button"
+                      accessibilityLabel="Add people"
+                      className="flex-row items-center px-2.5 py-1.5 rounded-lg gap-1 active:opacity-80"
+                      style={{ backgroundColor: themeColor("#F0F3ED", "#181818"), borderWidth: 1, borderColor: themeColor("#E6EBE1", "#414141") }}
+                    >
+                      <Ionicons name="people-outline" size={13} color={themeColor("#4B5563", "#ADADAD")} />
+                      <Text className="text-[11px] text-gray-700 font-medium dark:text-[#E6E6E6] ">Add people{taggedUserIds.length ? ` (${taggedUserIds.length})` : ""}</Text>
+                    </TouchableOpacity>
                     {/* Live Trigger */}
                     <TouchableOpacity
                       onPress={handleOpenLive}
-                      className="flex-row items-center px-2.5 py-1 rounded-full gap-1 active:opacity-80"
-                      style={{ backgroundColor: "#E5E7EB" }}
+                      className="flex-row items-center px-2.5 py-1.5 rounded-lg gap-1 active:opacity-80"
+                      style={{ backgroundColor: themeColor("#F0F3ED", "#181818"), borderWidth: 1, borderColor: themeColor("#E6EBE1", "#414141") }}
                       accessibilityRole="button"
                       accessibilityLabel="Live"
                     >
                       <Ionicons
                         name="videocam-outline"
                         size={13}
-                        color="#4B5563"
+                        color={themeColor("#4B5563", "#ADADAD")}
                       />
-                      <Text className="text-[11px] text-gray-700 font-medium">
+                      <Text className="text-[11px] text-gray-700 font-medium dark:text-[#E6E6E6] ">
                         Live
                       </Text>
                     </TouchableOpacity>
+
+
+                  </DraggableToolRow>
+                </View>
+              </View>
+
+              {/* One composed card: photo preview, description, then attachment control. */}
+              <View style={{ marginBottom: 20, borderRadius: 18, backgroundColor: themeColor("#FFFFFF", "#242424"), borderWidth: 1, borderColor: themeColor("#E3E9DF", "#414141"), paddingBottom: 52 }}>
+                {selectedPhotos.length > 0 && (
+                  <View style={{ padding: 12, paddingBottom: 16 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <Text style={{ fontSize: 11, fontWeight: "500", color: themeColor("#7F8B79", "#E6E6E6") }}>{selectedPhotos.length === 1 ? "1 photo attached" : `${selectedPhotos.length} photos attached`}</Text>
+                      <TouchableOpacity onPress={handlePickPhotosFromGallery} accessibilityRole="button" accessibilityLabel="Add more photos" activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 9, paddingVertical: 7, borderRadius: 8, backgroundColor: themeColor("#F1F5ED", "#181818") }}>
+                        <Ionicons name="add" size={14} color={themeColor("#526E49", "#E6E6E6")} />
+                        <Text style={{ fontSize: 11, fontWeight: "500", color: themeColor("#526E49", "#E6E6E6") }}>Add photos</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                      {selectedPhotos.map((photoUri, idx) => (
+                        <View key={photoUri} style={{ width: selectedPhotos.length === 1 ? "100%" : "48%", flexGrow: 1, aspectRatio: selectedPhotos.length === 1 ? 1.25 : 1, borderRadius: 12, overflow: "hidden", backgroundColor: themeColor("#F0F2ED", "#181818") }}>
+                          <Image source={{ uri: photoUri }} accessibilityLabel={`Attached photo ${idx + 1}`} style={{ width: "100%", height: "100%" }} resizeMode="contain" />
+                          <TouchableOpacity
+                            onPress={() => setSelectedPhotos((photos) => photos.filter((photo) => photo !== photoUri))}
+                            accessibilityRole="button" accessibilityLabel={`Remove photo ${idx + 1}`}
+                            activeOpacity={0.7}
+                            style={{ position: "absolute", top: 8, right: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.94)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(40,60,40,0.08)" }}
+                          >
+                            <Ionicons name="close" size={17} color={themeColor("#4A5C44", "#E6E6E6")} />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
                   </View>
+                )}
+                <View style={{ paddingHorizontal: 16, paddingTop: 16, borderTopWidth: selectedPhotos.length ? 1 : 0, borderTopColor: themeColor("#EDF0E9", "#414141") }}>
+                  {selectedPhotos.length > 0 && <Text style={{ fontSize: 11, fontWeight: "600", color: themeColor("#617159", "#E6E6E6"), marginBottom: 9 }}>Description</Text>}
+                  <TextInput
+                    multiline value={content} onChangeText={setContent}
+                    placeholder={selectedPhotos.length ? "Tell the story behind your photos…" : "Share a moment from your farm…"}
+                    accessibilityLabel="Post description" placeholderTextColor={themeColor("#96A08F", "#E6E6E6")}
+                    style={{ textAlignVertical: "top", fontSize: 14, lineHeight: 22, minHeight: selectedPhotos.length ? 66 : 110, padding: 0, paddingBottom: 10, color: themeColor("#354A3B", "#E6E6E6") }}
+                  />
                 </View>
-              </View>
-
-              {/* Text Input Area */}
-              <View className="min-h-[100px] mb-3">
-                <TextInput
-                  multiline={true}
-                  value={content}
-                  onChangeText={setContent}
-                  placeholder="What's growing on ? Share with your farming community ..."
-                  placeholderTextColor="#9CA3AF"
-                  className="text-base text-gray-800 leading-6 text-left"
-                  style={{ 
-                    textAlignVertical: "top",
-                    fontSize: 15,
-                    minHeight: 90,
-                    color: "#1F2937",
-                  }}
-                />
-              </View>
-
-              {/* Selected Photos Preview */}
-              {selectedPhotos.length > 0 && (
-                <View className="mb-3">
-                  <Text className="text-xs font-semibold text-gray-600 mb-1.5">
-                    Attached Photos ({selectedPhotos.length})
-                  </Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    className="flex-row"
-                  >
-                    {selectedPhotos.map((photoUri, idx) => (
-                      <View
-                        key={idx}
-                        className="mr-2.5 relative rounded-xl overflow-hidden border border-gray-200 shadow-2xs"
-                      >
-                        <Image
-                          source={{ uri: photoUri }}
-                          className="w-20 h-20 rounded-xl"
-                          resizeMode="cover"
-                        />
-                        <TouchableOpacity
-                          onPress={() =>
-                            setSelectedPhotos((prev) =>
-                              prev.filter((p) => p !== photoUri),
-                            )
-                          }
-                          className="absolute top-1 right-1 bg-black/70 rounded-full w-5 h-5 items-center justify-center"
-                          activeOpacity={0.8}
-                        >
-                          <Ionicons name="close" size={14} color="#FFFFFF" />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                    {/* Add more button */}
-                    <TouchableOpacity
-                      onPress={handlePickPhotosFromGallery}
-                      className="w-20 h-20 rounded-xl border border-dashed border-gray-300 bg-gray-50 items-center justify-center active:bg-gray-100"
-                    >
-                      <Ionicons name="add" size={24} color="#65B152" />
-                      <Text className="text-[10px] text-gray-500 font-medium mt-0.5">
-                        Add more
-                      </Text>
+                <TouchableOpacity
+                  onPress={() => setShowPhotoOptions((open) => !open)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add photo or open camera"
+                  accessibilityState={{ expanded: showPhotoOptions }}
+                  activeOpacity={0.7}
+                  style={{ position: "absolute", right: 12, bottom: 10, width: 40, height: 40, borderRadius: 12, backgroundColor: themeColor("#E8EEE1", "#303030"), alignItems: "center", justifyContent: "center" }}
+                >
+                  <Ionicons name={showPhotoOptions ? "close" : "image-outline"} size={21} color={themeColor("#526E49", "#E6E6E6")} />
+                </TouchableOpacity>
+                {showPhotoOptions && (
+                  <View style={{ position: "absolute", right: 12, bottom: 56, padding: 5, borderRadius: 13, backgroundColor: themeColor("#FFFFFF", "#242424"), borderWidth: 1, borderColor: themeColor("#DEE7D6", "#414141"), shadowColor: "#30402C", shadowOpacity: 0.1, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 5 }}>
+                    <TouchableOpacity accessibilityRole="button" onPress={() => { setShowPhotoOptions(false); void handlePickPhotosFromGallery(); }} style={{ flexDirection: "row", alignItems: "center", gap: 9, padding: 12 }}>
+                      <Ionicons name="images-outline" size={18} color={themeColor("#526E49", "#E6E6E6")} />
+                      <Text style={{ fontSize: 12, color: themeColor("#43583C", "#E6E6E6") }}>Choose photo</Text>
                     </TouchableOpacity>
-                  </ScrollView>
-                </View>
-              )}
+                    <TouchableOpacity accessibilityRole="button" onPress={() => { setShowPhotoOptions(false); void handleTakePhotoWithCamera(); }} style={{ flexDirection: "row", alignItems: "center", gap: 9, padding: 12 }}>
+                      <Ionicons name="camera-outline" size={18} color={themeColor("#526E49", "#E6E6E6")} />
+                      <Text style={{ fontSize: 12, color: themeColor("#43583C", "#E6E6E6") }}>Open camera</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
 
               {/* Attached Location Leaflet Map Preview Card */}
               {selectedLocation && (
-                <View className="mb-3 rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-xs">
-                  <View className="flex-row items-center justify-between px-3.5 py-2 bg-green-50/70 border-b border-green-100">
+                <View className="mb-3 rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-xs dark:border-[#414141] dark:bg-[#242424] ">
+                  <View className="flex-row items-center justify-between px-3.5 py-2 bg-green-50/70 border-b border-green-100 dark:bg-[#181818]/70 dark:border-[#414141] ">
                     <View className="flex-row items-center gap-1.5 flex-1 mr-2">
-                      <Ionicons name="location-sharp" size={15} color="#65B152" />
+                      <Ionicons name="location-sharp" size={15} color={themeColor("#456B57", "#E6E6E6")} />
                       <Text
-                        className="text-xs font-bold text-gray-900 flex-1"
+                        className="text-xs font-bold text-gray-900 flex-1 dark:text-[#E6E6E6] "
                         numberOfLines={1}
                       >
                         {selectedLocation}
@@ -1013,11 +1041,11 @@ export default function CreatePostModal({
                         setSelectedLocation(null);
                         setSelectedCoordinates(null);
                       }}
-                      className="w-6 h-6 rounded-full bg-white border border-gray-200 items-center justify-center active:bg-gray-100"
+                      className="w-6 h-6 rounded-full bg-white border border-gray-200 items-center justify-center active:bg-gray-100 dark:bg-[#242424] dark:border-[#414141] dark:active:bg-[#181818] "
                       accessibilityRole="button"
                       accessibilityLabel="Remove location"
                     >
-                      <Ionicons name="close" size={13} color="#4B5563" />
+                      <Ionicons name="close" size={13} color={themeColor("#4B5563", "#ADADAD")} />
                     </TouchableOpacity>
                   </View>
                   <View style={{ width: "100%", height: 140 }}>
@@ -1038,153 +1066,63 @@ export default function CreatePostModal({
 
               {/* Category Selection */}
               <View className="mb-3">
-                <Text className="font-bold text-sm text-gray-900 mb-2 mt-1">
+                <Text className="font-semibold text-xs text-[#75816F] mb-3 mt-1 dark:text-[#E6E6E6] ">
                   Category
                 </Text>
-                <View className="flex-row gap-2.5">
+                <View className="flex-row gap-2">
                   {CATEGORIES.map((cat) => {
                     const isSelected = selectedCategory === cat;
-
                     return (
                       <TouchableOpacity
                         key={cat}
                         onPress={() => setSelectedCategory(cat)}
-                        className="px-4 py-1.5 rounded-full border active:opacity-80 shadow-2xs"
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isSelected }}
+                        className="flex-1 items-center py-3 rounded-xl border active:opacity-70"
                         style={{
-                          backgroundColor: isSelected ? "#F0FDF4" : "#FFFFFF",
-                          borderColor: isSelected ? "#72AF5B" : "#CBD5E1",
-                          borderWidth: 1.5,
+                          backgroundColor: isSelected ? "#E6EEE0" : "#FDFEFC",
+                          borderColor: isSelected ? "#B9CDB0" : "#E5EAE0",
+                          borderWidth: 1,
                         }}
                       >
-                        <Text
-                          className="text-sm font-semibold"
-                          style={{
-                            color: isSelected ? "#72AF5B" : "#475569",
-                          }}
-                        >
-                          {cat}
-                        </Text>
+                        <Text className="text-sm font-semibold" style={{ color: isSelected ? "#3E6247" : "#7C8876" }}>{cat}</Text>
                       </TouchableOpacity>
                     );
                   })}
                 </View>
 
-                {/* Flexible Temporary Duration Selector */}
+                {/* Duration choices wrap so every option remains readable. */}
                 {selectedCategory === "Temporary" && (
-                  <View className="mt-3 p-3.5 bg-amber-50/90 border border-amber-200/90 rounded-2xl">
-                    <View className="flex-row items-center justify-between mb-1.5">
-                      <View className="flex-row items-center gap-1.5">
-                        <Ionicons name="time" size={15} color="#D97706" />
-                        <Text className="text-xs font-bold text-amber-900">
-                          Temporary Post Duration
-                        </Text>
-                      </View>
-                      <View className="bg-amber-200/80 px-2 py-0.5 rounded-full flex-row items-center gap-1">
-                        <Ionicons name="flash" size={10} color="#B45309" />
-                        <Text className="text-[10px] font-bold text-amber-800">
-                          Auto-Expires
-                        </Text>
-                      </View>
+                  <View style={{ marginTop: 14, padding: 14, borderRadius: 16, backgroundColor: themeColor("#F3F5EF", "#181818"), borderWidth: 1, borderColor: themeColor("#E6EADF", "#414141") }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
+                      <Ionicons name="time-outline" size={16} color={themeColor("#61765D", "#E6E6E6")} />
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: themeColor("#40543D", "#E6E6E6") }}>Post duration</Text>
                     </View>
-
-                    <Text className="text-[11px] text-amber-800/90 leading-4 mb-2.5">
-                      Choose how long this post remains active on the
-                      community feed before disappearing:
+                    <Text style={{ fontSize: 11, lineHeight: 17, color: themeColor("#82907B", "#E6E6E6"), marginTop: 5, marginBottom: 12 }}>
+                      Your post disappears automatically after this time.
                     </Text>
-
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={{
-                        flexDirection: "row",
-                        gap: 6,
-                        alignItems: "center",
-                        paddingVertical: 2,
-                      }}
-                    >
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                       {TEMPORARY_DURATIONS.map((opt) => {
-                        const isDurationActive = temporaryDuration === opt.value;
+                        const selected = temporaryDuration === opt.value;
                         return (
                           <TouchableOpacity
                             key={opt.value}
                             onPress={() => setTemporaryDuration(opt.value)}
-                            className={`px-2.5 py-1.5 rounded-xl border flex-row items-center gap-1.5 active:opacity-80 ${
-                              isDurationActive
-                                ? "bg-amber-500 border-amber-600 shadow-2xs"
-                                : "bg-white border-amber-200/90"
-                            }`}
-                            activeOpacity={0.7}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected }}
+                            activeOpacity={0.65}
+                            style={{ width: "47%", flexGrow: 1, minHeight: 42, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 11, borderWidth: 1, borderColor: selected ? "#B4C7AA" : "#E3E8DD", backgroundColor: selected ? "#E1EAD9" : "#FDFEFC", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 }}
                           >
-                            <Ionicons
-                              name={opt.icon}
-                              size={13}
-                              color={isDurationActive ? "#FFFFFF" : "#D97706"}
-                            />
-                            <Text
-                              className={`text-xs ${
-                                isDurationActive
-                                  ? "text-white font-bold"
-                                  : "text-amber-900 font-semibold"
-                              }`}
-                            >
-                              {opt.label}
-                            </Text>
+                            <Ionicons name={selected ? "checkmark-circle" : opt.icon} size={14} color={selected ? "#476640" : "#8B9784"} />
+                            <Text style={{ fontSize: 12, fontWeight: selected ? "600" : "400", color: selected ? "#3E5A38" : "#73816C" }}>{opt.label}</Text>
                           </TouchableOpacity>
                         );
                       })}
-                    </ScrollView>
+                    </View>
                   </View>
                 )}
               </View>
             </ScrollView>
-
-            {/* Bottom Action Bar */}
-            <View 
-              className="flex-row justify-around items-center pt-3"
-              style={{
-                borderTopWidth: 1,
-                borderTopColor: "#E5E7EB",
-                paddingBottom: Math.max(insets.bottom, 16) + 6,
-                backgroundColor: "#FFFFFF",
-              }}
-            >
-              {/* Photo Action Trigger */}
-              <TouchableOpacity
-                onPress={handlePickPhotosFromGallery}
-                className="flex-row items-center py-1.5 px-3 rounded-lg active:bg-gray-50"
-              >
-                <Ionicons name="images-outline" size={20} color="#65B152" />
-                <Text className="text-[#65B152] font-semibold text-sm ml-2">
-                  {selectedPhotos.length > 0
-                    ? `Photo (${selectedPhotos.length})`
-                    : "Photo"}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Camera Action Trigger */}
-              <TouchableOpacity
-                onPress={handleTakePhotoWithCamera}
-                className="flex-row items-center py-1.5 px-3 rounded-lg active:bg-gray-50"
-              >
-                <Ionicons name="camera-outline" size={20} color="#65B152" />
-                <Text className="text-[#65B152] font-semibold text-sm ml-2">
-                  Camera
-                </Text>
-              </TouchableOpacity>
-
-              {/* Tag people Action Trigger */}
-              <TouchableOpacity
-                onPress={() => setActiveView("TAG_PEOPLE")}
-                className="flex-row items-center py-1.5 px-3 rounded-lg active:bg-gray-50"
-              >
-                <Ionicons name="pricetag-outline" size={20} color="#65B152" />
-                <Text className="text-[#65B152] font-semibold text-sm ml-2">
-                  {taggedUserIds.length > 0
-                    ? `Tag people (${taggedUserIds.length})`
-                    : "Tag people"}
-                </Text>
-              </TouchableOpacity>
-            </View>
           </Animated.View>
         </View>
       ) : (
@@ -1197,93 +1135,49 @@ export default function CreatePostModal({
           }
           style={{
             flex: 1,
-            backgroundColor: "#FFFFFF",
+            backgroundColor: themeColor("#FFFFFF", "#242424"),
           }}
         >
           {activeView === "PRIVACY" ? (
-            /* 2. WHO CAN SEE POST ? (PRIVACY) VIEW */
-            <View className="flex-1 bg-white justify-between px-5 pt-3 pb-4 h-full">
-              {/* Top Content */}
-              <View>
-                {/* Back Arrow Button */}
-                <TouchableOpacity
-                  onPress={() => setActiveView("POST_FORM")}
-                  className="p-1 -ml-2 mb-2 self-start active:opacity-70"
-                  accessibilityRole="button"
-                  accessibilityLabel="Go back"
-                >
-                  <Ionicons name="chevron-back" size={28} color="#111827" />
+            <ScrollView style={{ flex: 1, backgroundColor: themeColor("#FDFEFC", "#242424") }} contentContainerStyle={{ padding: 24, paddingBottom: 32 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 28 }}>
+                <TouchableOpacity onPress={() => setActiveView("POST_FORM")} accessibilityRole="button" accessibilityLabel="Back to Create Post" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: themeColor("#F0F3ED", "#181818"), alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                  <Ionicons name="chevron-back" size={20} color={themeColor("#526B57", "#E6E6E6")} />
                 </TouchableOpacity>
-
-                {/* Header Title */}
-                <Text className="text-2xl font-bold text-gray-900 mb-1.5">
-                  Who can see post ?
-                </Text>
-                <Text className="text-sm text-gray-500 mb-8 leading-5">
-                  Your post will show up in Feed, on your profile and search
-                  result
-                </Text>
-
-                {/* Privacy Options List */}
-                <View className="space-y-4">
-                  {PRIVACY_OPTIONS.map((option) => {
-                    const isSelected = privacySetting === option.title;
-
-                    return (
-                      <TouchableOpacity
-                        key={option.id}
-                        onPress={() => setPrivacySetting(option.title)}
-                        className="flex-row items-center py-3.5 active:opacity-70"
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons
-                          name={option.icon}
-                          size={23}
-                          color={isSelected ? "#111827" : "#4B5563"}
-                        />
-                        <Text
-                          className={`text-md ml-4 ${
-                            isSelected
-                              ? "font-bold text-gray-900"
-                              : "font-semibold text-gray-800"
-                          }`}
-                        >
-                          {option.title}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                <Text style={{ fontSize: 16, fontWeight: "600", color: themeColor("#304536", "#E6E6E6") }}>Post audience</Text>
               </View>
-
-              {/* Bottom Actions */}
-              <View className="mt-auto">
-                {/* Set as default audience Row */}
-                <View className="flex-row justify-between items-center mb-3 px-1">
-                  <Text className="text-sm text-gray-600 font-medium">
-                    Set as default audience
-                  </Text>
-                  <Switch
-                    value={isDefaultAudience}
-                    onValueChange={setIsDefaultAudience}
-                    trackColor={{ false: "#E5E7EB", true: "#72AF5B" }}
-                    thumbColor="#FFFFFF"
-                  />
-                </View>
-
-                {/* Done Button */}
-                <TouchableOpacity
-                  onPress={() => setActiveView("POST_FORM")}
-                  className="w-full bg-[#72AF5B] py-3.5 rounded-xl items-center justify-center active:opacity-80"
-                  activeOpacity={0.8}
-                >
-                  <Text className="text-white font-bold text-base">Done</Text>
-                </TouchableOpacity>
+              <Text style={{ fontSize: 23, fontWeight: "600", color: themeColor("#304536", "#E6E6E6"), marginBottom: 8 }}>Choose your audience</Text>
+              <Text style={{ fontSize: 13, lineHeight: 21, color: themeColor("#7F8B79", "#E6E6E6"), marginBottom: 24 }}>Select who can see this post.</Text>
+              <View accessibilityRole="radiogroup" style={{ gap: 10 }}>
+                {PRIVACY_OPTIONS.map((option) => {
+                  const selected = privacySetting === option.title;
+                  const description = option.title === "Public" ? "Anyone in the LocalFarm community" : option.title === "Friends" ? "Only people you are connected with" : "Visible only to you";
+                  return (
+                    <TouchableOpacity key={option.id} onPress={() => setPrivacySetting(option.title)} accessibilityRole="radio" accessibilityState={{ checked: selected }} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderRadius: 17, borderWidth: 1, borderColor: selected ? "#B9CDB0" : "#E6EBE1", backgroundColor: selected ? "#F0F5EA" : "#FFFFFF" }}>
+                      <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: selected ? "#E1EBD9" : "#F3F5F0", alignItems: "center", justifyContent: "center" }}><Ionicons name={option.icon} size={18} color={themeColor("#617A59", "#E6E6E6")} /></View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "600", color: themeColor("#3A5038", "#E6E6E6") }}>{option.title}</Text>
+                        <Text style={{ fontSize: 11, lineHeight: 17, color: themeColor("#85907D", "#E6E6E6"), marginTop: 4 }}>{description}</Text>
+                      </View>
+                      <Ionicons name={selected ? "checkmark-circle" : "ellipse-outline"} size={21} color={selected ? "#52754A" : "#C7D1C0"} />
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-            </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 24, marginTop: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: "500", color: themeColor("#4B6045", "#E6E6E6") }}>Use as default audience</Text>
+                  <Text style={{ fontSize: 11, color: themeColor("#8A9583", "#E6E6E6"), marginTop: 5 }}>Apply this choice to future posts.</Text>
+                </View>
+                <Switch accessibilityLabel="Use as default audience" value={isDefaultAudience} onValueChange={setIsDefaultAudience} trackColor={{ false: "#E4E9DF", true: "#7D9A70" }} thumbColor="#FFFFFF" />
+              </View>
+              <TouchableOpacity onPress={() => setActiveView("POST_FORM")} accessibilityRole="button" activeOpacity={0.75} style={{ backgroundColor: themeColor("#456B57", "#E6E6E6"), paddingVertical: 16, borderRadius: 14, alignItems: "center" }}>
+                <Text style={{ color: themeColor("#FFFFFF", "#E6E6E6"), fontSize: 14, fontWeight: "600" }}>Confirm audience</Text>
+              </TouchableOpacity>
+            </ScrollView>
           ) : activeView === "LIVE_PERMISSION" && isRSBSAVerified ? (
             /* 3. GO LIVE CAMERA ACCESS PERMISSION VIEW */
-            <View className="flex-1 bg-white justify-between px-5 pt-3 pb-3 h-full">
+            <View className="flex-1 bg-white justify-between px-5 pt-3 pb-3 h-full dark:bg-[#181818] ">
               <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{
@@ -1301,55 +1195,55 @@ export default function CreatePostModal({
                       accessibilityRole="button"
                       accessibilityLabel="Go back"
                     >
-                      <Ionicons name="arrow-back" size={24} color="#111827" />
+                      <Ionicons name="arrow-back" size={24} color={themeColor("#111827", "#E6E6E6")} />
                     </TouchableOpacity>
-                    <Text className="text-xl font-bold text-gray-900 ml-3">
+                    <Text className="text-xl font-bold text-gray-900 ml-3 dark:text-[#E6E6E6] ">
                       Live
                     </Text>
                   </View>
 
                   {/* Main Graphic */}
                   <View className="items-center mt-6">
-                    <View className="bg-green-100 p-5 rounded-3xl items-center justify-center">
+                    <View className="bg-green-100 p-5 rounded-3xl items-center justify-center dark:bg-[#303030] ">
                       <Ionicons name="videocam" size={68} color="#16a34a" />
                     </View>
                   </View>
 
                   {/* Typography */}
-                  <Text className="text-2xl font-bold text-center mt-5 text-gray-800 leading-8">
+                  <Text className="text-2xl font-bold text-center mt-5 text-gray-800 leading-8 dark:text-[#E6E6E6] ">
                     Access Your Camera{"\n"}to{" "}
-                    <Text className="text-[#72AF5B]">Cast Live</Text>
+                    <Text className="text-[#72AF5B] dark:text-[#E6E6E6] ">Cast Live</Text>
                   </Text>
 
                   {/* Verified Broadcaster Badge */}
-                  <View className="flex-row items-center justify-center self-center bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full mt-2.5">
+                  <View className="flex-row items-center justify-center self-center bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full mt-2.5 dark:bg-[#181818] dark:border-[#414141] ">
                     <Ionicons
                       name="checkmark-circle"
                       size={15}
                       color="#10B981"
                     />
-                    <Text className="text-xs font-semibold text-emerald-800 ml-1.5">
+                    <Text className="text-xs font-semibold text-emerald-800 ml-1.5 dark:text-[#E6E6E6] ">
                       RSBSA Verified Broadcaster
                     </Text>
                   </View>
 
-                  <Text className="text-sm text-gray-600 text-center px-4 mt-3 leading-5">
+                  <Text className="text-sm text-gray-600 text-center px-4 mt-3 leading-5 dark:text-[#ADADAD] ">
                     Allow access to your camera to cast live and connect with
                     your friends in real time. Your privacy is important to us.
                   </Text>
 
                   {/* Feature Info Box */}
-                  <View className="bg-gray-100 rounded-2xl mx-1 mt-6 p-4">
+                  <View className="bg-gray-100 rounded-2xl mx-1 mt-6 p-4 dark:bg-[#181818] ">
                     {/* Feature 1 */}
                     <View className="flex-row items-start mb-4">
-                      <View className="bg-gray-300 p-2 rounded-full mr-3.5 items-center justify-center">
-                        <Ionicons name="videocam" size={16} color="#374151" />
+                      <View className="bg-gray-300 p-2 rounded-full mr-3.5 items-center justify-center dark:bg-[#303030] ">
+                        <Ionicons name="videocam" size={16} color={themeColor("#374151", "#E6E6E6")} />
                       </View>
                       <View className="flex-1">
-                        <Text className="text-sm font-bold text-gray-900">
+                        <Text className="text-sm font-bold text-gray-900 dark:text-[#E6E6E6] ">
                           Go Live with Friends
                         </Text>
-                        <Text className="text-xs text-gray-500 mt-0.5">
+                        <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
                           Stream live video and share moments instantly.
                         </Text>
                       </View>
@@ -1357,18 +1251,18 @@ export default function CreatePostModal({
 
                     {/* Feature 2 */}
                     <View className="flex-row items-start mb-4">
-                      <View className="bg-gray-300 p-2 rounded-full mr-3.5 items-center justify-center">
+                      <View className="bg-gray-300 p-2 rounded-full mr-3.5 items-center justify-center dark:bg-[#303030] ">
                         <Ionicons
                           name="shield-checkmark"
                           size={16}
-                          color="#374151"
+                          color={themeColor("#374151", "#E6E6E6")}
                         />
                       </View>
                       <View className="flex-1">
-                        <Text className="text-sm font-bold text-gray-900">
+                        <Text className="text-sm font-bold text-gray-900 dark:text-[#E6E6E6] ">
                           Safe & Secure
                         </Text>
-                        <Text className="text-xs text-gray-500 mt-0.5">
+                        <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
                           We do not record or store your live videos.
                         </Text>
                       </View>
@@ -1376,18 +1270,18 @@ export default function CreatePostModal({
 
                     {/* Feature 3 */}
                     <View className="flex-row items-start">
-                      <View className="bg-gray-300 p-2 rounded-full mr-3.5 items-center justify-center">
+                      <View className="bg-gray-300 p-2 rounded-full mr-3.5 items-center justify-center dark:bg-[#303030] ">
                         <Ionicons
                           name="lock-closed"
                           size={16}
-                          color="#374151"
+                          color={themeColor("#374151", "#E6E6E6")}
                         />
                       </View>
                       <View className="flex-1">
-                        <Text className="text-sm font-bold text-gray-900">
+                        <Text className="text-sm font-bold text-gray-900 dark:text-[#E6E6E6] ">
                           {"You're in Control"}
                         </Text>
-                        <Text className="text-xs text-gray-500 mt-0.5">
+                        <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
                           You can change or revoke camera access anytime in
                           settings.
                         </Text>
@@ -1404,11 +1298,11 @@ export default function CreatePostModal({
                       setActiveView("POST_FORM");
                       setShowLiveBroadcaster(true);
                     }}
-                    className="w-full bg-[#72AF5B] rounded-xl py-3.5 flex-row justify-center items-center mb-3 active:opacity-80 shadow-xs"
+                    className="w-full bg-[#72AF5B] rounded-xl py-3.5 flex-row justify-center items-center mb-3 active:opacity-80 shadow-xs dark:bg-[#E6E6E6] "
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="videocam" size={18} color="#FFFFFF" />
-                    <Text className="text-white font-bold text-base ml-2">
+                    <Ionicons name="videocam" size={18} color={themeColor("#FFFFFF", "#181818")} />
+                    <Text className="text-white font-bold text-base ml-2 dark:text-[#181818] ">
                       Allow camera access
                     </Text>
                   </TouchableOpacity>
@@ -1416,10 +1310,10 @@ export default function CreatePostModal({
                   {/* Not Now Button */}
                   <TouchableOpacity
                     onPress={() => setActiveView("POST_FORM")}
-                    className="w-full bg-white rounded-xl py-3.5 items-center justify-center shadow-xs border border-gray-200 active:bg-gray-50"
+                    className="w-full bg-white rounded-xl py-3.5 items-center justify-center shadow-xs border border-gray-200 active:bg-gray-50 dark:bg-[#242424] dark:border-[#414141] dark:active:bg-[#242424] "
                     activeOpacity={0.8}
                   >
-                    <Text className="text-gray-800 font-bold text-base">
+                    <Text className="text-gray-800 font-bold text-base dark:text-[#E6E6E6] ">
                       Not Now
                     </Text>
                   </TouchableOpacity>
@@ -1427,19 +1321,19 @@ export default function CreatePostModal({
               </ScrollView>
             </View>
           ) : activeView === "TAG_PEOPLE" ? (
-            /* 4. TAG AND COLLABORATE VIEW */
-            <View className="flex-1 bg-gray-50 h-full w-full relative">
+            <CalmEntrance>
+            <View className="flex-1 bg-[#FDFEFC] h-full w-full relative dark:bg-[#181818] ">
               {/* Header Section */}
-              <View className="flex-row items-center pt-3 pb-3 px-5 bg-gray-50">
+              <View className="flex-row items-center pt-3 pb-3 px-5 bg-[#FDFEFC] dark:bg-[#242424] ">
                 <TouchableOpacity
                   onPress={() => setActiveView("POST_FORM")}
-                  className="p-1 -ml-2 active:opacity-70"
+                  className="w-10 h-10 rounded-full bg-[#F0F3ED] items-center justify-center active:opacity-70 dark:bg-[#181818] "
                   accessibilityRole="button"
                   accessibilityLabel="Go back"
                 >
-                  <Ionicons name="chevron-back" size={24} color="#111827" />
+                  <Ionicons name="chevron-back" size={24} color={themeColor("#304536", "#E6E6E6")} />
                 </TouchableOpacity>
-                <Text className="text-lg font-bold text-gray-900 flex-1 text-center mr-6">
+                <Text className="text-base font-semibold text-[#304536] flex-1 ml-3 dark:text-[#E6E6E6] ">
                   Tag and collaborate
                 </Text>
               </View>
@@ -1447,7 +1341,7 @@ export default function CreatePostModal({
               {/* Tagged People Preview (Horizontal Scroll) */}
               {taggedUserIds.length > 0 && (
                 <View className="mb-2">
-                  <Text className="text-sm font-medium text-gray-700 px-5 mb-3">
+                  <Text className="text-sm font-medium text-gray-700 px-5 mb-3 dark:text-[#E6E6E6] ">
                     Tagged People ({taggedUserIds.length})
                   </Text>
                   <ScrollView
@@ -1460,8 +1354,8 @@ export default function CreatePostModal({
                       if (!user) return null;
 
                       return (
-                        <View key={user.id} className="items-center mr-4">
-                          <View className="bg-gray-200 h-12 w-12 rounded-full mb-1 items-center justify-center overflow-hidden border border-gray-300">
+                        <View key={user.id} className="items-center mr-4" style={{ paddingTop: 8, paddingHorizontal: 5, minWidth: 66 }}>
+                          <View className="bg-[#EAF0E3] h-12 w-12 rounded-full mb-1 items-center justify-center overflow-hidden border border-gray-300 dark:bg-[#181818] dark:border-[#414141] ">
                             {user.avatarUrl ? (
                               <Image
                                 source={{ uri: user.avatarUrl }}
@@ -1472,11 +1366,21 @@ export default function CreatePostModal({
                               <Ionicons
                                 name="person"
                                 size={22}
-                                color="#6B7280"
+                                color={themeColor("#6B7280", "#ADADAD")}
                               />
                             )}
                           </View>
-                          <Text className="text-xs text-gray-700 font-medium">
+                          <TouchableOpacity
+                            onPress={() => toggleTagUser(userId)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Remove ${user.fullName || user.firstName} from tagged people`}
+                            hitSlop={6}
+                            activeOpacity={0.7}
+                            style={{ position: "absolute", top: 0, right: 0, width: 26, height: 26, borderRadius: 13, backgroundColor: themeColor("#FDFEFC", "#242424"), borderWidth: 1, borderColor: themeColor("#DCE5D4", "#414141"), alignItems: "center", justifyContent: "center" }}
+                          >
+                            <Ionicons name="close" size={15} color={themeColor("#526E49", "#E6E6E6")} />
+                          </TouchableOpacity>
+                          <Text className="text-xs text-gray-700 font-medium dark:text-[#E6E6E6] ">
                             {user.firstName}
                           </Text>
                         </View>
@@ -1487,18 +1391,18 @@ export default function CreatePostModal({
               )}
 
               {/* Search Bar */}
-              <View className="bg-white rounded-2xl flex-row items-center px-4 py-2.5 mx-5 my-3 border border-gray-200 shadow-xs">
-                <Ionicons name="search" size={20} color="#9CA3AF" />
+              <View className="bg-[#F3F6EF] rounded-2xl flex-row items-center px-4 py-2.5 mx-5 my-3 border border-[#E3E9DC] dark:bg-[#181818] dark:border-[#414141] ">
+                <Ionicons name="search" size={20} color={themeColor("#8C9A82", "#E6E6E6")} />
                 <TextInput
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   placeholder="Search members to tag..."
-                  placeholderTextColor="#9CA3AF"
-                  className="flex-1 ml-2 text-base text-gray-800 p-0"
+                  placeholderTextColor={themeColor("#8C9A82", "#E6E6E6")}
+                  className="flex-1 ml-2 text-sm text-[#40543B] p-0 dark:text-[#E6E6E6] "
                 />
                 {searchQuery.length > 0 && (
                   <TouchableOpacity onPress={() => setSearchQuery("")}>
-                    <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+                    <Ionicons name="close-circle" size={18} color={themeColor("#8C9A82", "#E6E6E6")} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -1507,24 +1411,25 @@ export default function CreatePostModal({
               <ScrollView
                 className="flex-1 px-5"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 100 }}
+                contentContainerStyle={{ paddingBottom: 120 }}
+                keyboardShouldPersistTaps="handled"
               >
                 {isLoadingFriends || isSearchingUsers ? (
                   <View className="py-12 items-center justify-center">
-                    <ActivityIndicator size="small" color="#72AF5B" />
-                    <Text className="text-xs text-gray-500 mt-2">
+                    <ActivityIndicator size="small" color={themeColor("#456B57", "#E6E6E6")} />
+                    <Text className="text-xs text-[#84917B] mt-2 dark:text-[#E6E6E6] ">
                       Loading members...
                     </Text>
                   </View>
                 ) : filteredFriends.length === 0 ? (
                   <View className="py-12 items-center justify-center px-4">
-                    <Ionicons name="people-outline" size={36} color="#9CA3AF" />
-                    <Text className="text-sm font-semibold text-gray-600 mt-2 text-center">
+                    <Ionicons name="people-outline" size={36} color={themeColor("#8C9A82", "#E6E6E6")} />
+                    <Text className="text-sm font-semibold text-gray-600 mt-2 text-center dark:text-[#ADADAD] ">
                       {searchQuery
                         ? "No members found matching your search"
                         : "No members to tag yet"}
                     </Text>
-                    <Text className="text-xs text-gray-400 mt-1 text-center">
+                    <Text className="text-xs text-gray-400 mt-1 text-center dark:text-[#ADADAD] ">
                       {searchQuery
                         ? "Try searching by exact name or username."
                         : "Connect with farmers and friends or search their name above to tag them."}
@@ -1538,11 +1443,11 @@ export default function CreatePostModal({
                       <TouchableOpacity
                         key={friend.id}
                         onPress={() => toggleTagUser(friend.id)}
-                        className="flex-row items-center bg-white rounded-2xl mb-2.5 p-3 shadow-xs border border-gray-100 active:opacity-80"
+                        className="flex-row items-center bg-white rounded-2xl mb-2.5 p-3 border border-[#E7ECDF] active:opacity-80 dark:bg-[#242424] dark:border-[#414141] "
                         activeOpacity={0.7}
                       >
                         {/* Left (Avatar) */}
-                        <View className="bg-gray-200 h-12 w-12 rounded-full mr-3 items-center justify-center overflow-hidden border border-gray-200">
+                        <View className="bg-[#EAF0E3] h-12 w-12 rounded-full mr-3 items-center justify-center overflow-hidden border border-gray-200 dark:bg-[#181818] dark:border-[#414141] ">
                           {friend.avatarUrl ? (
                             <Image
                               source={{ uri: friend.avatarUrl }}
@@ -1553,17 +1458,17 @@ export default function CreatePostModal({
                             <Ionicons
                               name="person"
                               size={22}
-                              color="#6B7280"
+                              color={themeColor("#6B7280", "#ADADAD")}
                             />
                           )}
                         </View>
 
                         {/* Middle (Info) */}
                         <View className="flex-1">
-                          <Text className="text-sm font-bold text-gray-800">
+                          <Text className="text-sm font-semibold text-[#3A5038] dark:text-[#E6E6E6] ">
                             {friend.fullName}
                           </Text>
-                          <Text className="text-xs text-gray-500 mt-0.5">
+                          <Text className="text-xs text-[#84917B] mt-0.5 dark:text-[#E6E6E6] ">
                             {friend.username
                               ? `@${friend.username}`
                               : "Member"}
@@ -1574,15 +1479,15 @@ export default function CreatePostModal({
                         <View
                           className={`h-6 w-6 rounded-md items-center justify-center ${
                             isSelected
-                              ? "bg-[#72AF5B]"
-                              : "border border-[#72AF5B] bg-white"
+                              ? "bg-[#456B57] dark:bg-[#E6E6E6] "
+                              : "border border-[#456B57] bg-white dark:border-[#414141] dark:bg-[#242424] "
                           }`}
                         >
                           {isSelected && (
                             <Ionicons
                               name="checkmark"
                               size={16}
-                              color="#FFFFFF"
+                              color={themeColor("#FFFFFF", "#181818")}
                             />
                           )}
                         </View>
@@ -1593,21 +1498,22 @@ export default function CreatePostModal({
               </ScrollView>
 
               {/* Bottom Finished Action Button */}
-              <View className="absolute bottom-0 left-0 right-0 p-5 bg-gray-50 border-t border-gray-200/60">
+              <View className="absolute bottom-0 left-0 right-0 p-5 bg-[#FDFEFC] border-t border-[#E8EDDF] dark:bg-[#242424] dark:border-[#414141] ">
                 <TouchableOpacity
                   onPress={() => setActiveView("POST_FORM")}
-                  className="w-full bg-[#72AF5B] rounded-xl py-3.5 items-center justify-center active:opacity-80 shadow-sm"
+                  className="w-full bg-[#456B57] rounded-xl py-3.5 items-center justify-center active:opacity-80 shadow-sm dark:bg-[#E6E6E6] "
                   activeOpacity={0.8}
                 >
-                  <Text className="text-white font-bold text-base">
-                    Finished
+                  <Text className="text-white font-semibold text-sm dark:text-[#181818] ">
+                    {taggedUserIds.length ? `Confirm ${taggedUserIds.length} tagged ${taggedUserIds.length === 1 ? "person" : "people"}` : "Done"}
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
+            </CalmEntrance>
           ) : activeView === "ADD_LOCATION" ? (
             /* 7. ADD LOCATION VIEW (Leaflet Map with Dynamic Search & Geocoding) */
-            <View className="flex-1 bg-white h-full w-full relative overflow-hidden">
+            <View className="flex-1 bg-white h-full w-full relative overflow-hidden dark:bg-[#181818] ">
               {/* Full-Screen Map filling upper corners */}
               <LeafletMap
                 latitude={mapCoords.latitude}
@@ -1636,19 +1542,19 @@ export default function CreatePostModal({
                       setActiveView("POST_FORM");
                     }}
                     activeOpacity={0.7}
-                    className="w-11 h-11 rounded-full bg-white items-center justify-center shadow-lg elevation-5 border border-gray-100"
+                    className="w-11 h-11 rounded-full bg-white items-center justify-center shadow-lg elevation-5 border border-gray-100 dark:bg-[#242424] dark:border-[#414141] "
                     accessibilityRole="button"
                     accessibilityLabel="Go back"
                   >
-                    <Ionicons name="chevron-back" size={26} color="#111827" />
+                    <Ionicons name="chevron-back" size={26} color={themeColor("#111827", "#E6E6E6")} />
                   </TouchableOpacity>
 
                   {/* Floating Search Bar */}
-                  <View className="flex-1 bg-white border border-[#72AF5B] rounded-full flex-row items-center px-3.5 h-11 shadow-lg elevation-5">
+                  <View className="flex-1 bg-white border border-[#72AF5B] rounded-full flex-row items-center px-3.5 h-11 shadow-lg elevation-5 dark:bg-[#181818] dark:border-[#414141] ">
                     <Ionicons
                       name="search-outline"
                       size={18}
-                      color="#6B7280"
+                      color={themeColor("#6B7280", "#ADADAD")}
                       style={{ marginRight: 6 }}
                     />
                     <TextInput
@@ -1661,14 +1567,14 @@ export default function CreatePostModal({
                         if (searchResults.length > 0) setShowSearchResults(true);
                       }}
                       placeholder="Search farm, barangay, or city..."
-                      placeholderTextColor="#9CA3AF"
-                      className="flex-1 text-sm text-gray-800 p-0"
+                      placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+                      className="flex-1 text-sm text-gray-800 p-0 dark:text-[#E6E6E6] "
                       returnKeyType="search"
                     />
                     {isSearchingLocation ? (
                       <ActivityIndicator
                         size="small"
-                        color="#72AF5B"
+                        color={themeColor("#72AF5B", "#E6E6E6")}
                         style={{ marginLeft: 4 }}
                       />
                     ) : locationSearch.length > 0 ? (
@@ -1683,7 +1589,7 @@ export default function CreatePostModal({
                         <Ionicons
                           name="close-circle"
                           size={16}
-                          color="#9CA3AF"
+                          color={themeColor("#9CA3AF", "#ADADAD")}
                         />
                       </TouchableOpacity>
                     ) : null}
@@ -1694,21 +1600,21 @@ export default function CreatePostModal({
                     onPress={handleUseCurrentLocation}
                     disabled={isLocatingGps}
                     activeOpacity={0.7}
-                    className="w-11 h-11 rounded-full bg-white items-center justify-center shadow-lg elevation-5 border border-gray-100"
+                    className="w-11 h-11 rounded-full bg-white items-center justify-center shadow-lg elevation-5 border border-gray-100 dark:bg-[#242424] dark:border-[#414141] "
                     accessibilityRole="button"
                     accessibilityLabel="Use current device location"
                   >
                     {isLocatingGps ? (
-                      <ActivityIndicator size="small" color="#72AF5B" />
+                      <ActivityIndicator size="small" color={themeColor("#72AF5B", "#E6E6E6")} />
                     ) : (
-                      <Ionicons name="locate" size={22} color="#72AF5B" />
+                      <Ionicons name="locate" size={22} color={themeColor("#72AF5B", "#E6E6E6")} />
                     )}
                   </TouchableOpacity>
                 </View>
 
                 {/* Autocomplete Search Results Dropdown */}
                 {showSearchResults && searchResults.length > 0 && (
-                  <View className="mt-2 bg-white rounded-2xl shadow-2xl elevation-8 border border-gray-200 overflow-hidden max-h-56">
+                  <View className="mt-2 bg-white rounded-2xl shadow-2xl elevation-8 border border-gray-200 overflow-hidden max-h-56 dark:bg-[#242424] dark:border-[#414141] ">
                     <ScrollView
                       keyboardShouldPersistTaps="handled"
                       nestedScrollEnabled={true}
@@ -1717,27 +1623,27 @@ export default function CreatePostModal({
                         <TouchableOpacity
                           key={`${item.id || idx}-${item.latitude}`}
                           onPress={() => handleSelectSearchResult(item)}
-                          className={`p-3 flex-row items-center border-b border-gray-100 active:bg-green-50 ${
+                          className={`p-3 flex-row items-center border-b border-gray-100 active:bg-green-50  dark:border-[#414141] dark:active:bg-[#181818] ${
                             idx === searchResults.length - 1 ? "border-b-0" : ""
                           }`}
                         >
-                          <View className="w-8 h-8 rounded-full bg-green-50 items-center justify-center mr-2.5">
+                          <View className="w-8 h-8 rounded-full bg-green-50 items-center justify-center mr-2.5 dark:bg-[#181818] ">
                             <Ionicons
                               name="location-sharp"
                               size={16}
-                              color="#72AF5B"
+                              color={themeColor("#72AF5B", "#E6E6E6")}
                             />
                           </View>
                           <View className="flex-1 pr-1">
                             <Text
-                              className="text-xs font-bold text-gray-900"
+                              className="text-xs font-bold text-gray-900 dark:text-[#E6E6E6] "
                               numberOfLines={1}
                             >
                               {item.name}
                             </Text>
                             {item.fullName ? (
                               <Text
-                                className="text-[11px] text-gray-500 mt-0.5"
+                                className="text-[11px] text-gray-500 mt-0.5 dark:text-[#ADADAD] "
                                 numberOfLines={1}
                               >
                                 {item.fullName}
@@ -1747,7 +1653,7 @@ export default function CreatePostModal({
                           <Ionicons
                             name="arrow-forward"
                             size={14}
-                            color="#9CA3AF"
+                            color={themeColor("#9CA3AF", "#ADADAD")}
                           />
                         </TouchableOpacity>
                       ))}
@@ -1758,34 +1664,34 @@ export default function CreatePostModal({
 
 
               {/* Floating Bottom Info Card with Select & Cancel Location Buttons */}
-              <View className="absolute bottom-6 left-5 right-5 z-20 bg-white rounded-2xl p-4 shadow-xl border border-gray-100">
+              <View className="absolute bottom-6 left-5 right-5 z-20 bg-white rounded-2xl p-4 shadow-xl border border-gray-100 dark:bg-[#242424] dark:border-[#414141] ">
                 <View className="mb-3">
                   <View className="flex-row items-center gap-1.5 mb-1">
                     <Ionicons
                       name="location-sharp"
                       size={18}
-                      color="#72AF5B"
+                      color={themeColor("#72AF5B", "#E6E6E6")}
                     />
                     <Text
-                      className="text-base font-bold text-gray-900 flex-1"
+                      className="text-base font-bold text-gray-900 flex-1 dark:text-[#E6E6E6] "
                       numberOfLines={1}
                     >
                       {locationSearch || "Selected Location"}
                     </Text>
                     {isGeocoding && (
                       <View className="flex-row items-center gap-1">
-                        <ActivityIndicator size="small" color="#72AF5B" />
-                        <Text className="text-[10px] text-[#72AF5B] font-medium">
+                        <ActivityIndicator size="small" color={themeColor("#72AF5B", "#E6E6E6")} />
+                        <Text className="text-[10px] text-[#72AF5B] font-medium dark:text-[#E6E6E6] ">
                           Resolving...
                         </Text>
                       </View>
                     )}
                   </View>
-                  <Text className="text-xs text-gray-500 leading-4">
+                  <Text className="text-xs text-gray-500 leading-4 dark:text-[#ADADAD] ">
                     Coordinates: {mapCoords.latitude.toFixed(4)},{" "}
                     {mapCoords.longitude.toFixed(4)}
                   </Text>
-                  <Text className="text-[11px] text-gray-400 mt-0.5">
+                  <Text className="text-[11px] text-gray-400 mt-0.5 dark:text-[#ADADAD] ">
                     Tap anywhere on the map, use the search bar, or pick your GPS location.
                   </Text>
                 </View>
@@ -1797,10 +1703,10 @@ export default function CreatePostModal({
                       setShowSearchResults(false);
                       setActiveView("POST_FORM");
                     }}
-                    className="bg-gray-100 px-4 py-2.5 rounded-xl border border-gray-200 items-center justify-center active:bg-gray-200"
+                    className="bg-gray-100 px-4 py-2.5 rounded-xl border border-gray-200 items-center justify-center active:bg-gray-200 dark:bg-[#181818] dark:border-[#414141] dark:active:bg-[#181818] "
                     activeOpacity={0.7}
                   >
-                    <Text className="text-gray-700 font-semibold text-xs">
+                    <Text className="text-gray-700 font-semibold text-xs dark:text-[#E6E6E6] ">
                       Cancel
                     </Text>
                   </TouchableOpacity>
@@ -1815,10 +1721,10 @@ export default function CreatePostModal({
                       setShowSearchResults(false);
                       setActiveView("POST_FORM");
                     }}
-                    className="bg-[#72AF5B] px-5 py-2.5 rounded-xl items-center justify-center active:bg-[#5e944a] shadow-sm"
+                    className="bg-[#72AF5B] px-5 py-2.5 rounded-xl items-center justify-center active:bg-[#5e944a] shadow-sm dark:bg-[#E6E6E6] dark:active:bg-[#E6E6E6] "
                     activeOpacity={0.8}
                   >
-                    <Text className="text-white font-bold text-xs">
+                    <Text className="text-white font-bold text-xs dark:text-[#181818] ">
                       Select Location
                     </Text>
                   </TouchableOpacity>
@@ -1839,16 +1745,16 @@ export default function CreatePostModal({
             accessibilityLabel="Dismiss modal backdrop"
           />
           <View
-            className="bg-white rounded-3xl p-6 w-full max-w-sm items-center shadow-2xl z-10"
+            className="bg-white rounded-3xl p-6 w-full max-w-sm items-center shadow-2xl z-10 dark:bg-[#242424] "
             accessibilityRole="alert"
           >
             {/* Badge & Camera Graphic */}
             <View className="relative mb-3">
-              <View className="w-16 h-16 rounded-full bg-[#72AF5B] items-center justify-center">
-                <Ionicons name="videocam" size={32} color="#ffffff" />
+              <View className="w-16 h-16 rounded-full bg-[#72AF5B] items-center justify-center dark:bg-[#E6E6E6] ">
+                <Ionicons name="videocam" size={32} color={themeColor("#ffffff", "#181818")} />
               </View>
-              <View className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white items-center justify-center shadow-md">
-                <Ionicons name="checkmark-circle" size={24} color="#72AF5B" />
+              <View className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white items-center justify-center shadow-md dark:bg-[#242424] ">
+                <Ionicons name="checkmark-circle" size={24} color={themeColor("#72AF5B", "#E6E6E6")} />
               </View>
             </View>
 
@@ -1856,10 +1762,10 @@ export default function CreatePostModal({
             <View
               className={`px-3 py-1 rounded-full mb-2 border ${
                 rsbsaApp?.status === "pending"
-                  ? "bg-amber-50 border-amber-200"
+                  ? "bg-amber-50 border-amber-200 dark:bg-[#181818] "
                   : rsbsaApp?.status === "rejected"
-                    ? "bg-rose-50 border-rose-200"
-                    : "bg-gray-50 border-[#72AF5B]"
+                    ? "bg-rose-50 border-rose-200 dark:bg-[#181818] "
+                    : "bg-gray-50 border-[#72AF5B] dark:bg-[#242424] dark:border-[#414141] "
               }`}
             >
               <Text
@@ -1868,7 +1774,7 @@ export default function CreatePostModal({
                     ? "text-amber-800"
                     : rsbsaApp?.status === "rejected"
                       ? "text-rose-800"
-                      : "text-emerald-800"
+                      : "text-emerald-800 dark:text-[#E6E6E6] "
                 }`}
               >
                 {rsbsaApp?.status === "pending"
@@ -1885,7 +1791,7 @@ export default function CreatePostModal({
             </Text>
 
             {/* Explanation / Subtitle */}
-            <Text className="text-sm text-gray-600 text-center leading-5 mb-4">
+            <Text className="text-sm text-gray-600 text-center leading-5 mb-4 dark:text-[#ADADAD] ">
               {rsbsaApp?.status === "pending"
                 ? "Your RSBSA application is currently under review by our team. Live streaming privileges will automatically unlock once verified."
                 : rsbsaApp?.status === "rejected"
@@ -1894,22 +1800,22 @@ export default function CreatePostModal({
             </Text>
 
             {/* Security & Trust Benefits */}
-            <View className="bg-gray-50 rounded-2xl p-3.5 w-full mb-5 border border-gray-100 gap-2">
+            <View className="bg-gray-50 rounded-2xl p-3.5 w-full mb-5 border border-gray-100 gap-2 dark:bg-[#242424] dark:border-[#414141] ">
               <View className="flex-row items-center gap-2">
-                <Ionicons name="shield-checkmark" size={18} color="#72AF5B" />
-                <Text className="text-sm font-semibold text-gray-800">
+                <Ionicons name="shield-checkmark" size={18} color={themeColor("#72AF5B", "#E6E6E6")} />
+                <Text className="text-sm font-semibold text-gray-800 dark:text-[#E6E6E6] ">
                   Protects buyers from fake farm listings
                 </Text>
               </View>
               <View className="flex-row items-center gap-2">
-                <Ionicons name="ribbon" size={18} color="#72AF5B" />
-                <Text className="text-sm font-semibold text-gray-800">
+                <Ionicons name="ribbon" size={18} color={themeColor("#72AF5B", "#E6E6E6")} />
+                <Text className="text-sm font-semibold text-gray-800 dark:text-[#E6E6E6] ">
                   Awards the official Green Badge to your profile
                 </Text>
               </View>
               <View className="flex-row items-center gap-2">
-                <Ionicons name="people" size={18} color="#72AF5B" />
-                <Text className="text-sm font-semibold text-gray-800">
+                <Ionicons name="people" size={18} color={themeColor("#72AF5B", "#E6E6E6")} />
+                <Text className="text-sm font-semibold text-gray-800 dark:text-[#E6E6E6] ">
                   Builds instant trust with local wholesale and retail buyers
                 </Text>
               </View>
@@ -1922,7 +1828,7 @@ export default function CreatePostModal({
                 handleClose();
                 router.push("/user/RSBSAVerification" as any);
               }}
-              className="w-full text-sm bg-[#72AF5B] py-3.5 rounded-xl items-center justify-center active:opacity-85 shadow-sm mb-2.5"
+              className="w-full text-sm bg-[#72AF5B] py-3.5 rounded-xl items-center justify-center active:opacity-85 shadow-sm mb-2.5 dark:bg-[#E6E6E6] "
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel={
@@ -1933,7 +1839,7 @@ export default function CreatePostModal({
                     : "Apply for RSBSA verification"
               }
             >
-              <Text className="text-white font-bold text-sm">
+              <Text className="text-white font-bold text-sm dark:text-[#181818] ">
                 {rsbsaApp?.status === "pending"
                   ? "Check Verification Status"
                   : rsbsaApp?.status === "rejected"
@@ -1944,11 +1850,11 @@ export default function CreatePostModal({
 
             <TouchableOpacity
               onPress={() => setShowRsbsaLockModal(false)}
-              className="w-full py-3.5 bg-gray-100 border border-gray-200 rounded-xl items-center justify-center active:opacity-60"
+              className="w-full py-3.5 bg-gray-100 border border-gray-200 rounded-xl items-center justify-center active:opacity-60 dark:bg-[#181818] dark:border-[#414141] "
               accessibilityRole="button"
               accessibilityLabel="Dismiss dialog"
             >
-              <Text className="text-gray-500 font-semibold text-sm text-center">
+              <Text className="text-gray-500 font-semibold text-sm text-center dark:text-[#ADADAD] ">
                 Maybe Later
               </Text>
             </TouchableOpacity>

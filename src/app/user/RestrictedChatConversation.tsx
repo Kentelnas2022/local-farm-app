@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import {
   ChatMessage,
   getMessagesApi,
@@ -19,6 +20,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function RestrictedChatConversation() {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{
     userId?: string;
@@ -67,6 +69,17 @@ export default function RestrictedChatConversation() {
     }
   };
 
+  const handleVisitProfile = () => {
+    router.push({
+      pathname: "/user/UserProfile",
+      params: {
+        userId: otherUserId ? String(otherUserId) : undefined,
+        userName: otherUserName,
+        userAvatar: otherUserAvatar || "",
+      },
+    } as any);
+  };
+
   const handleUnrestrict = async () => {
     if (!otherUserId) return;
     try {
@@ -86,11 +99,11 @@ export default function RestrictedChatConversation() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white relative"
-      style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+      className="flex-1 bg-white relative dark:bg-[#181818] "
+      style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }}
     >
       {/* Top Header */}
-      <View className="flex-row items-center justify-between px-4 py-3 bg-white border-b border-gray-100 shadow-2xs z-10">
+      <View className="flex-row items-center justify-between px-4 py-3 bg-white border-b border-gray-100 shadow-2xs z-10 dark:bg-[#242424] dark:border-[#414141] ">
         <View className="flex-row items-center gap-3 flex-1 pr-2">
           <TouchableOpacity
             onPress={handleBack}
@@ -98,42 +111,50 @@ export default function RestrictedChatConversation() {
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Ionicons name="chevron-back" size={28} color="#000000" />
+            <Ionicons name="chevron-back" size={28} color={themeColor("#000000", "#E6E6E6")} />
           </TouchableOpacity>
 
-          <View className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center overflow-hidden border border-gray-200">
-            {otherUserAvatar ? (
-              <Image source={{ uri: otherUserAvatar }} className="w-full h-full" resizeMode="cover" />
-            ) : (
-              <Ionicons name="person" size={22} color="#34594A" />
-            )}
-          </View>
+          <TouchableOpacity
+            onPress={handleVisitProfile}
+            activeOpacity={0.7}
+            className="flex-row items-center gap-3 flex-1"
+            accessibilityRole="button"
+            accessibilityLabel={`View ${otherUserName}'s profile`}
+          >
+            <View className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center overflow-hidden border border-gray-200 dark:bg-[#181818] dark:border-[#414141] ">
+              {otherUserAvatar ? (
+                <Image source={{ uri: otherUserAvatar }} className="w-full h-full" resizeMode="cover" />
+              ) : (
+                <Ionicons name="person" size={22} color={themeColor("#34594A", "#E6E6E6")} />
+              )}
+            </View>
 
-          <View className="flex-1">
-            <Text
-              className="text-base font-bold text-gray-900 leading-tight"
-              numberOfLines={1}
-            >
-              {otherUserName}
-            </Text>
-            <Text className="text-xs text-gray-400 font-medium">Restricted</Text>
-          </View>
+            <View className="flex-1">
+              <Text
+                className="text-base font-bold text-gray-900 leading-tight dark:text-[#E6E6E6] "
+                numberOfLines={1}
+              >
+                {otherUserName}
+              </Text>
+              <Text className="text-xs text-gray-400 font-medium dark:text-[#ADADAD] ">Restricted</Text>
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
 
       {/* Messages List */}
       <ScrollView
-        className="flex-1 bg-[#F9F9F9] px-4 pt-4"
+        className="flex-1 bg-[#F9F9F9] px-4 pt-4 dark:bg-[#181818] "
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, justifyContent: messages.length === 0 ? "center" : "flex-end", paddingBottom: 24 }}
       >
         {isLoading ? (
           <View className="items-center justify-center py-12">
-            <ActivityIndicator size="small" color="#34594A" />
+            <ActivityIndicator size="small" color={themeColor("#34594A", "#E6E6E6")} />
           </View>
         ) : messages.length === 0 ? (
           <View className="items-center justify-center py-12">
-            <Text className="text-xs text-gray-400">No messages found.</Text>
+            <Text className="text-xs text-gray-400 dark:text-[#ADADAD] ">No messages found.</Text>
           </View>
         ) : (
           messages.map((item) => {
@@ -146,25 +167,34 @@ export default function RestrictedChatConversation() {
                   }`}
                 >
                   {!isUser && (
-                    <View className="w-7 h-7 rounded-full bg-gray-200 mr-2 items-center justify-center overflow-hidden border border-gray-200">
-                      {otherUserAvatar ? (
-                        <Image source={{ uri: otherUserAvatar }} className="w-full h-full" resizeMode="cover" />
-                      ) : (
-                        <Ionicons name="person" size={14} color="#34594A" />
-                      )}
-                    </View>
+                    <TouchableOpacity
+                      onPress={handleVisitProfile}
+                      activeOpacity={0.7}
+                      className="mr-2 active:opacity-70"
+                      accessibilityRole="button"
+                      accessibilityLabel={`View ${otherUserName}'s profile`}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <View className="w-7 h-7 rounded-full bg-gray-200 items-center justify-center overflow-hidden border border-gray-200 dark:bg-[#181818] dark:border-[#414141] ">
+                        {otherUserAvatar ? (
+                          <Image source={{ uri: otherUserAvatar }} className="w-full h-full" resizeMode="cover" />
+                        ) : (
+                          <Ionicons name="person" size={14} color={themeColor("#34594A", "#E6E6E6")} />
+                        )}
+                      </View>
+                    </TouchableOpacity>
                   )}
 
                   <View
                     className={`px-4 py-2.5 max-w-[76%] rounded-2xl ${
                       isUser
-                        ? "bg-[#34594A] rounded-br-xs"
-                        : "bg-[#F0F0F0] rounded-bl-xs shadow-2xs"
+                        ? "bg-[#34594A] rounded-br-xs dark:bg-[#E6E6E6] "
+                        : "bg-[#F0F0F0] rounded-bl-xs shadow-2xs dark:bg-[#181818] "
                     }`}
                   >
                     <Text
                       className={`text-sm leading-snug ${
-                        isUser ? "text-white" : "text-gray-900"
+                        isUser ? "text-white dark:text-[#181818] " : "text-gray-900 dark:text-[#E6E6E6] "
                       }`}
                     >
                       {item.text || (item.type === "image" ? "📷 [Photo]" : "Shared attachment")}
@@ -178,8 +208,8 @@ export default function RestrictedChatConversation() {
       </ScrollView>
 
       {/* Bottom Action */}
-      <View className="px-4 pt-3.5 pb-6 bg-white border-t border-gray-100">
-        <Text className="text-xs text-gray-500 text-center mb-2.5 font-medium">
+      <View className="px-4 pt-3.5 pb-6 bg-white border-t border-gray-100 dark:bg-[#242424] dark:border-[#414141] ">
+        <Text className="text-xs text-gray-500 text-center mb-2.5 font-medium dark:text-[#ADADAD] ">
           {isRestricted
             ? `You restricted ${otherUserName}. They won't see when you're online or read messages.`
             : `${otherUserName} has been unrestricted.`}
@@ -195,7 +225,7 @@ export default function RestrictedChatConversation() {
           accessibilityRole="button"
           accessibilityLabel="Unrestrict user"
         >
-          <Text className="text-sm font-bold text-white">
+          <Text className="text-sm font-bold text-white dark:text-[#E6E6E6] ">
             {isRestricted ? "Unrestrict" : "Unrestricted ✓"}
           </Text>
         </TouchableOpacity>

@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useAuth } from "@/hooks/use-auth";
 import { ActiveSession } from "@/services/device-service";
 import { getClientDeviceInfo } from "@/utils/device-info";
@@ -15,6 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function CurrentDeviceDetails() {
+  const { themeColor } = useAppTheme();
   const { signOut } = useAuth();
   const params = useLocalSearchParams<{ session?: string }>();
 
@@ -118,11 +120,11 @@ export default function CurrentDeviceDetails() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-[#F8F9FA] relative h-full"
-      style={{ flex: 1, backgroundColor: "#F8F9FA" }}
+      className="flex-1 bg-[#F8F9FA] relative h-full dark:bg-[#181818] "
+      style={{ flex: 1, backgroundColor: themeColor("#F8F9FA", "#181818") }}
     >
       {/* Top Header */}
-      <View className="relative items-center justify-center pt-3 pb-4 px-4 bg-white border-b border-gray-100">
+      <View className="relative items-center justify-center pt-3 pb-4 px-4 bg-white border-b border-gray-100 dark:bg-[#242424] dark:border-[#414141] ">
         <TouchableOpacity
           onPress={handleBack}
           activeOpacity={0.7}
@@ -131,9 +133,9 @@ export default function CurrentDeviceDetails() {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-undo" size={28} color="#000000" />
+          <Ionicons name="arrow-undo" size={28} color={themeColor("#000000", "#E6E6E6")} />
         </TouchableOpacity>
-        <Text className="text-xl font-bold text-gray-900">Device Details</Text>
+        <Text className="text-xl font-bold text-gray-900 dark:text-[#E6E6E6] ">Device Details</Text>
       </View>
 
       <ScrollView
@@ -142,28 +144,28 @@ export default function CurrentDeviceDetails() {
         contentContainerStyle={{ paddingBottom: 60 }}
       >
         {/* Hero Device Identity Card */}
-        <View className="bg-white rounded-3xl p-5 mb-5 border border-gray-100 shadow-2xs">
+        <View className="bg-white rounded-3xl p-5 mb-5 border border-gray-100 shadow-2xs dark:bg-[#242424] dark:border-[#414141] ">
           <View className="flex-row items-center mb-3.5">
             {/* Device Icon Badge */}
-            <View className="w-14 h-14 rounded-2xl bg-[#72AF5B] items-center justify-center mr-4 shadow-xs">
+            <View className="w-14 h-14 rounded-2xl bg-[#72AF5B] items-center justify-center mr-4 shadow-xs dark:bg-[#E6E6E6] ">
               <Ionicons
                 name={getDeviceIcon(session?.deviceType)}
                 size={28}
-                color="#FFFFFF"
+                color={themeColor("#FFFFFF", "#181818")}
               />
             </View>
 
             {/* Device Specs & Status */}
             <View className="flex-1">
-              <Text className="text-xl font-bold text-gray-900 leading-tight">
+              <Text className="text-xl font-bold text-gray-900 leading-tight dark:text-[#E6E6E6] ">
                 {displayName}
               </Text>
 
               {/* Status Badges */}
               <View className="flex-row items-center gap-2 mt-1">
-                <View className="flex-row items-center gap-1 bg-white px-2 py-0.5 rounded-md border border-[#72AF5B]">
-                  <Ionicons name="checkmark-circle" size={12} color="#72AF5B" />
-                  <Text className="text-sm font-bold text-[#72AF5B]">
+                <View className="flex-row items-center gap-1 bg-white px-2 py-0.5 rounded-md border border-[#72AF5B] dark:bg-[#242424] dark:border-[#414141] ">
+                  <Ionicons name="checkmark-circle" size={12} color={themeColor("#72AF5B", "#E6E6E6")} />
+                  <Text className="text-sm font-bold text-[#72AF5B] dark:text-[#E6E6E6] ">
                     {session?.deviceType === "desktop"
                       ? "This PC"
                       : session?.deviceType === "tablet"
@@ -172,9 +174,9 @@ export default function CurrentDeviceDetails() {
                   </Text>
                 </View>
 
-                <View className="flex-row items-center gap-1.5 bg-[#72AF5B]/10 px-2 py-0.5 rounded-full">
-                  <View className="w-2 h-2 rounded-full bg-[#72AF5B]" />
-                  <Text className="text-sm font-bold text-[#2D4F28]">
+                <View className="flex-row items-center gap-1.5 bg-[#72AF5B]/10 px-2 py-0.5 rounded-full dark:bg-[#E6E6E6]/10 ">
+                  <View className="w-2 h-2 rounded-full bg-[#72AF5B] dark:bg-[#E6E6E6] " />
+                  <Text className="text-sm font-bold text-[#2D4F28] dark:text-[#E6E6E6] ">
                     Active Now
                   </Text>
                 </View>
@@ -183,9 +185,9 @@ export default function CurrentDeviceDetails() {
           </View>
 
           {/* Device Security Summary Note */}
-          <View className="bg-[#72AF5B]/[0.06] rounded-xl p-3 border border-[#72AF5B]/20 flex-row items-center gap-2.5">
-            <Ionicons name="shield-checkmark" size={18} color="#72AF5B" />
-            <Text className="text-xs text-[#2D4F28] flex-1 font-medium leading-4.5">
+          <View className="bg-[#72AF5B]/[0.06] rounded-xl p-3 border border-[#72AF5B]/20 flex-row items-center gap-2.5 dark:bg-[#E6E6E6]/[0.06] dark:border-[#414141]/20 ">
+            <Ionicons name="shield-checkmark" size={18} color={themeColor("#72AF5B", "#E6E6E6")} />
+            <Text className="text-xs text-[#2D4F28] flex-1 font-medium leading-4.5 dark:text-[#E6E6E6] ">
               This device is currently authorized with full grower & buyer
               marketplace privileges.
             </Text>
@@ -194,25 +196,25 @@ export default function CurrentDeviceDetails() {
 
         {/* Section 1: Session Technical Details */}
         <View className="mb-5">
-          <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2.5 px-1">
+          <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2.5 px-1 dark:text-[#ADADAD] ">
             Session Details
           </Text>
 
-          <View className="bg-white rounded-2xl border border-gray-100 shadow-2xs overflow-hidden">
+          <View className="bg-white rounded-2xl border border-gray-100 shadow-2xs overflow-hidden dark:bg-[#242424] dark:border-[#414141] ">
             {/* Row 1: Operating System & Client */}
-            <View className="p-4 flex-row items-center justify-between border-b border-gray-50">
+            <View className="p-4 flex-row items-center justify-between border-b border-gray-50 dark:border-[#414141] ">
               <View className="flex-row items-center gap-3">
-                <View className="w-8 h-8 rounded-xl bg-gray-100 items-center justify-center">
-                  <Ionicons name="hardware-chip-outline" size={18} color="#72AF5B" />
+                <View className="w-8 h-8 rounded-xl bg-gray-100 items-center justify-center dark:bg-[#181818] ">
+                  <Ionicons name="hardware-chip-outline" size={18} color={themeColor("#72AF5B", "#E6E6E6")} />
                 </View>
                 <View>
-                  <Text className="text-xs text-gray-500 font-medium">
+                  <Text className="text-xs text-gray-500 font-medium dark:text-[#ADADAD] ">
                     System & Application
                   </Text>
-                  <Text className="text-sm font-bold text-gray-900 mt-0.5">
+                  <Text className="text-sm font-bold text-gray-900 mt-0.5 dark:text-[#E6E6E6] ">
                     {displayOs}
                   </Text>
-                  <Text className="text-[11px] text-gray-400">
+                  <Text className="text-[11px] text-gray-400 dark:text-[#ADADAD] ">
                     {displayApp}
                   </Text>
                 </View>
@@ -220,19 +222,19 @@ export default function CurrentDeviceDetails() {
             </View>
 
             {/* Row 2: Approximate Location */}
-            <View className="p-4 flex-row items-center justify-between border-b border-gray-50">
+            <View className="p-4 flex-row items-center justify-between border-b border-gray-50 dark:border-[#414141] ">
               <View className="flex-row items-center gap-3">
-                <View className="w-8 h-8 rounded-xl bg-gray-100 items-center justify-center">
-                  <Ionicons name="location-outline" size={18} color="#72AF5B" />
+                <View className="w-8 h-8 rounded-xl bg-gray-100 items-center justify-center dark:bg-[#181818] ">
+                  <Ionicons name="location-outline" size={18} color={themeColor("#72AF5B", "#E6E6E6")} />
                 </View>
                 <View>
-                  <Text className="text-xs text-gray-500 font-medium">
+                  <Text className="text-xs text-gray-500 font-medium dark:text-[#ADADAD] ">
                     Approximate Location
                   </Text>
-                  <Text className="text-sm font-bold text-gray-900 mt-0.5">
+                  <Text className="text-sm font-bold text-gray-900 mt-0.5 dark:text-[#E6E6E6] ">
                     {displayLocation}
                   </Text>
-                  <Text className="text-[11px] text-gray-400">
+                  <Text className="text-[11px] text-gray-400 dark:text-[#ADADAD] ">
                     IP Address: {displayIp}
                   </Text>
                 </View>
@@ -242,14 +244,14 @@ export default function CurrentDeviceDetails() {
             {/* Row 3: Initial Sign-in */}
             <View className="p-4 flex-row items-center justify-between">
               <View className="flex-row items-center gap-3">
-                <View className="w-8 h-8 rounded-xl bg-gray-100 items-center justify-center">
-                  <Ionicons name="calendar-outline" size={18} color="#72AF5B" />
+                <View className="w-8 h-8 rounded-xl bg-gray-100 items-center justify-center dark:bg-[#181818] ">
+                  <Ionicons name="calendar-outline" size={18} color={themeColor("#72AF5B", "#E6E6E6")} />
                 </View>
                 <View>
-                  <Text className="text-xs text-gray-500 font-medium">
+                  <Text className="text-xs text-gray-500 font-medium dark:text-[#ADADAD] ">
                     Authorized At
                   </Text>
-                  <Text className="text-sm font-bold text-gray-900 mt-0.5">
+                  <Text className="text-sm font-bold text-gray-900 mt-0.5 dark:text-[#E6E6E6] ">
                     {displayDate}
                   </Text>
                 </View>
@@ -260,19 +262,19 @@ export default function CurrentDeviceDetails() {
 
         {/* Section 2: Recent Activity Timeline */}
         <View className="mb-5">
-          <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2.5 px-1">
+          <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2.5 px-1 dark:text-[#ADADAD] ">
             Recent Activity on this Device
           </Text>
 
-          <View className="bg-white rounded-2xl p-4 border border-gray-100 shadow-2xs">
+          <View className="bg-white rounded-2xl p-4 border border-gray-100 shadow-2xs dark:bg-[#242424] dark:border-[#414141] ">
             {/* Activity 1 */}
             <View className="flex-row items-start gap-3 mb-4">
-              <View className="w-2.5 h-2.5 rounded-full bg-[#72AF5B] mt-1.5" />
+              <View className="w-2.5 h-2.5 rounded-full bg-[#72AF5B] mt-1.5 dark:bg-[#E6E6E6] " />
               <View className="flex-1">
-                <Text className="text-sm font-bold text-gray-900">
+                <Text className="text-sm font-bold text-gray-900 dark:text-[#E6E6E6] ">
                   Active Session
                 </Text>
-                <Text className="text-xs text-gray-600 mt-0.5">
+                <Text className="text-xs text-gray-600 mt-0.5 dark:text-[#ADADAD] ">
                   {displayLocation} • Just now
                 </Text>
               </View>
@@ -282,16 +284,16 @@ export default function CurrentDeviceDetails() {
             <TouchableOpacity
               onPress={handleLocationExplanationPress}
               activeOpacity={0.7}
-              className="pt-2 border-t border-gray-50 flex-row items-center gap-1"
+              className="pt-2 border-t border-gray-50 flex-row items-center gap-1 dark:border-[#414141] "
               accessibilityRole="button"
               accessibilityLabel="How locations and times are determined"
             >
               <Ionicons
                 name="information-circle-outline"
                 size={14}
-                color="#72AF5B"
+                color={themeColor("#72AF5B", "#E6E6E6")}
               />
-              <Text className="text-xs font-semibold text-[#72AF5B]">
+              <Text className="text-xs font-semibold text-[#72AF5B] dark:text-[#E6E6E6] ">
                 How locations and times are determined
               </Text>
             </TouchableOpacity>
@@ -300,7 +302,7 @@ export default function CurrentDeviceDetails() {
 
         {/* Section 3: Security Actions */}
         <View className="mb-4">
-          <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2.5 px-1">
+          <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2.5 px-1 dark:text-[#ADADAD] ">
             Security Actions
           </Text>
 
@@ -309,10 +311,10 @@ export default function CurrentDeviceDetails() {
             <TouchableOpacity
               onPress={() => router.push("/user/ChangePassword" as any)}
               activeOpacity={0.8}
-              className="bg-white border border-[#72AF5B] py-3.5 px-4 rounded-2xl flex-row items-center justify-center gap-2 active:bg-[#72AF5B]/5 shadow-2xs"
+              className="bg-white border border-[#72AF5B] py-3.5 px-4 rounded-2xl flex-row items-center justify-center gap-2 active:bg-[#72AF5B]/5 shadow-2xs dark:bg-[#242424] dark:border-[#414141] dark:active:bg-[#E6E6E6]/5 "
             >
-              <Ionicons name="key-outline" size={18} color="#72AF5B" />
-              <Text className="text-sm font-bold text-[#72AF5B]">
+              <Ionicons name="key-outline" size={18} color={themeColor("#72AF5B", "#E6E6E6")} />
+              <Text className="text-sm font-bold text-[#72AF5B] dark:text-[#E6E6E6] ">
                 Change Password
               </Text>
             </TouchableOpacity>
@@ -321,7 +323,7 @@ export default function CurrentDeviceDetails() {
             <TouchableOpacity
               onPress={handleLogoutThisDevice}
               activeOpacity={0.8}
-              className="bg-red-50 border border-red-100 py-3.5 px-4 rounded-2xl flex-row items-center justify-center gap-2 active:bg-red-100"
+              className="bg-red-50 border border-red-100 py-3.5 px-4 rounded-2xl flex-row items-center justify-center gap-2 active:bg-red-100 dark:bg-[#181818] dark:border-[#414141] dark:active:bg-[#181818] "
             >
               <Ionicons name="log-out-outline" size={18} color="#DC2626" />
               <Text className="text-sm font-bold text-red-600">

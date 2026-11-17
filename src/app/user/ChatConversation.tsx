@@ -1,4 +1,7 @@
+import { useAppTheme } from "@/context/theme-context";
+import PresenceDot from "@/components/PresenceDot";
 import { useAuth } from "@/hooks/use-auth";
+import { searchUsersToConnectApi } from "@/services/connection-service";
 import {
   acceptMessageRequestApi,
   archiveConversationApi,
@@ -154,6 +157,7 @@ const REPORT_REASONS = [
 ];
 
 export default function ChatConversation() {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
   const { user } = useAuth();
   const params = useLocalSearchParams<{
@@ -214,7 +218,7 @@ export default function ChatConversation() {
           Animated.timing(locationModalTranslateY, {
             toValue: Dimensions.get("window").height,
             duration: 180,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== "web",
           }).start(() => {
             setIsLocationModalVisible(false);
             locationModalTranslateY.setValue(0);
@@ -223,14 +227,14 @@ export default function ChatConversation() {
           Animated.spring(locationModalTranslateY, {
             toValue: 0,
             bounciness: 4,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== "web",
           }).start();
         }
       },
       onPanResponderTerminate: () => {
         Animated.spring(locationModalTranslateY, {
           toValue: 0,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }).start();
       },
     }),
@@ -373,14 +377,29 @@ export default function ChatConversation() {
 
   // Fetch farmer info for modal and profile
   useEffect(() => {
-    if (effectiveUserId) {
-      getChatUserInfoApi(effectiveUserId).then((info) => {
+    const targetUid = effectiveUserId || getReceiverId();
+    if (targetUid) {
+      getChatUserInfoApi(targetUid).then((info) => {
         if (info) {
           setFarmerInfo(info);
         }
       });
+    } else if (otherUserName && otherUserName !== "Farmer") {
+      searchUsersToConnectApi(otherUserName).then((users) => {
+        const match = users.find(
+          (u) =>
+            u.name.trim().toLowerCase() === otherUserName.trim().toLowerCase() ||
+            otherUserName.toLowerCase().includes(u.name.toLowerCase()) ||
+            u.name.toLowerCase().includes(otherUserName.toLowerCase())
+        );
+        if (match) {
+          getChatUserInfoApi(match.id).then((info) => {
+            if (info) setFarmerInfo(info);
+          });
+        }
+      }).catch(() => {});
     }
-  }, [effectiveUserId]);
+  }, [effectiveUserId, otherUserName, messages.length]);
 
   const handleInputChange = (text: string) => {
     setInputText(text);
@@ -520,7 +539,7 @@ export default function ChatConversation() {
       toValue: 0,
       duration: 250,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== "web",
     }).start();
 
     const targetId = effectiveUserId || getReceiverId();
@@ -551,7 +570,7 @@ export default function ChatConversation() {
       toValue: SCREEN_WIDTH,
       duration: 220,
       easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== "web",
     }).start(() => {
       setIsInfoModalMounted(false);
       setIsInfoModalVisible(false);
@@ -658,16 +677,50 @@ export default function ChatConversation() {
 
   const firstName = (otherUserName || "User").trim().split(" ")[0];
 
-  const handleVisitProfile = () => {
+  const handleVisitProfile = async (customUserId?: string, customAvatar?: string) => {
     handleCloseInfoModal();
-    const uid = effectiveUserId || (farmerInfo as any)?.id || params.userId || getReceiverId();
-    if (uid || otherUserName) {
+    let uid =
+      customUserId ||
+      effectiveUserId ||
+      (farmerInfo as any)?.id ||
+      params.userId ||
+      getReceiverId();
+
+    let targetName = farmerInfo?.fullName || otherUserName;
+    let targetAvatar = customAvatar || farmerInfo?.avatarUrl || otherUserAvatar || "";
+    let bio = farmerInfo?.bio || "";
+    let isVer = farmerInfo?.isVerified ? "true" : undefined;
+    let role = farmerInfo?.isVerified ? "Verified Farmer" : "Local Farmer";
+
+    if (!uid && targetName && targetName !== "Farmer") {
+      try {
+        const found = await searchUsersToConnectApi(targetName);
+        const match = found.find(
+          (u) =>
+            u.name.trim().toLowerCase() === targetName.trim().toLowerCase() ||
+            targetName.toLowerCase().includes(u.name.toLowerCase()) ||
+            u.name.toLowerCase().includes(targetName.toLowerCase())
+        );
+        if (match) {
+          uid = match.id;
+          if (!targetAvatar && match.avatarUrl) targetAvatar = match.avatarUrl;
+          if (match.role) role = match.role;
+        }
+      } catch (err) {
+        console.warn("Could not find user by name:", err);
+      }
+    }
+
+    if (uid || targetName) {
       router.push({
         pathname: "/user/UserProfile",
         params: {
           userId: uid ? String(uid) : undefined,
-          userName: otherUserName,
-          userAvatar: otherUserAvatar || "",
+          userName: targetName,
+          userAvatar: targetAvatar,
+          userBio: bio,
+          userRole: role,
+          isVerified: isVer,
         },
       } as any);
     } else {
@@ -761,7 +814,7 @@ export default function ChatConversation() {
 
     try {
       setIsSubmittingReport(true);
-      const targetUserId = effectiveUserId || (farmerInfo as any)?.id || params.userId;
+      const targetUserId = getReceiverId();
       await submitUserReportApi({
         reportedUserId: targetUserId ? String(targetUserId) : undefined,
         conversationId: conversationId ? String(conversationId) : undefined,
@@ -890,21 +943,16 @@ export default function ChatConversation() {
     setCallSeconds(0);
     setIsCallMuted(false);
     setIsSpeakerOn(false);
-
     setTimeout(() => {
       setVoiceCallStatus("ringing");
-      setTimeout(() => {
-        setVoiceCallStatus("connected");
-      }, 2400);
+      setTimeout(() => { setVoiceCallStatus("connected"); }, 2400);
     }, 1200);
   };
-
   const handleEndVoiceCall = () => {
     setIsVoiceCallModalVisible(false);
     setVoiceCallStatus("connecting");
     setCallSeconds(0);
   };
-
   const handleStartVideoCall = async () => {
     if (!cameraPermission?.granted) {
       const res = await requestCameraPermission();
@@ -913,24 +961,18 @@ export default function ChatConversation() {
         return;
       }
     }
-
     setIsVideoCallModalVisible(true);
     setVideoCallStatus("calling");
     setVideoSeconds(0);
     setIsVideoMuted(false);
     setIsVideoCameraOff(false);
-
-    setTimeout(() => {
-      setVideoCallStatus("connected");
-    }, 2200);
+    setTimeout(() => { setVideoCallStatus("connected"); }, 2200);
   };
-
   const handleEndVideoCall = () => {
     setIsVideoCallModalVisible(false);
     setVideoCallStatus("calling");
     setVideoSeconds(0);
   };
-
   const handleStartVoiceRecording = () => {
     setShowAttachmentMenu(false);
     setIsRecordingVoice(true);
@@ -1189,7 +1231,7 @@ export default function ChatConversation() {
     }
   };
 
-  const handleBack = () => {
+  function handleBack() {
     try {
       if (router.canGoBack()) {
         router.back();
@@ -1203,8 +1245,8 @@ export default function ChatConversation() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white relative"
-      style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+      className="flex-1 bg-white relative dark:bg-[#181818] "
+      style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -1212,7 +1254,7 @@ export default function ChatConversation() {
         style={{ flex: 1 }}
       >
         {/* Top Header */}
-        <View className="flex-row items-center justify-between px-3 py-3 bg-white border-b border-gray-100 shadow-2xs z-10">
+        <View className="flex-row items-center justify-between px-3 py-3 bg-white border-b border-gray-100 shadow-2xs z-10 dark:bg-[#242424] dark:border-[#414141] ">
           {/* Left Section: Back, Avatar, Name & Status */}
           <View className="flex-row items-center flex-1 pr-1">
             <TouchableOpacity
@@ -1222,39 +1264,46 @@ export default function ChatConversation() {
               accessibilityRole="button"
               accessibilityLabel="Go back"
             >
-              <Ionicons name="chevron-back" size={28} color="#000000" />
+              <Ionicons name="chevron-back" size={28} color={themeColor("#000000", "#E6E6E6")} />
             </TouchableOpacity>
 
-            {/* Profile Avatar */}
-            <View className="w-11 h-11 rounded-full bg-gray-200 items-center justify-center overflow-hidden border border-gray-200 shadow-2xs">
-              {otherUserAvatar ? (
-                <Image
-                  source={{ uri: otherUserAvatar }}
-                  className="w-full h-full"
-                  resizeMode="cover"
-                />
-              ) : (
-                <Ionicons name="person" size={24} color="#34594A" />
-              )}
-            </View>
-
-            {/* Name and Active Status */}
-            <View className="flex-1 ml-3 justify-center">
-              <Text
-                className="font-bold text-base text-gray-900 leading-tight"
-                numberOfLines={1}
-              >
-                {customNickname || otherUserName}
-              </Text>
-              <View className="flex-row items-center mt-0.5">
-                {isOnline && (
-                  <View className="w-2 h-2 rounded-full bg-[#34594A] mr-1.5" />
+            {/* Profile Avatar & Name - Touchable to navigate to exact user profile */}
+            <TouchableOpacity
+              onPress={() => handleVisitProfile()}
+              activeOpacity={0.7}
+              className="flex-row items-center flex-1"
+              accessibilityRole="button"
+              accessibilityLabel={`View ${otherUserName}'s profile`}
+            >
+              {/* Profile Avatar */}
+              <View className="w-11 h-11 rounded-full bg-gray-200 items-center justify-center overflow-hidden border border-gray-200 shadow-2xs dark:bg-[#181818] dark:border-[#414141] ">
+                {otherUserAvatar || farmerInfo?.avatarUrl ? (
+                  <Image
+                    source={{ uri: otherUserAvatar || farmerInfo?.avatarUrl }}
+                    className="w-full h-full"
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Ionicons name="person" size={24} color={themeColor("#34594A", "#E6E6E6")} />
                 )}
-                <Text className="text-xs text-gray-500">
-                  {isOnline ? "Active Now" : "Local Farmer"}
-                </Text>
               </View>
-            </View>
+
+              {/* Name and Active Status */}
+              <View className="flex-1 ml-3 justify-center">
+                <Text
+                  className="font-bold text-base text-gray-900 leading-tight dark:text-[#E6E6E6] "
+                  numberOfLines={1}
+                >
+                  {customNickname || otherUserName}
+                </Text>
+                <View className="flex-row items-center mt-0.5">
+                  <View style={{ marginRight: 4 }}><PresenceDot online={isOnline} /></View>
+                  <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">
+                    {isOnline ? "Online" : "Offline"}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* Right Section: Call, Video, Info Icons */}
@@ -1265,7 +1314,7 @@ export default function ChatConversation() {
               accessibilityRole="button"
               accessibilityLabel="Voice Call"
             >
-              <Ionicons name="call" size={22} color="#34594A" />
+              <Ionicons name="call" size={22} color={themeColor("#34594A", "#E6E6E6")} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -1274,7 +1323,7 @@ export default function ChatConversation() {
               accessibilityRole="button"
               accessibilityLabel="Video Call"
             >
-              <Ionicons name="videocam" size={24} color="#34594A" />
+              <Ionicons name="videocam" size={24} color={themeColor("#34594A", "#E6E6E6")} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -1286,7 +1335,7 @@ export default function ChatConversation() {
               <Ionicons
                 name="information-circle-outline"
                 size={24}
-                color="#34594A"
+                color={themeColor("#34594A", "#E6E6E6")}
               />
             </TouchableOpacity>
           </View>
@@ -1294,19 +1343,19 @@ export default function ChatConversation() {
 
         {/* In-Chat Message Search Bar */}
         {isSearchInChatOpen && (
-          <View className="flex-row items-center px-4 py-2 bg-gray-50 border-b border-gray-200">
-            <Ionicons name="search" size={18} color="#34594A" style={{ marginRight: 6 }} />
+          <View className="flex-row items-center px-4 py-2 bg-gray-50 border-b border-gray-200 dark:bg-[#242424] dark:border-[#414141] ">
+            <Ionicons name="search" size={18} color={themeColor("#34594A", "#E6E6E6")} style={{ marginRight: 6 }} />
             <TextInput
               value={chatSearchText}
               onChangeText={setChatSearchText}
               placeholder="Search in conversation..."
-              placeholderTextColor="#9CA3AF"
-              className="flex-1 text-sm text-gray-800 py-1 font-medium"
+              placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+              className="flex-1 text-sm text-gray-800 py-1 font-medium dark:text-[#E6E6E6] "
               autoFocus
             />
             {chatSearchText ? (
               <TouchableOpacity onPress={() => setChatSearchText("")} className="p-1 mr-1">
-                <Ionicons name="close-circle" size={16} color="#34594A" />
+                <Ionicons name="close-circle" size={16} color={themeColor("#34594A", "#E6E6E6")} />
               </TouchableOpacity>
             ) : null}
             <TouchableOpacity
@@ -1316,7 +1365,7 @@ export default function ChatConversation() {
               }}
               className="p-1 ml-1"
             >
-              <Text className="text-xs font-semibold text-[#34594A]">Done</Text>
+              <Text className="text-xs font-semibold text-[#34594A] dark:text-[#E6E6E6] ">Done</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -1324,7 +1373,7 @@ export default function ChatConversation() {
         {/* Messages List */}
         <ScrollView
           ref={scrollViewRef}
-          className="flex-1 px-4 bg-white"
+          className="flex-1 px-4 bg-white dark:bg-[#181818] "
           showsVerticalScrollIndicator={false}
           bounces={false}
           overScrollMode="never"
@@ -1344,24 +1393,24 @@ export default function ChatConversation() {
         >
           {isLoading ? (
             <View className="py-16 items-center justify-center">
-              <ActivityIndicator size="large" color="#34594A" />
-              <Text className="text-xs text-gray-400 mt-2 font-medium">
+              <ActivityIndicator size="large" color={themeColor("#34594A", "#E6E6E6")} />
+              <Text className="text-xs text-gray-400 mt-2 font-medium dark:text-[#ADADAD] ">
                 Loading messages...
               </Text>
             </View>
           ) : messages.length === 0 ? (
             <View className="py-20 items-center justify-center px-6">
-              <View className="w-16 h-16 rounded-full bg-[#EDF3EE] items-center justify-center mb-3">
+              <View className="w-16 h-16 rounded-full bg-[#EDF3EE] items-center justify-center mb-3 dark:bg-[#181818] ">
                 <Ionicons
                   name="chatbubble-ellipses"
                   size={32}
-                  color="#34594A"
+                  color={themeColor("#34594A", "#E6E6E6")}
                 />
               </View>
-              <Text className="text-base font-bold text-gray-800 mb-1">
+              <Text className="text-base font-bold text-gray-800 mb-1 dark:text-[#E6E6E6] ">
                 Say hello to {otherUserName}!
               </Text>
-              <Text className="text-xs text-gray-400 text-center">
+              <Text className="text-xs text-gray-400 text-center dark:text-[#ADADAD] ">
                 Start your conversation about crops, seeds, or local farming.
               </Text>
             </View>
@@ -1406,21 +1455,28 @@ export default function ChatConversation() {
                       isUser ? "justify-end" : "justify-start"
                     }`}
                   >
-                    {/* Other User Avatar */}
+                    {/* Other User Avatar - Click to visit profile */}
                     {!isUser && (
-                      <View className="mr-2 mb-0.5">
-                        <View className="w-8 h-8 rounded-full bg-gray-200 items-center justify-center overflow-hidden border border-gray-200">
-                          {otherUserAvatar ? (
+                      <TouchableOpacity
+                        onPress={() => handleVisitProfile(item.senderId, item.avatarUrl)}
+                        activeOpacity={0.7}
+                        className="mr-2 mb-0.5 active:opacity-70"
+                        accessibilityRole="button"
+                        accessibilityLabel={`View ${otherUserName}'s profile`}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <View className="w-8 h-8 rounded-full bg-gray-200 items-center justify-center overflow-hidden border border-gray-200 dark:bg-[#181818] dark:border-[#414141] ">
+                          {item.avatarUrl || otherUserAvatar || farmerInfo?.avatarUrl ? (
                             <Image
-                              source={{ uri: otherUserAvatar }}
+                              source={{ uri: item.avatarUrl || otherUserAvatar || farmerInfo?.avatarUrl }}
                               className="w-full h-full"
                               resizeMode="cover"
                             />
                           ) : (
-                            <Ionicons name="person" size={16} color="#34594A" />
+                            <Ionicons name="person" size={16} color={themeColor("#34594A", "#E6E6E6")} />
                           )}
                         </View>
-                      </View>
+                      </TouchableOpacity>
                     )}
 
                     {/* Message Content: Auto-Reply, Location Pin, Image, or Text Bubble */}
@@ -1436,45 +1492,45 @@ export default function ChatConversation() {
                         item.text!.includes("Puwede po kami mag-deliver") ||
                         item.text!.includes("Kaka-ani lang po"))) ? (
                       /* Auto-Reply Visual Card */
-                      <View className="w-72 rounded-2xl overflow-hidden bg-white border border-[#34594A]/40 shadow-xs">
+                      <View className="w-72 rounded-2xl overflow-hidden bg-white border border-[#34594A]/40 shadow-xs dark:bg-[#242424] dark:border-[#414141]/40 ">
                         {/* Auto-Reply Card Header */}
-                        <View className="px-3 py-1.5 bg-[#34594A]/10 border-b border-[#34594A]/20 flex-row items-center justify-between">
+                        <View className="px-3 py-1.5 bg-[#34594A]/10 border-b border-[#34594A]/20 flex-row items-center justify-between dark:bg-[#E6E6E6]/10 dark:border-[#414141]/20 ">
                           <View className="flex-row items-center gap-1.5">
-                            <View className="w-4 h-4 rounded-full bg-[#34594A] items-center justify-center">
-                              <Ionicons name="flash" size={9} color="#FFFFFF" />
+                            <View className="w-4 h-4 rounded-full bg-[#34594A] items-center justify-center dark:bg-[#E6E6E6] ">
+                              <Ionicons name="flash" size={9} color={themeColor("#FFFFFF", "#181818")} />
                             </View>
-                            <Text className="text-[10px] font-bold text-[#2E5E20] uppercase tracking-wider">
+                            <Text className="text-[10px] font-bold text-[#2E5E20] uppercase tracking-wider dark:text-[#E6E6E6] ">
                               Instant Auto-Reply
                             </Text>
                           </View>
-                          <View className="px-2 py-0.5 rounded-full bg-[#34594A]/20 border border-[#34594A]/30">
-                            <Text className="text-[8px] font-bold text-[#2E5E20] tracking-wide">
+                          <View className="px-2 py-0.5 rounded-full bg-[#34594A]/20 border border-[#34594A]/30 dark:bg-[#E6E6E6]/20 dark:border-[#414141]/30 ">
+                            <Text className="text-[8px] font-bold text-[#2E5E20] tracking-wide dark:text-[#E6E6E6] ">
                               FARM BOT
                             </Text>
                           </View>
                         </View>
 
                         {/* Content */}
-                        <View className="p-3 bg-white">
-                          <Text className="text-sm text-gray-800 leading-snug font-medium mb-2">
+                        <View className="p-3 bg-white dark:bg-[#242424] ">
+                          <Text className="text-sm text-gray-800 leading-snug font-medium mb-2 dark:text-[#E6E6E6] ">
                             {item.text}
                           </Text>
 
                           {/* Interactive Farm Location Action Buttons */}
                           {locationData ? (
-                            <View className="pt-2 border-t border-[#34594A]/20 flex-row gap-2">
+                            <View className="pt-2 border-t border-[#34594A]/20 flex-row gap-2 dark:border-[#414141]/20 ">
                               <TouchableOpacity
                                 onPress={() =>
                                   setPreviewMapLocation(locationData)
                                 }
-                                className="flex-1 py-1.5 bg-[#34594A]/10 rounded-lg items-center justify-center flex-row gap-1 border border-[#34594A]/30 active:bg-[#34594A]/20"
+                                className="flex-1 py-1.5 bg-[#34594A]/10 rounded-lg items-center justify-center flex-row gap-1 border border-[#34594A]/30 active:bg-[#34594A]/20 dark:bg-[#E6E6E6]/10 dark:border-[#414141]/30 dark:active:bg-[#E6E6E6]/20 "
                               >
                                 <Ionicons
                                   name="map-outline"
                                   size={12}
-                                  color="#34594A"
+                                  color={themeColor("#34594A", "#E6E6E6")}
                                 />
-                                <Text className="text-[11px] font-semibold text-[#2E5E20]">
+                                <Text className="text-[11px] font-semibold text-[#2E5E20] dark:text-[#E6E6E6] ">
                                   View Map
                                 </Text>
                               </TouchableOpacity>
@@ -1487,14 +1543,14 @@ export default function ChatConversation() {
                                     locationData.title,
                                   )
                                 }
-                                className="flex-1 py-1.5 bg-[#34594A] rounded-lg items-center justify-center flex-row gap-1 active:opacity-80"
+                                className="flex-1 py-1.5 bg-[#34594A] rounded-lg items-center justify-center flex-row gap-1 active:opacity-80 dark:bg-[#E6E6E6] "
                               >
                                 <Ionicons
                                   name="navigate-outline"
                                   size={12}
-                                  color="#FFFFFF"
+                                  color={themeColor("#FFFFFF", "#181818")}
                                 />
-                                <Text className="text-[11px] font-bold text-white">
+                                <Text className="text-[11px] font-bold text-white dark:text-[#181818] ">
                                   Directions
                                 </Text>
                               </TouchableOpacity>
@@ -1507,23 +1563,23 @@ export default function ChatConversation() {
                       <View
                         className={`w-64 rounded-2xl overflow-hidden shadow-xs border ${
                           isUser
-                            ? "bg-emerald-50 border-emerald-300"
-                            : "bg-white border-gray-200"
+                            ? "bg-emerald-50 border-emerald-300 dark:bg-[#181818] dark:border-[#414141] "
+                            : "bg-white border-gray-200 dark:bg-[#242424] dark:border-[#414141] "
                         }`}
                       >
                         {/* Map Header Preview Graphic */}
                         <TouchableOpacity
                           activeOpacity={0.9}
                           onPress={() => setPreviewMapLocation(locationData)}
-                          className="h-24 w-full bg-emerald-100/70 relative items-center justify-center overflow-hidden"
+                          className="h-24 w-full bg-emerald-100/70 relative items-center justify-center overflow-hidden dark:bg-[#303030]/70 "
                         >
                           {/* Map Grid Texture */}
-                          <View className="absolute inset-0 bg-[#E8F5E9] items-center justify-center">
-                            <View className="absolute w-full h-[1.5px] bg-emerald-300/60 top-6" />
+                          <View className="absolute inset-0 bg-[#E8F5E9] items-center justify-center dark:bg-[#181818] ">
+                            <View className="absolute w-full h-[1.5px] bg-emerald-300/60 top-6 dark:bg-[#E6E6E6]/60 " />
                             <View className="absolute w-full h-[2px] bg-emerald-400/60 top-12" />
                             <View className="absolute h-full w-[2px] bg-emerald-400/60 left-16" />
-                            <View className="absolute h-full w-[1.5px] bg-emerald-300/60 right-14" />
-                            <View className="w-12 h-12 rounded-full bg-emerald-200/40 border border-emerald-300/50" />
+                            <View className="absolute h-full w-[1.5px] bg-emerald-300/60 right-14 dark:bg-[#E6E6E6]/60 " />
+                            <View className="w-12 h-12 rounded-full bg-emerald-200/40 border border-emerald-300/50 dark:border-[#414141]/50 " />
                           </View>
 
                           {/* Center Pin Icon */}
@@ -1542,24 +1598,24 @@ export default function ChatConversation() {
                             <Ionicons
                               name="navigate"
                               size={9}
-                              color="#FFFFFF"
+                              color={themeColor("#FFFFFF", "#E6E6E6")}
                             />
-                            <Text className="text-[9px] font-bold text-white ml-1">
+                            <Text className="text-[9px] font-bold text-white ml-1 dark:text-[#E6E6E6] ">
                               FARM PIN
                             </Text>
                           </View>
                         </TouchableOpacity>
 
                         {/* Location Details */}
-                        <View className="p-3 bg-white">
+                        <View className="p-3 bg-white dark:bg-[#242424] ">
                           <View className="flex-row items-center gap-1.5 mb-1">
                             <Ionicons
                               name="location-sharp"
                               size={14}
-                              color="#15803D"
+                              color={themeColor("#15803D", "#E6E6E6")}
                             />
                             <Text
-                              className="text-sm font-bold text-gray-900 flex-1"
+                              className="text-sm font-bold text-gray-900 flex-1 dark:text-[#E6E6E6] "
                               numberOfLines={1}
                             >
                               {locationData.title}
@@ -1568,32 +1624,32 @@ export default function ChatConversation() {
 
                           {locationData.address ? (
                             <Text
-                              className="text-xs text-gray-500 leading-4 mb-1.5"
+                              className="text-xs text-gray-500 leading-4 mb-1.5 dark:text-[#ADADAD] "
                               numberOfLines={2}
                             >
                               {locationData.address}
                             </Text>
                           ) : null}
 
-                          <Text className="text-[10px] font-mono text-gray-400 mb-2.5">
+                          <Text className="text-[10px] font-mono text-gray-400 mb-2.5 dark:text-[#ADADAD] ">
                             {locationData.latitude.toFixed(4)}° N,{" "}
                             {locationData.longitude.toFixed(4)}° E
                           </Text>
 
                           {/* Action Buttons */}
-                          <View className="flex-row gap-2 pt-2 border-t border-gray-100">
+                          <View className="flex-row gap-2 pt-2 border-t border-gray-100 dark:border-[#414141] ">
                             <TouchableOpacity
                               onPress={() =>
                                 setPreviewMapLocation(locationData)
                               }
-                              className="flex-1 py-1.5 bg-gray-100 rounded-lg items-center justify-center flex-row gap-1 active:bg-gray-200"
+                              className="flex-1 py-1.5 bg-gray-100 rounded-lg items-center justify-center flex-row gap-1 active:bg-gray-200 dark:bg-[#181818] dark:active:bg-[#181818] "
                             >
                               <Ionicons
                                 name="map-outline"
                                 size={12}
-                                color="#34594A"
+                                color={themeColor("#34594A", "#E6E6E6")}
                               />
-                              <Text className="text-[11px] font-semibold text-gray-700">
+                              <Text className="text-[11px] font-semibold text-gray-700 dark:text-[#E6E6E6] ">
                                 View Map
                               </Text>
                             </TouchableOpacity>
@@ -1606,14 +1662,14 @@ export default function ChatConversation() {
                                   locationData!.title,
                                 )
                               }
-                              className="flex-1 py-1.5 bg-[#34594A] rounded-lg items-center justify-center flex-row gap-1 active:opacity-80"
+                              className="flex-1 py-1.5 bg-[#34594A] rounded-lg items-center justify-center flex-row gap-1 active:opacity-80 dark:bg-[#E6E6E6] "
                             >
                               <Ionicons
                                 name="navigate-outline"
                                 size={12}
-                                color="#FFFFFF"
+                                color={themeColor("#FFFFFF", "#181818")}
                               />
-                              <Text className="text-[11px] font-bold text-white">
+                              <Text className="text-[11px] font-bold text-white dark:text-[#181818] ">
                                 Directions
                               </Text>
                             </TouchableOpacity>
@@ -1624,7 +1680,7 @@ export default function ChatConversation() {
                       <TouchableOpacity
                         activeOpacity={0.9}
                         onPress={() => setFullPreviewImage(item.imageUrl || null)}
-                        className="w-56 h-44 rounded-2xl bg-gray-100 mb-1 items-center justify-center overflow-hidden border border-gray-200 shadow-2xs"
+                        className="w-56 h-44 rounded-2xl bg-gray-100 mb-1 items-center justify-center overflow-hidden border border-gray-200 shadow-2xs dark:bg-[#181818] dark:border-[#414141] "
                       >
                         <Image
                           source={{ uri: item.imageUrl }}
@@ -1640,35 +1696,35 @@ export default function ChatConversation() {
                       <View
                         className={`px-4 py-3 rounded-2xl flex-row items-center gap-3 max-w-[82%] shadow-2xs ${
                           isUser
-                            ? "bg-[#34594A] rounded-br-xs"
-                            : "bg-[#F3F4F6] rounded-bl-xs border border-gray-200"
+                            ? "bg-[#34594A] rounded-br-xs dark:bg-[#E6E6E6] "
+                            : "bg-[#F3F4F6] rounded-bl-xs border border-gray-200 dark:bg-[#181818] dark:border-[#414141] "
                         }`}
                       >
                         <View
                           className={`w-9 h-9 rounded-full items-center justify-center ${
-                            isUser ? "bg-white/25" : "bg-[#34594A]"
+                            isUser ? "bg-white/25 dark:bg-[#242424]/25 " : "bg-[#34594A] dark:bg-[#E6E6E6] "
                           }`}
                         >
                           <Ionicons
                             name="play"
                             size={18}
-                            color="#FFFFFF"
+                            color={themeColor("#FFFFFF", "#181818")}
                           />
                         </View>
                         <View className="flex-1">
                           <View className="flex-row items-center gap-1 mb-1">
-                            <View className={`w-1 h-3 rounded-full ${isUser ? "bg-white" : "bg-[#34594A]"}`} />
-                            <View className={`w-1 h-5 rounded-full ${isUser ? "bg-white/80" : "bg-[#34594A]/80"}`} />
-                            <View className={`w-1 h-2 rounded-full ${isUser ? "bg-white/60" : "bg-[#34594A]/60"}`} />
-                            <View className={`w-1 h-6 rounded-full ${isUser ? "bg-white" : "bg-[#34594A]"}`} />
-                            <View className={`w-1 h-4 rounded-full ${isUser ? "bg-white/80" : "bg-[#34594A]/80"}`} />
-                            <View className={`w-1 h-3 rounded-full ${isUser ? "bg-white/60" : "bg-[#34594A]/60"}`} />
-                            <View className={`w-1 h-5 rounded-full ${isUser ? "bg-white" : "bg-[#34594A]"}`} />
-                            <View className={`w-1 h-2 rounded-full ${isUser ? "bg-white/60" : "bg-[#34594A]/60"}`} />
+                            <View className={`w-1 h-3 rounded-full ${isUser ? "bg-white dark:bg-[#242424] " : "bg-[#34594A] dark:bg-[#E6E6E6] "}`} />
+                            <View className={`w-1 h-5 rounded-full ${isUser ? "bg-white/80 dark:bg-[#242424]/80 " : "bg-[#34594A]/80 dark:bg-[#E6E6E6]/80 "}`} />
+                            <View className={`w-1 h-2 rounded-full ${isUser ? "bg-white/60 dark:bg-[#242424]/60 " : "bg-[#34594A]/60 dark:bg-[#E6E6E6]/60 "}`} />
+                            <View className={`w-1 h-6 rounded-full ${isUser ? "bg-white dark:bg-[#242424] " : "bg-[#34594A] dark:bg-[#E6E6E6] "}`} />
+                            <View className={`w-1 h-4 rounded-full ${isUser ? "bg-white/80 dark:bg-[#242424]/80 " : "bg-[#34594A]/80 dark:bg-[#E6E6E6]/80 "}`} />
+                            <View className={`w-1 h-3 rounded-full ${isUser ? "bg-white/60 dark:bg-[#242424]/60 " : "bg-[#34594A]/60 dark:bg-[#E6E6E6]/60 "}`} />
+                            <View className={`w-1 h-5 rounded-full ${isUser ? "bg-white dark:bg-[#242424] " : "bg-[#34594A] dark:bg-[#E6E6E6] "}`} />
+                            <View className={`w-1 h-2 rounded-full ${isUser ? "bg-white/60 dark:bg-[#242424]/60 " : "bg-[#34594A]/60 dark:bg-[#E6E6E6]/60 "}`} />
                           </View>
                           <Text
                             className={`text-[11px] font-bold ${
-                              isUser ? "text-white" : "text-gray-800"
+                              isUser ? "text-white dark:text-[#181818] " : "text-gray-800 dark:text-[#E6E6E6] "
                             }`}
                           >
                             {item.text || "Voice Note"}
@@ -1679,13 +1735,13 @@ export default function ChatConversation() {
                       <View
                         className={`px-4 py-2.5 max-w-[76%] ${
                           isUser
-                            ? "bg-[#34594A] rounded-2xl rounded-br-xs"
-                            : "bg-[#F0F0F0] rounded-2xl rounded-bl-xs"
+                            ? "bg-[#34594A] rounded-2xl rounded-br-xs dark:bg-[#E6E6E6] "
+                            : "bg-[#F0F0F0] rounded-2xl rounded-bl-xs dark:bg-[#181818] "
                         }`}
                       >
                         <Text
                           className={`text-sm leading-snug ${
-                            isUser ? "text-white font-medium" : "text-gray-900"
+                            isUser ? "text-white font-medium dark:text-[#181818] " : "text-gray-900 dark:text-[#E6E6E6] "
                           }`}
                         >
                           {item.text}
@@ -1700,7 +1756,7 @@ export default function ChatConversation() {
                       isUser ? "justify-end" : "justify-start ml-10"
                     }`}
                   >
-                    <Text className="text-[10px] text-gray-400 font-medium">
+                    <Text className="text-[10px] text-gray-400 font-medium dark:text-[#ADADAD] ">
                       {item.time || "Now"}
                     </Text>
                     {isUser && (
@@ -1710,9 +1766,9 @@ export default function ChatConversation() {
                             <Ionicons
                               name="checkmark-done"
                               size={13}
-                              color="#34594A"
+                              color={themeColor("#34594A", "#E6E6E6")}
                             />
-                            <Text className="text-[10px] text-[#34594A] font-bold ml-0.5">
+                            <Text className="text-[10px] text-[#34594A] font-bold ml-0.5 dark:text-[#E6E6E6] ">
                               Seen
                             </Text>
                           </>
@@ -1721,9 +1777,9 @@ export default function ChatConversation() {
                             <Ionicons
                               name="checkmark-done"
                               size={13}
-                              color="#9CA3AF"
+                              color={themeColor("#9CA3AF", "#ADADAD")}
                             />
-                            <Text className="text-[10px] text-gray-400 font-medium ml-0.5">
+                            <Text className="text-[10px] text-gray-400 font-medium ml-0.5 dark:text-[#ADADAD] ">
                               Delivered
                             </Text>
                           </>
@@ -1732,9 +1788,9 @@ export default function ChatConversation() {
                             <Ionicons
                               name="checkmark"
                               size={12}
-                              color="#9CA3AF"
+                              color={themeColor("#9CA3AF", "#ADADAD")}
                             />
-                            <Text className="text-[10px] text-gray-400 font-medium ml-0.5">
+                            <Text className="text-[10px] text-gray-400 font-medium ml-0.5 dark:text-[#ADADAD] ">
                               Sent
                             </Text>
                           </>
@@ -1749,23 +1805,23 @@ export default function ChatConversation() {
           {/* Farmer is Typing Bubble */}
           {isFarmerTyping && (
             <View className="flex-row items-end mb-3 mt-1">
-              <View className="w-8 h-8 rounded-full bg-[#34594A]/15 items-center justify-center mr-2 border border-[#34594A]/30 overflow-hidden">
+              <View className="w-8 h-8 rounded-full bg-[#34594A]/15 items-center justify-center mr-2 border border-[#34594A]/30 overflow-hidden dark:bg-[#E6E6E6]/15 dark:border-[#414141]/30 ">
                 {otherUserAvatar ? (
                   <Image
                     source={{ uri: otherUserAvatar }}
                     className="w-8 h-8 rounded-full"
                   />
                 ) : (
-                  <Ionicons name="person" size={16} color="#34594A" />
+                  <Ionicons name="person" size={16} color={themeColor("#34594A", "#E6E6E6")} />
                 )}
               </View>
-              <View className="px-3.5 py-2.5 bg-[#34594A]/10 rounded-2xl rounded-bl-xs flex-row items-center border border-[#34594A]/25">
+              <View className="px-3.5 py-2.5 bg-[#34594A]/10 rounded-2xl rounded-bl-xs flex-row items-center border border-[#34594A]/25 dark:bg-[#E6E6E6]/10 dark:border-[#414141]/25 ">
                 <View className="flex-row items-center gap-1 mr-2">
-                  <View className="w-1.5 h-1.5 rounded-full bg-[#34594A]" />
-                  <View className="w-1.5 h-1.5 rounded-full bg-[#34594A]/80" />
-                  <View className="w-1.5 h-1.5 rounded-full bg-[#34594A]/60" />
+                  <View className="w-1.5 h-1.5 rounded-full bg-[#34594A] dark:bg-[#E6E6E6] " />
+                  <View className="w-1.5 h-1.5 rounded-full bg-[#34594A]/80 dark:bg-[#E6E6E6]/80 " />
+                  <View className="w-1.5 h-1.5 rounded-full bg-[#34594A]/60 dark:bg-[#E6E6E6]/60 " />
                 </View>
-                <Text className="text-xs text-[#2E5E20] font-medium">
+                <Text className="text-xs text-[#2E5E20] font-medium dark:text-[#E6E6E6] ">
                   {otherUserName} is typing...
                 </Text>
               </View>
@@ -1776,7 +1832,7 @@ export default function ChatConversation() {
         {/* Attachment Menu */}
         {showAttachmentMenu && (
           <View
-            className="absolute bottom-16 left-4 z-50 bg-white rounded-2xl p-2 shadow-2xl elevation-10 w-52 border border-gray-100"
+            className="absolute bottom-16 left-4 z-50 bg-white rounded-2xl p-2 shadow-2xl elevation-10 w-52 border border-gray-100 dark:bg-[#242424] dark:border-[#414141] "
             style={{
               position: "absolute",
               bottom: 64,
@@ -1787,23 +1843,23 @@ export default function ChatConversation() {
             {/* Camera Option */}
             <TouchableOpacity
               onPress={handlePickFromCamera}
-              className="flex-row items-center px-2.5 py-2 rounded-xl active:bg-gray-100 gap-2.5"
+              className="flex-row items-center px-2.5 py-2 rounded-xl active:bg-gray-100 gap-2.5 dark:active:bg-[#181818] "
             >
               <View className="w-7 h-7 rounded-full bg-[#3B82F6] items-center justify-center">
-                <Ionicons name="camera" size={15} color="#FFFFFF" />
+                <Ionicons name="camera" size={15} color={themeColor("#FFFFFF", "#E6E6E6")} />
               </View>
-              <Text className="text-sm font-semibold text-gray-800">Camera</Text>
+              <Text className="text-sm font-semibold text-gray-800 dark:text-[#E6E6E6] ">Camera</Text>
             </TouchableOpacity>
 
             {/* Gallery Option */}
             <TouchableOpacity
               onPress={handlePickFromGallery}
-              className="flex-row items-center px-2.5 py-2 rounded-xl active:bg-gray-100 gap-2.5"
+              className="flex-row items-center px-2.5 py-2 rounded-xl active:bg-gray-100 gap-2.5 dark:active:bg-[#181818] "
             >
               <View className="w-7 h-7 rounded-full bg-[#8B5CF6] items-center justify-center">
-                <Ionicons name="images" size={15} color="#FFFFFF" />
+                <Ionicons name="images" size={15} color={themeColor("#FFFFFF", "#E6E6E6")} />
               </View>
-              <Text className="text-sm font-semibold text-gray-800">Gallery</Text>
+              <Text className="text-sm font-semibold text-gray-800 dark:text-[#E6E6E6] ">Gallery</Text>
             </TouchableOpacity>
 
             {/* Location Pin Option */}
@@ -1812,12 +1868,12 @@ export default function ChatConversation() {
                 setShowAttachmentMenu(false);
                 setIsLocationModalVisible(true);
               }}
-              className="flex-row items-center px-2.5 py-2 rounded-xl active:bg-gray-100 gap-2.5"
+              className="flex-row items-center px-2.5 py-2 rounded-xl active:bg-gray-100 gap-2.5 dark:active:bg-[#181818] "
             >
               <View className="w-7 h-7 rounded-full bg-[#EF4444] items-center justify-center">
-                <Ionicons name="location-sharp" size={15} color="#FFFFFF" />
+                <Ionicons name="location-sharp" size={15} color={themeColor("#FFFFFF", "#E6E6E6")} />
               </View>
-              <Text className="text-sm font-semibold text-gray-800">
+              <Text className="text-sm font-semibold text-gray-800 dark:text-[#E6E6E6] ">
                 Location Pin
               </Text>
             </TouchableOpacity>
@@ -1825,40 +1881,40 @@ export default function ChatConversation() {
             {/* Voice Message Option */}
             <TouchableOpacity
               onPress={handleStartVoiceRecording}
-              className="flex-row items-center px-2.5 py-2 rounded-xl active:bg-gray-100 gap-2.5"
+              className="flex-row items-center px-2.5 py-2 rounded-xl active:bg-gray-100 gap-2.5 dark:active:bg-[#181818] "
             >
-              <View className="w-7 h-7 rounded-full bg-[#34594A] items-center justify-center">
-                <Ionicons name="mic" size={15} color="#FFFFFF" />
+              <View className="w-7 h-7 rounded-full bg-[#34594A] items-center justify-center dark:bg-[#E6E6E6] ">
+                <Ionicons name="mic" size={15} color={themeColor("#FFFFFF", "#181818")} />
               </View>
-              <Text className="text-sm font-semibold text-gray-800">Voice Note</Text>
+              <Text className="text-sm font-semibold text-gray-800 dark:text-[#E6E6E6] ">Voice Note</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {/* Message Request Action Banner */}
         {isMessageRequest && (
-          <View className="bg-amber-50/95 border-t border-b border-amber-200/90 px-4 py-3">
+          <View className="bg-amber-50/95 border-t border-b border-amber-200/90 px-4 py-3 dark:bg-[#181818]/95 ">
             <Text className="text-xs font-semibold text-amber-900 text-center mb-2.5">
               {otherUserName} wants to send you a message. They won't know you've seen it until you accept.
             </Text>
             <View className="flex-row gap-2.5 justify-center">
               <TouchableOpacity
                 onPress={handleDeleteRequest}
-                className="px-4 py-2 rounded-xl bg-gray-200 active:bg-gray-300"
+                className="px-4 py-2 rounded-xl bg-gray-200 active:bg-gray-300 dark:bg-[#181818] dark:active:bg-[#303030] "
               >
-                <Text className="text-xs font-bold text-gray-700">Delete</Text>
+                <Text className="text-xs font-bold text-gray-700 dark:text-[#E6E6E6] ">Delete</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleSpamRequest}
-                className="px-4 py-2 rounded-xl bg-red-100 active:bg-red-200"
+                className="px-4 py-2 rounded-xl bg-red-100 active:bg-red-200 dark:bg-[#181818] "
               >
                 <Text className="text-xs font-bold text-red-700">Block / Spam</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleAcceptRequest}
-                className="px-5 py-2 rounded-xl bg-[#34594A] active:opacity-85"
+                className="px-5 py-2 rounded-xl bg-[#34594A] active:opacity-85 dark:bg-[#E6E6E6] "
               >
-                <Text className="text-xs font-bold text-white">Accept</Text>
+                <Text className="text-xs font-bold text-white dark:text-[#181818] ">Accept</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1866,17 +1922,17 @@ export default function ChatConversation() {
 
         {/* Bottom Input Bar or Voice Recording Bar */}
         {isRecordingVoice ? (
-          <View className="flex-row items-center px-4 py-3 bg-red-50/90 border-t border-red-100">
+          <View className="flex-row items-center px-4 py-3 bg-red-50/90 border-t border-red-100 dark:bg-[#181818]/90 dark:border-[#414141] ">
             <TouchableOpacity
               onPress={handleCancelVoiceRecording}
-              className="w-9 h-9 rounded-full bg-red-100 items-center justify-center mr-3 active:bg-red-200"
+              className="w-9 h-9 rounded-full bg-red-100 items-center justify-center mr-3 active:bg-red-200 dark:bg-[#181818] "
               accessibilityRole="button"
               accessibilityLabel="Cancel voice recording"
             >
               <Ionicons name="trash-outline" size={20} color="#DC2626" />
             </TouchableOpacity>
 
-            <View className="flex-1 flex-row items-center justify-between bg-white rounded-full px-4 py-2 mr-3 border border-red-200">
+            <View className="flex-1 flex-row items-center justify-between bg-white rounded-full px-4 py-2 mr-3 border border-red-200 dark:bg-[#181818] ">
               <View className="flex-row items-center gap-2">
                 <View className="w-2.5 h-2.5 rounded-full bg-red-500" />
                 <Text className="text-xs font-mono font-bold text-red-600">
@@ -1893,19 +1949,19 @@ export default function ChatConversation() {
 
             <TouchableOpacity
               onPress={handleSendVoiceRecording}
-              className="w-9 h-9 rounded-full bg-[#34594A] items-center justify-center shadow-xs active:opacity-80"
+              className="w-9 h-9 rounded-full bg-[#34594A] items-center justify-center shadow-xs active:opacity-80 dark:bg-[#E6E6E6] "
               accessibilityRole="button"
               accessibilityLabel="Send voice message"
             >
-              <Ionicons name="send" size={18} color="#FFFFFF" />
+              <Ionicons name="send" size={18} color={themeColor("#FFFFFF", "#181818")} />
             </TouchableOpacity>
           </View>
         ) : (
-          <View className="flex-row items-center px-4 py-3 bg-white border-t border-gray-100">
+          <View className="flex-row items-center px-4 py-3 bg-white border-t border-gray-100 dark:bg-[#242424] dark:border-[#414141] ">
             <TouchableOpacity
               onPress={() => setShowAttachmentMenu((prev) => !prev)}
               className={`w-9 h-9 rounded-full items-center justify-center mr-3 active:opacity-80 shadow-2xs ${
-                showAttachmentMenu ? "bg-gray-700" : "bg-[#34594A]"
+                showAttachmentMenu ? "bg-gray-700" : "bg-[#34594A] dark:bg-[#E6E6E6] "
               }`}
               activeOpacity={0.8}
               accessibilityRole="button"
@@ -1914,18 +1970,18 @@ export default function ChatConversation() {
               <Ionicons
                 name={showAttachmentMenu ? "close" : "add"}
                 size={24}
-                color="#FFFFFF"
+                color={themeColor("#FFFFFF", "#181818")}
               />
             </TouchableOpacity>
 
             {/* Text Input Pill */}
-            <View className="flex-1 bg-gray-100 rounded-full px-4 py-2 mr-3 flex-row items-center border border-gray-200">
+            <View className="flex-1 bg-gray-100 rounded-full px-4 py-2 mr-3 flex-row items-center border border-gray-200 dark:bg-[#181818] dark:border-[#414141] ">
               <TextInput
                 value={inputText}
                 onChangeText={handleInputChange}
                 placeholder="Aa"
-                placeholderTextColor="#9CA3AF"
-                className="flex-1 text-base text-gray-800 p-0 font-medium"
+                placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+                className="flex-1 text-base text-gray-800 p-0 font-medium dark:text-[#E6E6E6] "
                 onSubmitEditing={handleSend}
                 returnKeyType="send"
               />
@@ -1940,9 +1996,9 @@ export default function ChatConversation() {
               accessibilityLabel={inputText.trim() ? "Send message" : "Send flower reaction"}
             >
               {isSending ? (
-                <ActivityIndicator size="small" color="#34594A" />
+                <ActivityIndicator size="small" color={themeColor("#34594A", "#E6E6E6")} />
               ) : inputText.trim() ? (
-                <Ionicons name="send" size={22} color="#34594A" />
+                <Ionicons name="send" size={22} color={themeColor("#34594A", "#E6E6E6")} />
               ) : (
                 <MaterialCommunityIcons
                   name="flower-tulip"
@@ -1982,71 +2038,71 @@ export default function ChatConversation() {
             style={{
               transform: [{ translateY: locationModalTranslateY }],
             }}
-            className="bg-white rounded-t-3xl p-5 pb-8 shadow-2xl max-h-[85%]"
+            className="bg-white rounded-t-3xl p-5 pb-8 shadow-2xl max-h-[85%] dark:bg-[#242424] "
           >
             {/* Drag Handle Area (Swipe down to close) */}
             <View
               {...locationModalPanResponder.panHandlers}
               className="w-full py-2.5 items-center -mt-3 mb-1"
             >
-              <View className="w-12 h-1.5 bg-gray-300 rounded-full self-center" />
+              <View className="w-12 h-1.5 bg-gray-300 rounded-full self-center dark:bg-[#303030] " />
             </View>
 
             {/* Header (No X button, swipe down to dismiss) */}
             <View className="flex-row items-center mb-2">
-              <View className="w-8 h-8 rounded-full bg-[#34594A] items-center justify-center mr-2.5">
-                <Ionicons name="location" size={19} color="#ffffff" />
+              <View className="w-8 h-8 rounded-full bg-[#34594A] items-center justify-center mr-2.5 dark:bg-[#E6E6E6] ">
+                <Ionicons name="location" size={19} color={themeColor("#ffffff", "#181818")} />
               </View>
-              <Text className="text-lg font-bold text-gray-900">
+              <Text className="text-lg font-bold text-gray-900 dark:text-[#E6E6E6] ">
                 Share Farm Location Pin
               </Text>
             </View>
 
-            <Text className="text-sm text-gray-500 mb-4">
+            <Text className="text-sm text-gray-500 mb-4 dark:text-[#ADADAD] ">
               Send your farm gate, pickup spot, or meetup coordinates so the
               other party can easily navigate to you.
             </Text>
 
             {/* Place Name Input */}
-            <Text className="text-sm font-bold text-gray-700 mb-1">
+            <Text className="text-sm font-bold text-gray-700 mb-1 dark:text-[#E6E6E6] ">
               Location / Farm Name
             </Text>
             <TextInput
               value={locationTitle}
               onChangeText={setLocationTitle}
               placeholder="e.g. Green Valley Farm - Main Gate"
-              placeholderTextColor="#9CA3AF"
-              className="bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 mb-3"
+              placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+              className="bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 mb-3 dark:bg-[#242424] dark:border-[#414141] dark:text-[#E6E6E6] "
             />
 
             {/* Address Input */}
-            <Text className="text-sm font-bold text-gray-700 mb-1">
+            <Text className="text-sm font-bold text-gray-700 mb-1 dark:text-[#E6E6E6] ">
               Address / Landmark Instructions
             </Text>
             <TextInput
               value={locationAddress}
               onChangeText={setLocationAddress}
               placeholder="e.g. Near Pala-o Crossing, Iligan City"
-              placeholderTextColor="#9CA3AF"
-              className="bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 mb-3"
+              placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+              className="bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 mb-3 dark:bg-[#242424] dark:border-[#414141] dark:text-[#E6E6E6] "
             />
 
             {/* GPS Coordinates Display */}
-            <View className="flex-row items-center justify-between bg-gray-100 border border-gray-200 p-3 rounded-xl mb-4">
+            <View className="flex-row items-center justify-between bg-gray-100 border border-gray-200 p-3 rounded-xl mb-4 dark:bg-[#181818] dark:border-[#414141] ">
               <View className="flex-row items-center gap-2">
-                <Ionicons name="navigate-circle" size={25} color="#34594A" />
+                <Ionicons name="navigate-circle" size={25} color={themeColor("#34594A", "#E6E6E6")} />
                 <View>
-                  <Text className="text-sm font-bold text-[#000000]">
+                  <Text className="text-sm font-bold text-[#000000] dark:text-[#E6E6E6] ">
                     GPS Coordinates
                   </Text>
-                  <Text className="text-sm font-mono text-[#34594A]">
+                  <Text className="text-sm font-mono text-[#34594A] dark:text-[#E6E6E6] ">
                     {locationCoords.latitude.toFixed(4)}° N,{" "}
                     {locationCoords.longitude.toFixed(4)}° E
                   </Text>
                 </View>
               </View>
-              <View className="bg-[#34594A] px-3 py-1 rounded-md">
-                <Text className="text-sm font-bold text-white">READY</Text>
+              <View className="bg-[#34594A] px-3 py-1 rounded-md dark:bg-[#E6E6E6] ">
+                <Text className="text-sm font-bold text-white dark:text-[#181818] ">READY</Text>
               </View>
             </View>
 
@@ -2057,9 +2113,9 @@ export default function ChatConversation() {
                   setIsLocationModalVisible(false);
                   locationModalTranslateY.setValue(0);
                 }}
-                className="flex-1 py-3 rounded-xl bg-gray-100 items-center justify-center active:bg-gray-200"
+                className="flex-1 py-3 rounded-xl bg-gray-100 items-center justify-center active:bg-gray-200 dark:bg-[#181818] dark:active:bg-[#181818] "
               >
-                <Text className="text-sm font-semibold text-gray-700">
+                <Text className="text-sm font-semibold text-gray-700 dark:text-[#E6E6E6] ">
                   Cancel
                 </Text>
               </TouchableOpacity>
@@ -2075,9 +2131,9 @@ export default function ChatConversation() {
                   })
                 }
                 disabled={isSending}
-                className="flex-1 py-3 rounded-xl bg-[#34594A] items-center justify-center flex-row gap-2 active:opacity-85"
+                className="flex-1 py-3 rounded-xl bg-[#34594A] items-center justify-center flex-row gap-2 active:opacity-85 dark:bg-[#E6E6E6] "
               >
-                <Text className="text-sm font-bold text-white">
+                <Text className="text-sm font-bold text-white dark:text-[#181818] ">
                   Send Location Pin
                 </Text>
               </TouchableOpacity>
@@ -2093,18 +2149,18 @@ export default function ChatConversation() {
         animationType="slide"
         onRequestClose={() => setPreviewMapLocation(null)}
       >
-        <SafeAreaView className="flex-1 bg-white">
-          <View className="px-4 py-3 bg-white border-b border-gray-100 flex-row items-center justify-between">
+        <SafeAreaView className="flex-1 bg-white dark:bg-[#181818] ">
+          <View className="px-4 py-3 bg-white border-b border-gray-100 flex-row items-center justify-between dark:bg-[#242424] dark:border-[#414141] ">
             <TouchableOpacity
               onPress={() => setPreviewMapLocation(null)}
               className="p-1 -ml-1 flex-row items-center gap-1"
             >
-              <Ionicons name="chevron-back" size={24} color="#000000" />
-              <Text className="text-sm font-medium text-gray-700">Back</Text>
+              <Ionicons name="chevron-back" size={24} color={themeColor("#000000", "#E6E6E6")} />
+              <Text className="text-sm font-medium text-gray-700 dark:text-[#E6E6E6] ">Back</Text>
             </TouchableOpacity>
 
             <Text
-              className="text-base font-bold text-gray-900 max-w-[200px]"
+              className="text-base font-bold text-gray-900 max-w-[200px] dark:text-[#E6E6E6] "
               numberOfLines={1}
             >
               {previewMapLocation?.title || "Location Map"}
@@ -2122,7 +2178,7 @@ export default function ChatConversation() {
               }}
               className="p-1"
             >
-              <Ionicons name="open-outline" size={22} color="#15803D" />
+              <Ionicons name="open-outline" size={22} color={themeColor("#15803D", "#E6E6E6")} />
             </TouchableOpacity>
           </View>
 
@@ -2135,24 +2191,24 @@ export default function ChatConversation() {
               />
 
               {/* Floating Info Card on bottom of map */}
-              <View className="absolute bottom-6 left-4 right-4 bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-gray-200">
+              <View className="absolute bottom-6 left-4 right-4 bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-gray-200 dark:bg-[#242424]/95 dark:border-[#414141] ">
                 <View className="flex-row items-start justify-between mb-1">
                   <View className="flex-1 pr-2">
-                    <Text className="text-base font-bold text-gray-900">
+                    <Text className="text-base font-bold text-gray-900 dark:text-[#E6E6E6] ">
                       {previewMapLocation.title}
                     </Text>
                     {previewMapLocation.address && (
-                      <Text className="text-xs text-gray-500 mt-0.5">
+                      <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
                         {previewMapLocation.address}
                       </Text>
                     )}
                   </View>
-                  <View className="w-8 h-8 rounded-full bg-red-100 items-center justify-center">
+                  <View className="w-8 h-8 rounded-full bg-red-100 items-center justify-center dark:bg-[#181818] ">
                     <Ionicons name="location" size={18} color="#EF4444" />
                   </View>
                 </View>
 
-                <Text className="text-[10px] font-mono text-gray-400 mb-3">
+                <Text className="text-[10px] font-mono text-gray-400 mb-3 dark:text-[#ADADAD] ">
                   {previewMapLocation.latitude.toFixed(4)}° N,{" "}
                   {previewMapLocation.longitude.toFixed(4)}° E
                 </Text>
@@ -2165,10 +2221,10 @@ export default function ChatConversation() {
                       previewMapLocation.title,
                     )
                   }
-                  className="w-full bg-[#34594A] py-2.5 rounded-xl flex-row items-center justify-center gap-2 active:opacity-85"
+                  className="w-full bg-[#34594A] py-2.5 rounded-xl flex-row items-center justify-center gap-2 active:opacity-85 dark:bg-[#E6E6E6] "
                 >
-                  <Ionicons name="navigate" size={16} color="#FFFFFF" />
-                  <Text className="text-white font-bold text-sm">
+                  <Ionicons name="navigate" size={16} color={themeColor("#FFFFFF", "#181818")} />
+                  <Text className="text-white font-bold text-sm dark:text-[#181818] ">
                     Navigate in Google Maps
                   </Text>
                 </TouchableOpacity>
@@ -2189,10 +2245,10 @@ export default function ChatConversation() {
           <SafeAreaView className="absolute top-4 right-4 z-50">
             <TouchableOpacity
               onPress={() => setFullPreviewImage(null)}
-              className="w-10 h-10 rounded-full bg-white/20 items-center justify-center active:bg-white/30"
+              className="w-10 h-10 rounded-full bg-white/20 items-center justify-center active:bg-white/30 dark:bg-[#242424]/20 dark:active:bg-[#242424]/30 "
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="close" size={24} color="#FFFFFF" />
+              <Ionicons name="close" size={24} color={themeColor("#FFFFFF", "#E6E6E6")} />
             </TouchableOpacity>
           </SafeAreaView>
           {fullPreviewImage ? (
@@ -2220,13 +2276,13 @@ export default function ChatConversation() {
             {/* Top Bar */}
             <View className="w-full flex-row items-center justify-between">
               <View className="flex-row items-center gap-2">
-                <Ionicons name="shield-checkmark" size={16} color="#34594A" />
-                <Text className="text-xs font-semibold text-emerald-200">
+                <Ionicons name="shield-checkmark" size={16} color={themeColor("#34594A", "#E6E6E6")} />
+                <Text className="text-xs font-semibold text-emerald-200 dark:text-[#E6E6E6] ">
                   End-to-End Encrypted
                 </Text>
               </View>
-              <View className="px-2.5 py-1 rounded-full bg-white/10">
-                <Text className="text-xs font-mono text-white/80">
+              <View className="px-2.5 py-1 rounded-full bg-white/10 dark:bg-[#242424]/10 ">
+                <Text className="text-xs font-mono text-white/80 dark:text-[#E6E6E6]/80 ">
                   {voiceCallStatus === "connected"
                     ? `${Math.floor(callSeconds / 60)}:${(callSeconds % 60).toString().padStart(2, "0")}`
                     : voiceCallStatus === "ringing"
@@ -2239,8 +2295,8 @@ export default function ChatConversation() {
             {/* Middle Section: Avatar & Farmer Name */}
             <View className="items-center">
               <View className="relative mb-6">
-                <View className="w-32 h-32 rounded-full bg-white/10 items-center justify-center p-1 border-2 border-emerald-400/40">
-                  <View className="w-full h-full rounded-full overflow-hidden bg-emerald-800 items-center justify-center">
+                <View className="w-32 h-32 rounded-full bg-white/10 items-center justify-center p-1 border-2 border-emerald-400/40 dark:bg-[#242424]/10 ">
+                  <View className="w-full h-full rounded-full overflow-hidden bg-emerald-800 items-center justify-center dark:bg-[#E6E6E6] ">
                     {otherUserAvatar ? (
                       <Image
                         source={{ uri: otherUserAvatar }}
@@ -2248,16 +2304,16 @@ export default function ChatConversation() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <Ionicons name="person" size={60} color="#D1FAE5" />
+                      <Ionicons name="person" size={60} color={themeColor("#D1FAE5", "#E6E6E6")} />
                     )}
                   </View>
                 </View>
               </View>
 
-              <Text className="text-2xl font-bold text-white text-center mb-1">
+              <Text className="text-2xl font-bold text-white text-center mb-1 dark:text-[#E6E6E6] ">
                 {otherUserName}
               </Text>
-              <Text className="text-sm text-emerald-200 font-medium">
+              <Text className="text-sm text-emerald-200 font-medium dark:text-[#E6E6E6] ">
                 {voiceCallStatus === "connected"
                   ? "Voice Call Connected"
                   : voiceCallStatus === "ringing"
@@ -2265,7 +2321,6 @@ export default function ChatConversation() {
                   : "Calling Local Farmer..."}
               </Text>
             </View>
-
             {/* Bottom Controls */}
             <View className="w-full items-center gap-8">
               {/* Audio Controls Dock */}
@@ -2274,14 +2329,14 @@ export default function ChatConversation() {
                 <TouchableOpacity
                   onPress={() => setIsCallMuted((m) => !m)}
                   className={`w-14 h-14 rounded-full items-center justify-center ${
-                    isCallMuted ? "bg-red-500/80" : "bg-white/15"
+                    isCallMuted ? "bg-red-500/80" : "bg-white/15 dark:bg-[#242424]/15 "
                   }`}
                   activeOpacity={0.8}
                 >
                   <Ionicons
                     name={isCallMuted ? "mic-off" : "mic"}
                     size={26}
-                    color="#FFFFFF"
+                    color={themeColor("#FFFFFF", "#E6E6E6")}
                   />
                 </TouchableOpacity>
 
@@ -2289,14 +2344,14 @@ export default function ChatConversation() {
                 <TouchableOpacity
                   onPress={() => setIsSpeakerOn((s) => !s)}
                   className={`w-14 h-14 rounded-full items-center justify-center ${
-                    isSpeakerOn ? "bg-emerald-500" : "bg-white/15"
+                    isSpeakerOn ? "bg-emerald-500" : "bg-white/15 dark:bg-[#242424]/15 "
                   }`}
                   activeOpacity={0.8}
                 >
                   <Ionicons
                     name={isSpeakerOn ? "volume-high" : "volume-medium"}
                     size={26}
-                    color="#FFFFFF"
+                    color={themeColor("#FFFFFF", "#E6E6E6")}
                   />
                 </TouchableOpacity>
               </View>
@@ -2307,7 +2362,7 @@ export default function ChatConversation() {
                 className="w-16 h-16 rounded-full bg-red-600 items-center justify-center shadow-lg active:opacity-85"
                 activeOpacity={0.8}
               >
-                <Ionicons name="call" size={30} color="#FFFFFF" style={{ transform: [{ rotate: "135deg" }] }} />
+                <Ionicons name="call" size={30} color={themeColor("#FFFFFF", "#E6E6E6")} style={{ transform: [{ rotate: "135deg" }] }} />
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -2325,17 +2380,11 @@ export default function ChatConversation() {
           {/* Main Remote View (Farmer Fullscreen Feed Simulation) */}
           <View className="flex-1 justify-center items-center bg-[#0B1E13]">
             {otherUserAvatar ? (
-              <Image
-                source={{ uri: otherUserAvatar }}
-                className="w-full h-full opacity-40 absolute"
-                resizeMode="cover"
-                blurRadius={10}
-              />
+              <Image source={{ uri: otherUserAvatar }} className="w-full h-full opacity-40 absolute" resizeMode="cover" blurRadius={10} />
             ) : null}
-
             <View className="items-center z-10 px-6">
               <View className="w-28 h-28 rounded-full border-2 border-emerald-400/60 p-1 mb-4 bg-black/40">
-                <View className="w-full h-full rounded-full overflow-hidden items-center justify-center bg-emerald-900">
+                <View className="w-full h-full rounded-full overflow-hidden items-center justify-center bg-emerald-900 dark:bg-[#E6E6E6] ">
                   {otherUserAvatar ? (
                     <Image
                       source={{ uri: otherUserAvatar }}
@@ -2343,68 +2392,67 @@ export default function ChatConversation() {
                       resizeMode="cover"
                     />
                   ) : (
-                    <Ionicons name="person" size={50} color="#A7F3D0" />
+                    <Ionicons name="person" size={50} color={themeColor("#A7F3D0", "#E6E6E6")} />
                   )}
                 </View>
               </View>
-              <Text className="text-xl font-bold text-white text-center mb-1">
+              <Text className="text-xl font-bold text-white text-center mb-1 dark:text-[#E6E6E6] ">
                 {otherUserName}
               </Text>
-              <Text className="text-xs text-emerald-300 font-medium">
+              <Text className="text-xs text-emerald-300 font-medium dark:text-[#E6E6E6] ">
                 {videoCallStatus === "connected"
                   ? `Live Video • ${Math.floor(videoSeconds / 60)}:${(videoSeconds % 60).toString().padStart(2, "0")}`
                   : "Connecting Video Feed..."}
               </Text>
             </View>
           </View>
-
           {/* Picture-in-Picture: Self Camera Feed */}
           {!isVideoCameraOff && cameraPermission?.granted && (
             <View
-              className="absolute top-14 right-4 w-28 h-40 rounded-2xl overflow-hidden border-2 border-white/60 shadow-2xl z-20 bg-gray-900"
+              className="absolute top-14 right-4 w-28 h-40 rounded-2xl overflow-hidden border-2 border-white/60 shadow-2xl z-20 bg-gray-900 dark:border-[#414141]/60 "
             >
               <CameraView
                 style={{ flex: 1, width: "100%", height: "100%" }}
                 facing={cameraFacing}
               />
               <View className="absolute bottom-1 right-1 bg-black/50 px-1.5 py-0.5 rounded-md">
-                <Text className="text-[9px] text-white font-bold">YOU</Text>
+                <Text className="text-[9px] text-white font-bold dark:text-[#E6E6E6] ">YOU</Text>
               </View>
             </View>
           )}
 
           {/* Floating Controls Dock */}
           <SafeAreaView className="absolute bottom-8 left-4 right-4 z-30">
-            <View className="flex-row items-center justify-around bg-black/60 backdrop-blur-md py-3.5 px-4 rounded-3xl border border-white/10">
+            <View className="flex-row items-center justify-around bg-black/60 backdrop-blur-md py-3.5 px-4 rounded-3xl border border-white/10 dark:border-[#414141]/10 ">
               {/* Flip Camera */}
               <TouchableOpacity
                 onPress={() => setCameraFacing((f: any) => (f === "front" ? "back" : "front"))}
-                className="w-12 h-12 rounded-full bg-white/20 items-center justify-center active:bg-white/30"
+                className="w-12 h-12 rounded-full bg-white/20 items-center justify-center active:bg-white/30 dark:bg-[#242424]/20 dark:active:bg-[#242424]/30 "
               >
-                <Ionicons name="camera-reverse" size={24} color="#FFFFFF" />
+                <Ionicons name="camera-reverse" size={24} color={themeColor("#FFFFFF", "#E6E6E6")} />
               </TouchableOpacity>
 
               {/* Mute Mic */}
               <TouchableOpacity
                 onPress={() => setIsVideoMuted((m) => !m)}
                 className={`w-12 h-12 rounded-full items-center justify-center ${
-                  isVideoMuted ? "bg-red-500" : "bg-white/20"
+                  isVideoMuted ? "bg-red-500" : "bg-white/20 dark:bg-[#242424]/20 "
                 }`}
               >
-                <Ionicons name={isVideoMuted ? "mic-off" : "mic"} size={24} color="#FFFFFF" />
+                <Ionicons name={isVideoMuted ? "mic-off" : "mic"} size={24} color={themeColor("#FFFFFF", "#E6E6E6")} />
               </TouchableOpacity>
 
               {/* Toggle Video Camera */}
               <TouchableOpacity
                 onPress={() => setIsVideoCameraOff((c) => !c)}
                 className={`w-12 h-12 rounded-full items-center justify-center ${
-                  isVideoCameraOff ? "bg-red-500" : "bg-white/20"
+                  isVideoCameraOff ? "bg-red-500" : "bg-white/20 dark:bg-[#242424]/20 "
                 }`}
               >
                 <Ionicons
                   name={isVideoCameraOff ? "videocam-off" : "videocam"}
                   size={24}
-                  color="#FFFFFF"
+                  color={themeColor("#FFFFFF", "#E6E6E6")}
                 />
               </TouchableOpacity>
 
@@ -2413,7 +2461,7 @@ export default function ChatConversation() {
                 onPress={handleEndVideoCall}
                 className="w-13 h-13 rounded-full bg-red-600 items-center justify-center shadow-lg active:opacity-85"
               >
-                <Ionicons name="call" size={26} color="#FFFFFF" style={{ transform: [{ rotate: "135deg" }] }} />
+                <Ionicons name="call" size={26} color={themeColor("#FFFFFF", "#E6E6E6")} style={{ transform: [{ rotate: "135deg" }] }} />
               </TouchableOpacity>
             </View>
           </SafeAreaView>
@@ -2426,80 +2474,86 @@ export default function ChatConversation() {
           style={[
             StyleSheet.absoluteFill,
             {
-              backgroundColor: "#F9FAFB",
+              backgroundColor: themeColor("#F9FAFB", "#242424"),
               zIndex: 999,
               elevation: 999,
               transform: [{ translateX: infoSlideX }],
             },
           ]}
         >
-          <SafeAreaView className="flex-1 bg-[#F9FAFB]">
+          <SafeAreaView className="flex-1 bg-[#F9FAFB] dark:bg-[#181818] ">
             {/* Top Navigation Bar with Chevron Back (no title, matching mockup) */}
-            <View className="flex-row items-center px-4 py-2 bg-[#F9FAFB]">
+            <View className="flex-row items-center px-4 py-2 bg-[#F9FAFB] dark:bg-[#242424] ">
               <TouchableOpacity
                 onPress={handleCloseInfoModal}
-                className="w-10 h-10 rounded-full items-center justify-center -ml-2 active:bg-gray-200"
+                className="w-10 h-10 rounded-full items-center justify-center -ml-2 active:bg-gray-200 dark:active:bg-[#181818] "
                 accessibilityRole="button"
                 accessibilityLabel="Back to conversation"
               >
-                <Ionicons name="chevron-back" size={28} color="#34594A" />
+                <Ionicons name="chevron-back" size={28} color={themeColor("#34594A", "#E6E6E6")} />
               </TouchableOpacity>
             </View>
 
             <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
               {/* Centered Profile Avatar & Name */}
-              <View className="items-center pt-1 pb-6">
-                <View className="w-24 h-24 rounded-full bg-[#9CA3AF]/30 items-center justify-center overflow-hidden mb-3">
-                  {otherUserAvatar ? (
+              <TouchableOpacity
+                onPress={() => handleVisitProfile()}
+                activeOpacity={0.7}
+                className="items-center pt-1 pb-6 active:opacity-80"
+                accessibilityRole="button"
+                accessibilityLabel={`View ${otherUserName}'s profile`}
+              >
+                <View className="w-24 h-24 rounded-full bg-[#9CA3AF]/30 items-center justify-center overflow-hidden mb-3 dark:bg-[#303030]/30 ">
+                  {otherUserAvatar || farmerInfo?.avatarUrl ? (
                     <Image
-                      source={{ uri: otherUserAvatar }}
+                      source={{ uri: otherUserAvatar || farmerInfo?.avatarUrl }}
                       className="w-full h-full"
                       resizeMode="cover"
                     />
                   ) : (
-                    <Ionicons name="person" size={56} color="#FFFFFF" />
+                    <Ionicons name="person" size={56} color={themeColor("#FFFFFF", "#E6E6E6")} />
                   )}
                 </View>
 
-                <Text className="text-xl font-bold text-gray-900 text-center">
+                <Text className="text-xl font-bold text-gray-900 text-center dark:text-[#E6E6E6] ">
                   {customNickname || otherUserName}
                 </Text>
-              </View>
+              </TouchableOpacity>
 
               {/* 1. User info */}
-              <Text className="text-[13px] font-semibold text-gray-500 mb-1.5 ml-1">
+              <Text className="text-[13px] font-semibold text-gray-500 mb-1.5 ml-1 dark:text-[#ADADAD] ">
                 User info
               </Text>
-              <View className="bg-white rounded-2xl border border-gray-100 shadow-2xs mb-5 overflow-hidden">
+              <View className="bg-white rounded-2xl border border-gray-100 shadow-2xs mb-5 overflow-hidden dark:bg-[#242424] dark:border-[#414141] ">
                 <TouchableOpacity
-                  onPress={handleVisitProfile}
-                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50"
+                  onPress={() => handleVisitProfile()}
+                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#242424] "
                   accessibilityRole="button"
                   accessibilityLabel={`Visit profile of ${otherUserName}`}
                 >
                   <View className="w-7 items-center mr-3">
-                    <Ionicons name="person" size={20} color="#34594A" />
+                    <Ionicons name="person" size={20} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-[15px] font-medium text-gray-900">
+                    <Text className="text-[15px] font-medium text-gray-900 dark:text-[#E6E6E6] ">
                       Visit profile
                     </Text>
-                    <Text className="text-xs text-gray-500 mt-0.5" numberOfLines={1}>
+                    <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] " numberOfLines={1}>
                       {customNickname || otherUserName}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#34594A" />
+                  <Ionicons name="chevron-forward" size={18} color={themeColor("#34594A", "#E6E6E6")} />
                 </TouchableOpacity>
               </View>
 
               {/* 2. Actions */}
-              <Text className="text-[13px] font-semibold text-gray-500 mb-1.5 ml-1">
+              <Text className="text-[13px] font-semibold text-gray-500 mb-1.5 ml-1 dark:text-[#ADADAD] ">
                 Actions
               </Text>
-              <View className="bg-white rounded-2xl border border-gray-100 shadow-2xs mb-5 overflow-hidden">
+              <View className="bg-white rounded-2xl border border-gray-100 shadow-2xs mb-5 overflow-hidden dark:bg-[#242424] dark:border-[#414141] ">
                 <TouchableOpacity
                   onPress={handleToggleMute}
-                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50"
+                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#242424] "
                   accessibilityRole="button"
                   accessibilityLabel="Mute notifications"
                 >
@@ -2507,172 +2561,172 @@ export default function ChatConversation() {
                     <Ionicons
                       name={isMuted ? "notifications-off" : "notifications"}
                       size={20}
-                      color="#34594A"
+                      color={themeColor("#34594A", "#E6E6E6")}
                     />
                   </View>
-                  <Text className="text-[15px] font-medium text-gray-900">
+                  <Text className="text-[15px] font-medium text-gray-900 dark:text-[#E6E6E6] ">
                     {isMuted ? `Unmute ${otherUserName}` : `Mute ${otherUserName}`}
                   </Text>
                 </TouchableOpacity>
 
-                <View className="h-px bg-gray-100 ml-14" />
+                <View className="h-px bg-gray-100 ml-14 dark:bg-[#181818] " />
 
                 <TouchableOpacity
                   onPress={handleCreateGroup}
-                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50"
+                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#242424] "
                   accessibilityRole="button"
                   accessibilityLabel="Create group"
                 >
                   <View className="w-7 items-center mr-3">
-                    <Ionicons name="people" size={20} color="#34594A" />
+                    <Ionicons name="people" size={20} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
-                  <Text className="text-[15px] font-medium text-gray-900">
+                  <Text className="text-[15px] font-medium text-gray-900 dark:text-[#E6E6E6] ">
                     Create group with {firstName}
                   </Text>
                 </TouchableOpacity>
               </View>
 
               {/* 3. Message info */}
-              <Text className="text-[13px] font-semibold text-gray-500 mb-1.5 ml-1">
+              <Text className="text-[13px] font-semibold text-gray-500 mb-1.5 ml-1 dark:text-[#ADADAD] ">
                 Message info
               </Text>
-              <View className="bg-white rounded-2xl border border-gray-100 shadow-2xs mb-5 overflow-hidden">
+              <View className="bg-white rounded-2xl border border-gray-100 shadow-2xs mb-5 overflow-hidden dark:bg-[#242424] dark:border-[#414141] ">
                 <TouchableOpacity
                   onPress={() => setIsMediaViewerOpen(true)}
-                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50"
+                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#242424] "
                   accessibilityRole="button"
                   accessibilityLabel="View media"
                 >
                   <View className="w-7 items-center mr-3">
-                    <Ionicons name="images" size={20} color="#34594A" />
+                    <Ionicons name="images" size={20} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
-                  <Text className="text-[15px] font-medium text-gray-900">
+                  <Text className="text-[15px] font-medium text-gray-900 dark:text-[#E6E6E6] ">
                     View media
                   </Text>
                 </TouchableOpacity>
 
-                <View className="h-px bg-gray-100 ml-14" />
+                <View className="h-px bg-gray-100 ml-14 dark:bg-[#181818] " />
 
                 <TouchableOpacity
                   onPress={() => setIsFilesViewerOpen(true)}
-                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50"
+                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#242424] "
                   accessibilityRole="button"
                   accessibilityLabel="View files"
                 >
                   <View className="w-7 items-center mr-3">
-                    <Ionicons name="folder" size={20} color="#34594A" />
+                    <Ionicons name="folder" size={20} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
-                  <Text className="text-[15px] font-medium text-gray-900">
+                  <Text className="text-[15px] font-medium text-gray-900 dark:text-[#E6E6E6] ">
                     View files
                   </Text>
                 </TouchableOpacity>
 
-                <View className="h-px bg-gray-100 ml-14" />
+                <View className="h-px bg-gray-100 ml-14 dark:bg-[#181818] " />
 
                 <TouchableOpacity
                   onPress={() => {
                     setTempNickname(customNickname || otherUserName);
                     setIsNicknameModalOpen(true);
                   }}
-                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50"
+                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#242424] "
                   accessibilityRole="button"
                   accessibilityLabel="Nickname"
                 >
                   <View className="w-7 items-center mr-3">
-                    <Text className="text-[17px] font-bold text-[#1F2937] leading-none">
+                    <Text className="text-[17px] font-bold text-[#1F2937] leading-none dark:text-[#E6E6E6] ">
                       Aa
                     </Text>
                   </View>
-                  <Text className="text-[15px] font-medium text-gray-900">
+                  <Text className="text-[15px] font-medium text-gray-900 dark:text-[#E6E6E6] ">
                     Nickname
                   </Text>
                 </TouchableOpacity>
 
-                <View className="h-px bg-gray-100 ml-14" />
+                <View className="h-px bg-gray-100 ml-14 dark:bg-[#181818] " />
 
                 <TouchableOpacity
                   onPress={handleSearchMessages}
-                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50"
+                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#242424] "
                   accessibilityRole="button"
                   accessibilityLabel="Search messages"
                 >
                   <View className="w-7 items-center mr-3">
-                    <Ionicons name="search" size={20} color="#34594A" />
+                    <Ionicons name="search" size={20} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
-                  <Text className="text-[15px] font-medium text-gray-900">
+                  <Text className="text-[15px] font-medium text-gray-900 dark:text-[#E6E6E6] ">
                     Search messages
                   </Text>
                 </TouchableOpacity>
               </View>
 
               {/* 4. Privacy */}
-              <Text className="text-[13px] font-semibold text-gray-500 mb-1.5 ml-1">
+              <Text className="text-[13px] font-semibold text-gray-500 mb-1.5 ml-1 dark:text-[#ADADAD] ">
                 Privacy
               </Text>
-              <View className="bg-white rounded-2xl border border-gray-100 shadow-2xs mb-8 overflow-hidden">
+              <View className="bg-white rounded-2xl border border-gray-100 shadow-2xs mb-8 overflow-hidden dark:bg-[#242424] dark:border-[#414141] ">
                 <TouchableOpacity
                   onPress={handleReportUser}
-                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50"
+                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#242424] "
                   accessibilityRole="button"
                   accessibilityLabel="Report"
                 >
                   <View className="w-7 items-center mr-3">
-                    <Ionicons name="warning" size={20} color="#34594A" />
+                    <Ionicons name="warning" size={20} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
-                  <Text className="text-[15px] font-medium text-gray-900">
+                  <Text className="text-[15px] font-medium text-gray-900 dark:text-[#E6E6E6] ">
                     Report
                   </Text>
                 </TouchableOpacity>
 
-                <View className="h-px bg-gray-100 ml-14" />
+                <View className="h-px bg-gray-100 ml-14 dark:bg-[#181818] " />
 
                 <TouchableOpacity
                   onPress={handleRestrictUser}
-                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50"
+                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#242424] "
                   accessibilityRole="button"
                   accessibilityLabel="Restrict"
                 >
                   <View className="w-7 items-center mr-3">
-                    <Ionicons name="eye-off" size={20} color="#34594A" />
+                    <Ionicons name="eye-off" size={20} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
-                  <Text className="text-[15px] font-medium text-gray-900">
+                  <Text className="text-[15px] font-medium text-gray-900 dark:text-[#E6E6E6] ">
                     {isRestricted ? "Unrestrict" : "Restrict"}
                   </Text>
                 </TouchableOpacity>
 
-                <View className="h-px bg-gray-100 ml-14" />
+                <View className="h-px bg-gray-100 ml-14 dark:bg-[#181818] " />
 
                 <TouchableOpacity
                   onPress={handleBlockUser}
-                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50"
+                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#242424] "
                   accessibilityRole="button"
                   accessibilityLabel="Block"
                 >
                   <View className="w-7 items-center mr-3">
-                    <Ionicons name="ban" size={20} color="#34594A" />
+                    <Ionicons name="ban" size={20} color={themeColor("#34594A", "#E6E6E6")} />
                   </View>
-                  <Text className="text-[15px] font-medium text-gray-900">
+                  <Text className="text-[15px] font-medium text-gray-900 dark:text-[#E6E6E6] ">
                     Block
                   </Text>
                 </TouchableOpacity>
 
-                <View className="h-px bg-gray-100 ml-14" />
+                <View className="h-px bg-gray-100 ml-14 dark:bg-[#181818] " />
 
                 <TouchableOpacity
                   onPress={handleDeleteChat}
                   disabled={isDeletingChat}
-                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50"
+                  className="flex-row items-center px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#242424] "
                   accessibilityRole="button"
                   accessibilityLabel="Delete all chat"
                 >
                   <View className="w-7 items-center mr-3">
                     {isDeletingChat ? (
-                      <ActivityIndicator size="small" color="#1F2937" />
+                      <ActivityIndicator size="small" color={themeColor("#1F2937", "#E6E6E6")} />
                     ) : (
-                      <Ionicons name="trash" size={20} color="#34594A" />
+                      <Ionicons name="trash" size={20} color={themeColor("#34594A", "#E6E6E6")} />
                     )}
                   </View>
-                  <Text className="text-[15px] font-medium text-gray-900">
+                  <Text className="text-[15px] font-medium text-gray-900 dark:text-[#E6E6E6] ">
                     {isDeletingChat ? "Deleting all chat..." : "Delete all chat"}
                   </Text>
                 </TouchableOpacity>
@@ -2689,17 +2743,17 @@ export default function ChatConversation() {
         presentationStyle="pageSheet"
         onRequestClose={() => setIsMediaViewerOpen(false)}
       >
-        <SafeAreaView className="flex-1 bg-white">
-          <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100">
+        <SafeAreaView className="flex-1 bg-white dark:bg-[#181818] ">
+          <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#414141] ">
             <TouchableOpacity
               onPress={() => setIsMediaViewerOpen(false)}
-              className="w-9 h-9 rounded-full items-center justify-center active:bg-gray-100"
+              className="w-9 h-9 rounded-full items-center justify-center active:bg-gray-100 dark:active:bg-[#181818] "
               accessibilityRole="button"
               accessibilityLabel="Close media"
             >
-              <Ionicons name="chevron-back" size={24} color="#34594A" />
+              <Ionicons name="chevron-back" size={24} color={themeColor("#34594A", "#E6E6E6")} />
             </TouchableOpacity>
-            <Text className="text-base font-bold text-gray-900">
+            <Text className="text-base font-bold text-gray-900 dark:text-[#E6E6E6] ">
               Shared Media ({allMedia.length})
             </Text>
             <View className="w-9" />
@@ -2707,11 +2761,11 @@ export default function ChatConversation() {
 
           {allMedia.length === 0 ? (
             <View className="flex-1 items-center justify-center px-6">
-              <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-                <Ionicons name="images-outline" size={32} color="#34594A" />
+              <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3 dark:bg-[#181818] ">
+                <Ionicons name="images-outline" size={32} color={themeColor("#34594A", "#E6E6E6")} />
               </View>
-              <Text className="text-base font-semibold text-gray-700">No media yet</Text>
-              <Text className="text-xs text-gray-400 text-center mt-1">
+              <Text className="text-base font-semibold text-gray-700 dark:text-[#E6E6E6] ">No media yet</Text>
+              <Text className="text-xs text-gray-400 text-center mt-1 dark:text-[#ADADAD] ">
                 Photos shared in this conversation will appear here.
               </Text>
             </View>
@@ -2722,7 +2776,7 @@ export default function ChatConversation() {
                   <TouchableOpacity
                     key={m.id}
                     onPress={() => setFullPreviewImage(m.imageUrl)}
-                    className="w-[31.5%] aspect-square rounded-xl overflow-hidden bg-gray-100 border border-gray-200 active:opacity-80"
+                    className="w-[31.5%] aspect-square rounded-xl overflow-hidden bg-gray-100 border border-gray-200 active:opacity-80 dark:bg-[#181818] dark:border-[#414141] "
                   >
                     <Image source={{ uri: m.imageUrl }} className="w-full h-full" resizeMode="cover" />
                   </TouchableOpacity>
@@ -2740,17 +2794,17 @@ export default function ChatConversation() {
         presentationStyle="pageSheet"
         onRequestClose={() => setIsFilesViewerOpen(false)}
       >
-        <SafeAreaView className="flex-1 bg-white">
-          <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100">
+        <SafeAreaView className="flex-1 bg-white dark:bg-[#181818] ">
+          <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#414141] ">
             <TouchableOpacity
               onPress={() => setIsFilesViewerOpen(false)}
-              className="w-9 h-9 rounded-full items-center justify-center active:bg-gray-100"
+              className="w-9 h-9 rounded-full items-center justify-center active:bg-gray-100 dark:active:bg-[#181818] "
               accessibilityRole="button"
               accessibilityLabel="Close files"
             >
-              <Ionicons name="chevron-back" size={24} color="#34594A" />
+              <Ionicons name="chevron-back" size={24} color={themeColor("#34594A", "#E6E6E6")} />
             </TouchableOpacity>
-            <Text className="text-base font-bold text-gray-900">
+            <Text className="text-base font-bold text-gray-900 dark:text-[#E6E6E6] ">
               Shared Files & Links ({allLinks.length})
             </Text>
             <View className="w-9" />
@@ -2758,11 +2812,11 @@ export default function ChatConversation() {
 
           {allLinks.length === 0 ? (
             <View className="flex-1 items-center justify-center px-6">
-              <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-                <Ionicons name="folder-outline" size={32} color="#34594A" />
+              <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3 dark:bg-[#181818] ">
+                <Ionicons name="folder-outline" size={32} color={themeColor("#34594A", "#E6E6E6")} />
               </View>
-              <Text className="text-base font-semibold text-gray-700">No files or links yet</Text>
-              <Text className="text-xs text-gray-400 text-center mt-1">
+              <Text className="text-base font-semibold text-gray-700 dark:text-[#E6E6E6] ">No files or links yet</Text>
+              <Text className="text-xs text-gray-400 text-center mt-1 dark:text-[#ADADAD] ">
                 Links, pins, and attachments shared in this conversation will appear here.
               </Text>
             </View>
@@ -2773,24 +2827,24 @@ export default function ChatConversation() {
                   <TouchableOpacity
                     key={link.id}
                     onPress={() => Linking.openURL(link.url).catch(() => {})}
-                    className="flex-row items-center p-3 bg-gray-50 rounded-xl border border-gray-100 active:bg-gray-100"
+                    className="flex-row items-center p-3 bg-gray-50 rounded-xl border border-gray-100 active:bg-gray-100 dark:bg-[#242424] dark:border-[#414141] dark:active:bg-[#181818] "
                   >
-                    <View className="w-9 h-9 rounded-lg bg-[#34594A]/15 items-center justify-center mr-3">
+                    <View className="w-9 h-9 rounded-lg bg-[#34594A]/15 items-center justify-center mr-3 dark:bg-[#E6E6E6]/15 ">
                       <Ionicons
                         name={link.url.includes("maps") ? "location" : "link"}
                         size={18}
-                        color="#34594A"
+                        color={themeColor("#34594A", "#E6E6E6")}
                       />
                     </View>
                     <View className="flex-1 pr-2">
-                      <Text numberOfLines={1} className="text-sm font-semibold text-gray-800">
+                      <Text numberOfLines={1} className="text-sm font-semibold text-gray-800 dark:text-[#E6E6E6] ">
                         {link.title}
                       </Text>
                       <Text numberOfLines={1} className="text-xs text-blue-600 underline mt-0.5">
                         {link.url}
                       </Text>
                     </View>
-                    <Ionicons name="open-outline" size={16} color="#34594A" />
+                    <Ionicons name="open-outline" size={16} color={themeColor("#34594A", "#E6E6E6")} />
                   </TouchableOpacity>
                 ))}
               </View>
@@ -2810,11 +2864,11 @@ export default function ChatConversation() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           className="flex-1 justify-center items-center bg-black/50 px-6"
         >
-          <View className="w-full max-w-sm bg-white rounded-2xl p-5 shadow-xl">
-            <Text className="text-lg font-bold text-gray-900 mb-1">
+          <View className="w-full max-w-sm bg-white rounded-2xl p-5 shadow-xl dark:bg-[#242424] ">
+            <Text className="text-lg font-bold text-gray-900 mb-1 dark:text-[#E6E6E6] ">
               Edit Nickname
             </Text>
-            <Text className="text-xs text-gray-500 mb-4">
+            <Text className="text-xs text-gray-500 mb-4 dark:text-[#ADADAD] ">
               Set a nickname only you will see in this conversation.
             </Text>
 
@@ -2822,8 +2876,8 @@ export default function ChatConversation() {
               value={tempNickname}
               onChangeText={setTempNickname}
               placeholder={otherUserName}
-              placeholderTextColor="#9CA3AF"
-              className="bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 font-medium mb-4"
+              placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+              className="bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-800 font-medium mb-4 dark:bg-[#242424] dark:border-[#414141] dark:text-[#E6E6E6] "
               autoFocus
               selectTextOnFocus
             />
@@ -2831,9 +2885,9 @@ export default function ChatConversation() {
             <View className="flex-row justify-end gap-2.5">
               <TouchableOpacity
                 onPress={() => setIsNicknameModalOpen(false)}
-                className="px-4 py-2 rounded-xl active:bg-gray-100"
+                className="px-4 py-2 rounded-xl active:bg-gray-100 dark:active:bg-[#181818] "
               >
-                <Text className="text-sm font-semibold text-gray-600">Cancel</Text>
+                <Text className="text-sm font-semibold text-gray-600 dark:text-[#ADADAD] ">Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -2841,9 +2895,9 @@ export default function ChatConversation() {
                   setCustomNickname(tempNickname.trim());
                   setIsNicknameModalOpen(false);
                 }}
-                className="px-4 py-2 rounded-xl bg-[#34594A] active:opacity-85"
+                className="px-4 py-2 rounded-xl bg-[#34594A] active:opacity-85 dark:bg-[#E6E6E6] "
               >
-                <Text className="text-sm font-bold text-white">Save</Text>
+                <Text className="text-sm font-bold text-white dark:text-[#181818] ">Save</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2857,13 +2911,13 @@ export default function ChatConversation() {
         onRequestClose={() => setIsReportModalVisible(false)}
         statusBarTranslucent={true}
       >
-        <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom", "left", "right"]}>
+        <SafeAreaView className="flex-1 bg-white dark:bg-[#181818] " edges={["top", "bottom", "left", "right"]}>
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
-            className="flex-1 bg-white"
+            className="flex-1 bg-white dark:bg-[#181818] "
           >
             {/* Header: < Report */}
-            <View className="px-5 pt-2 pb-2 bg-white border-b border-gray-100 flex-row items-center justify-between">
+            <View className="px-5 pt-2 pb-2 bg-white border-b border-gray-100 flex-row items-center justify-between dark:bg-[#242424] dark:border-[#414141] ">
               <TouchableOpacity
                 onPress={() => {
                   setIsReportModalVisible(false);
@@ -2873,8 +2927,8 @@ export default function ChatConversation() {
                 accessibilityRole="button"
                 accessibilityLabel="Go back"
               >
-                <Ionicons name="chevron-back" size={26} color="#34594A" />
-                <Text className="text-xl font-bold text-gray-900 ml-1">Report</Text>
+                <Ionicons name="chevron-back" size={26} color={themeColor("#34594A", "#E6E6E6")} />
+                <Text className="text-xl font-bold text-gray-900 ml-1 dark:text-[#E6E6E6] ">Report</Text>
               </TouchableOpacity>
             </View>
 
@@ -2885,22 +2939,22 @@ export default function ChatConversation() {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ alignItems: "center", paddingBottom: 40 }}
               >
-                <View className="w-20 h-20 rounded-full bg-[#EDF3EE] items-center justify-center mb-4 border-2 border-[#E3ECE5]">
-                  <Ionicons name="checkmark-circle" size={54} color="#34594A" />
+                <View className="w-20 h-20 rounded-full bg-[#EDF3EE] items-center justify-center mb-4 border-2 border-[#E3ECE5] dark:bg-[#181818] dark:border-[#414141] ">
+                  <Ionicons name="checkmark-circle" size={54} color={themeColor("#34594A", "#E6E6E6")} />
                 </View>
 
-                <Text className="text-2xl font-bold text-gray-900 mb-1.5 text-center">
+                <Text className="text-2xl font-bold text-gray-900 mb-1.5 text-center dark:text-[#E6E6E6] ">
                   Successfully Reported
                 </Text>
-                <Text className="text-xs text-gray-500 mb-6 text-center">
+                <Text className="text-xs text-gray-500 mb-6 text-center dark:text-[#ADADAD] ">
                   Your report has been received and logged for moderation review.
                 </Text>
 
                 {/* Notice Card matching Figma text */}
-                <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-5 w-full">
-                  <Text className="text-[13px] text-gray-700 leading-relaxed text-center">
+                <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-5 w-full dark:bg-[#242424] dark:border-[#414141] ">
+                  <Text className="text-[13px] text-gray-700 leading-relaxed text-center dark:text-[#E6E6E6] ">
                     You have reported this user for{" "}
-                    <Text className="font-bold text-gray-900">
+                    <Text className="font-bold text-gray-900 dark:text-[#E6E6E6] ">
                       violating community guidelines
                     </Text>
                     . Our moderation team will review the report and take appropriate action if necessary.
@@ -2909,24 +2963,24 @@ export default function ChatConversation() {
 
                 {/* User info Card */}
                 <View className="w-full mb-4">
-                  <Text className="text-sm font-semibold text-gray-700 mb-1.5">User info</Text>
-                  <View className="bg-white border border-gray-300 rounded-xl px-4 py-3.5 shadow-2xs">
-                    <Text className="text-base font-bold text-gray-900 leading-tight">
+                  <Text className="text-sm font-semibold text-gray-700 mb-1.5 dark:text-[#E6E6E6] ">User info</Text>
+                  <View className="bg-white border border-gray-300 rounded-xl px-4 py-3.5 shadow-2xs dark:bg-[#242424] dark:border-[#414141] ">
+                    <Text className="text-base font-bold text-gray-900 leading-tight dark:text-[#E6E6E6] ">
                       {otherUserName}
                     </Text>
                   </View>
                 </View>
 
                 {/* Report Details Summary Card */}
-                <View className="bg-white border border-gray-200 rounded-2xl p-4 w-full mb-8 shadow-2xs">
-                  <View className="flex-row justify-between py-2 border-b border-gray-100">
-                    <Text className="text-xs font-medium text-gray-500">Reason</Text>
-                    <Text className="text-xs font-semibold text-gray-800 flex-1 text-right ml-4" numberOfLines={1}>
+                <View className="bg-white border border-gray-200 rounded-2xl p-4 w-full mb-8 shadow-2xs dark:bg-[#242424] dark:border-[#414141] ">
+                  <View className="flex-row justify-between py-2 border-b border-gray-100 dark:border-[#414141] ">
+                    <Text className="text-xs font-medium text-gray-500 dark:text-[#ADADAD] ">Reason</Text>
+                    <Text className="text-xs font-semibold text-gray-800 flex-1 text-right ml-4 dark:text-[#E6E6E6] " numberOfLines={1}>
                       {selectedReportReason}
                     </Text>
                   </View>
                   <View className="flex-row justify-between py-2">
-                    <Text className="text-xs font-medium text-gray-500">Status</Text>
+                    <Text className="text-xs font-medium text-gray-500 dark:text-[#ADADAD] ">Status</Text>
                     <View className="flex-row items-center gap-1.5">
                       <View className="w-2 h-2 rounded-full bg-amber-500" />
                       <Text className="text-xs font-bold text-amber-600">Pending Review</Text>
@@ -2941,9 +2995,9 @@ export default function ChatConversation() {
                     setIsReportSuccess(false);
                   }}
                   activeOpacity={0.85}
-                  className="w-full py-3.5 rounded-xl bg-[#34594A] items-center justify-center shadow-xs active:bg-[#2A4F3E]"
+                  className="w-full py-3.5 rounded-xl bg-[#34594A] items-center justify-center shadow-xs active:bg-[#2A4F3E] dark:bg-[#E6E6E6] dark:active:bg-[#E6E6E6] "
                 >
-                  <Text className="text-white font-bold text-base">Done</Text>
+                  <Text className="text-white font-bold text-base dark:text-[#181818] ">Done</Text>
                 </TouchableOpacity>
               </ScrollView>
             ) : (
@@ -2954,10 +3008,10 @@ export default function ChatConversation() {
                 contentContainerStyle={{ paddingBottom: 40 }}
               >
                 {/* Notice Card from Figma: "You are about to report this user..." */}
-                <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-4">
-                  <Text className="text-[13px] text-gray-700 leading-relaxed">
+                <View className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-4 dark:bg-[#242424] dark:border-[#414141] ">
+                  <Text className="text-[13px] text-gray-700 leading-relaxed dark:text-[#E6E6E6] ">
                     You are about to report this user for{" "}
-                    <Text className="font-bold text-gray-900">
+                    <Text className="font-bold text-gray-900 dark:text-[#E6E6E6] ">
                       violating community guidelines
                     </Text>
                     . Our moderation team will review the report and take appropriate action
@@ -2967,9 +3021,9 @@ export default function ChatConversation() {
 
                 {/* User info */}
                 <View className="mb-4">
-                  <Text className="text-sm font-semibold text-gray-700 mb-1.5">User info</Text>
-                  <View className="bg-white border border-gray-300 rounded-xl px-4 py-3.5 shadow-2xs">
-                    <Text className="text-base font-bold text-gray-900 leading-tight">
+                  <Text className="text-sm font-semibold text-gray-700 mb-1.5 dark:text-[#E6E6E6] ">User info</Text>
+                  <View className="bg-white border border-gray-300 rounded-xl px-4 py-3.5 shadow-2xs dark:bg-[#242424] dark:border-[#414141] ">
+                    <Text className="text-base font-bold text-gray-900 leading-tight dark:text-[#E6E6E6] ">
                       {otherUserName}
                     </Text>
                   </View>
@@ -2977,10 +3031,10 @@ export default function ChatConversation() {
 
                 {/* Reason for reporting * */}
                 <View className="mb-4">
-                  <Text className="text-sm font-semibold text-gray-700 mb-1.5">
+                  <Text className="text-sm font-semibold text-gray-700 mb-1.5 dark:text-[#E6E6E6] ">
                     Reason for reporting <Text className="text-red-500">*</Text>
                   </Text>
-                  <View className="bg-white border border-gray-300 rounded-xl px-4 py-1.5 shadow-2xs">
+                  <View className="bg-white border border-gray-300 rounded-xl px-4 py-1.5 shadow-2xs dark:bg-[#242424] dark:border-[#414141] ">
                     {REPORT_REASONS.map((reason, idx) => {
                       const isSelected = selectedReportReason === reason;
                       return (
@@ -2989,21 +3043,21 @@ export default function ChatConversation() {
                           onPress={() => setSelectedReportReason(reason)}
                           activeOpacity={0.7}
                           className={`flex-row items-center py-2.5 ${
-                            idx < REPORT_REASONS.length - 1 ? "border-b border-gray-100" : ""
+                            idx < REPORT_REASONS.length - 1 ? "border-b border-gray-100 dark:border-[#414141] " : ""
                           }`}
                         >
                           <View
                             className={`w-5 h-5 rounded-full border items-center justify-center mr-3 ${
-                              isSelected ? "border-[#34594A]" : "border-gray-400"
+                              isSelected ? "border-[#34594A] dark:border-[#414141] " : "border-gray-400 dark:border-[#414141] "
                             }`}
                           >
                             {isSelected && (
-                              <View className="w-2.5 h-2.5 rounded-full bg-[#34594A]" />
+                              <View className="w-2.5 h-2.5 rounded-full bg-[#34594A] dark:bg-[#E6E6E6] " />
                             )}
                           </View>
                           <Text
                             className={`text-[13.5px] flex-1 ${
-                              isSelected ? "text-gray-900 font-semibold" : "text-gray-700 font-normal"
+                              isSelected ? "text-gray-900 font-semibold dark:text-[#E6E6E6] " : "text-gray-700 font-normal dark:text-[#E6E6E6] "
                             }`}
                           >
                             {reason}
@@ -3016,18 +3070,18 @@ export default function ChatConversation() {
 
                 {/* Statement * */}
                 <View className="mb-4">
-                  <Text className="text-sm font-semibold text-gray-700 mb-1.5">
+                  <Text className="text-sm font-semibold text-gray-700 mb-1.5 dark:text-[#E6E6E6] ">
                     Statement <Text className="text-red-500">*</Text>
                   </Text>
-                  <View className="bg-white border border-gray-300 rounded-xl p-3.5 shadow-2xs">
+                  <View className="bg-white border border-gray-300 rounded-xl p-3.5 shadow-2xs dark:bg-[#242424] dark:border-[#414141] ">
                     <TextInput
                       multiline
                       numberOfLines={4}
                       value={reportStatement}
                       onChangeText={setReportStatement}
                       placeholder="Please state scenario."
-                      placeholderTextColor="#9CA3AF"
-                      className="text-sm text-gray-900 min-h-[90px] font-normal"
+                      placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+                      className="text-sm text-gray-900 min-h-[90px] font-normal dark:text-[#E6E6E6] "
                       textAlignVertical="top"
                     />
                   </View>
@@ -3035,20 +3089,20 @@ export default function ChatConversation() {
 
                 {/* Attachment (optional but recommended) */}
                 <View className="mb-5">
-                  <Text className="text-sm font-semibold text-gray-700 mb-1.5">
+                  <Text className="text-sm font-semibold text-gray-700 mb-1.5 dark:text-[#E6E6E6] ">
                     Attachment (optional but recommended)
                   </Text>
                   <TouchableOpacity
                     onPress={handlePickReportAttachment}
                     activeOpacity={0.8}
-                    className="bg-white border border-gray-300 rounded-xl px-3.5 py-3 flex-row items-center shadow-2xs mb-1"
+                    className="bg-white border border-gray-300 rounded-xl px-3.5 py-3 flex-row items-center shadow-2xs mb-1 dark:bg-[#242424] dark:border-[#414141] "
                   >
-                    <View className="w-7 h-7 rounded-lg bg-gray-100 items-center justify-center mr-2.5">
-                      <Ionicons name="attach" size={18} color="#34594A" />
+                    <View className="w-7 h-7 rounded-lg bg-gray-100 items-center justify-center mr-2.5 dark:bg-[#181818] ">
+                      <Ionicons name="attach" size={18} color={themeColor("#34594A", "#E6E6E6")} />
                     </View>
                     <Text
                       className={`text-sm flex-1 ${
-                        reportAttachmentName ? "text-gray-900 font-medium" : "text-gray-400"
+                        reportAttachmentName ? "text-gray-900 font-medium dark:text-[#E6E6E6] " : "text-gray-400 dark:text-[#ADADAD] "
                       }`}
                       numberOfLines={1}
                     >
@@ -3063,11 +3117,11 @@ export default function ChatConversation() {
                         }}
                         className="p-1"
                       >
-                        <Ionicons name="close-circle" size={18} color="#34594A" />
+                        <Ionicons name="close-circle" size={18} color={themeColor("#34594A", "#E6E6E6")} />
                       </TouchableOpacity>
                     )}
                   </TouchableOpacity>
-                  <Text className="text-[11px] text-gray-400 ml-0.5">
+                  <Text className="text-[11px] text-gray-400 ml-0.5 dark:text-[#ADADAD] ">
                     Supported file types may include JPG, PNG, PDF.
                   </Text>
                 </View>
@@ -3078,13 +3132,13 @@ export default function ChatConversation() {
                   disabled={isSubmittingReport}
                   activeOpacity={0.85}
                   className={`w-full py-3.5 rounded-xl items-center justify-center mb-3 shadow-xs ${
-                    isSubmittingReport ? "bg-[#34594A]/70" : "bg-[#34594A] active:bg-[#2A4F3E]"
+                    isSubmittingReport ? "bg-[#34594A]/70 dark:bg-[#E6E6E6]/70 " : "bg-[#34594A] active:bg-[#2A4F3E] dark:bg-[#E6E6E6] dark:active:bg-[#E6E6E6] "
                   }`}
                 >
                   {isSubmittingReport ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
+                    <ActivityIndicator color={themeColor("#FFFFFF", "#181818")} size="small" />
                   ) : (
-                    <Text className="text-white font-bold text-base">Report</Text>
+                    <Text className="text-white font-bold text-base dark:text-[#181818] ">Report</Text>
                   )}
                 </TouchableOpacity>
 
@@ -3096,19 +3150,19 @@ export default function ChatConversation() {
                 >
                   <View
                     className={`w-4.5 h-4.5 rounded-full border items-center justify-center mr-2 ${
-                      hasAgreedToGuidelines ? "border-[#34594A]" : "border-gray-400"
+                      hasAgreedToGuidelines ? "border-[#34594A] dark:border-[#414141] " : "border-gray-400 dark:border-[#414141] "
                     }`}
                     style={{ width: 18, height: 18 }}
                   >
                     {hasAgreedToGuidelines && (
-                      <View className="w-2.5 h-2.5 rounded-full bg-[#34594A]" />
+                      <View className="w-2.5 h-2.5 rounded-full bg-[#34594A] dark:bg-[#E6E6E6] " />
                     )}
                   </View>
-                  <Text className="text-xs text-gray-600">
+                  <Text className="text-xs text-gray-600 dark:text-[#ADADAD] ">
                     I have read and understood our{" "}
                     <Text
                       onPress={handleOpenCommunityGuidelines}
-                      className="underline text-[#34594A] font-medium"
+                      className="underline text-[#34594A] font-medium dark:text-[#E6E6E6] "
                     >
                       Community Guidelines.
                     </Text>

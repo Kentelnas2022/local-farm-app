@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -419,14 +420,17 @@ function NearbyCarousel({ children }: { children: ReactNode }) {
 }
 
 function NearbyPhoto({ uri }: { uri: string }) {
+  const { themeColor } = useAppTheme();
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [uri]);
-  return <View style={{ height: 90, width: '100%', backgroundColor: '#e8eee1', alignItems: 'center', justifyContent: 'center' }}>
-    {uri && !failed ? <Image source={{ uri }} onError={() => setFailed(true)} style={{ width: '100%', height: '100%' }} resizeMode="cover"/> : <><Ionicons name="leaf-outline" size={26} color="#85967b"/><Text style={{ color: '#6b7c62', fontSize: 10, marginTop: 5 }}>From the farm</Text></>}
+  return <View style={{ height: 90, width: '100%', backgroundColor: themeColor("#e8eee1", "#303030"), alignItems: 'center', justifyContent: 'center' }}>
+    {uri && !failed ? <Image source={{ uri }} onError={() => setFailed(true)} style={{ width: '100%', height: '100%' }} resizeMode="cover"/> : <><Ionicons name="leaf-outline" size={26} color={themeColor("#85967b", "#E6E6E6")}/><Text style={{ color: themeColor("#6b7c62", "#E6E6E6"), fontSize: 10, marginTop: 5 }}>From the farm</Text></>}
   </View>;
 }
 
 export default function ExploreMap() {
+  const { themeColor } = useAppTheme();
+  const styles = createStyles(themeColor);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const iframeRef = useRef<any>(null);
@@ -1320,7 +1324,7 @@ export default function ExploreMap() {
     >
       {/* 1. Full-Screen Leaflet Map Background */}
       <View
-        style={{ position: "absolute", top: headerHeight, bottom: mapBottom, left: 0, right: 0, overflow: "hidden", backgroundColor: "#e8eee3", zIndex: 0 }}
+        style={{ position: "absolute", top: headerHeight, bottom: mapBottom, left: 0, right: 0, overflow: "hidden", backgroundColor: themeColor("#e8eee3", "#181818"), zIndex: 0 }}
       >
         {Platform.OS === "web" ? (
           <iframe
@@ -1350,7 +1354,7 @@ export default function ExploreMap() {
               flex: 1,
               width: "100%",
               height: "100%",
-              backgroundColor: "#e5e7eb",
+              backgroundColor: themeColor("#e5e7eb", "#181818"),
             }}
             geolocationEnabled={true}
             javaScriptEnabled={true}
@@ -1371,9 +1375,9 @@ export default function ExploreMap() {
           paddingTop: topInset + 6,
           paddingBottom: 14,
           paddingHorizontal: 20,
-          backgroundColor: "#faf9f5",
+          backgroundColor: themeColor("#faf9f5", "#181818"),
           borderBottomWidth: 1,
-          borderBottomColor: "#e6ece0",
+          borderBottomColor: themeColor("#e6ece0", "#414141"),
           zIndex: 20,
           ...(Platform.OS === "web"
             ? { boxShadow: "0 2px 12px rgba(45, 65, 48, 0.04)" }
@@ -1383,17 +1387,17 @@ export default function ExploreMap() {
         {/* Brand & Section Indicator */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <Ionicons name="leaf" size={17} color="#41634f" />
-            <Text style={{ color: "#304a3c", fontSize: 15, fontWeight: "600", letterSpacing: -0.5 }}>localfarm</Text>
+            <Ionicons name="leaf" size={17} color={themeColor("#41634f", "#E6E6E6")} />
+            <Text style={{ color: themeColor("#304a3c", "#E6E6E6"), fontSize: 15, fontWeight: "600", letterSpacing: -0.5 }}>localfarm</Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <Ionicons name="compass-outline" size={13} color="#819080" />
-            <Text style={{ fontSize: 9, letterSpacing: 1.6, color: "#819080", fontWeight: "500" }}>EXPLORE</Text>
+            <Ionicons name="compass-outline" size={13} color={themeColor("#819080", "#E6E6E6")} />
+            <Text style={{ fontSize: 9, letterSpacing: 1.6, color: themeColor("#819080", "#E6E6E6"), fontWeight: "500" }}>EXPLORE</Text>
           </View>
         </View>
 
         {/* Title */}
-        <Text style={{ fontSize: 24, fontWeight: "700", color: "#263e32", letterSpacing: -0.8, marginBottom: 10 }}>
+        <Text style={{ fontSize: 24, fontWeight: "700", color: themeColor("#263e32", "#E6E6E6"), letterSpacing: -0.8, marginBottom: 10 }}>
           Discover nearby
         </Text>
 
@@ -1402,25 +1406,25 @@ export default function ExploreMap() {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            backgroundColor: "#f0f3eb",
+            backgroundColor: themeColor("#f0f3eb", "#181818"),
             borderRadius: 14,
             borderWidth: 1,
-            borderColor: "#e1e7dc",
+            borderColor: themeColor("#e1e7dc", "#414141"),
             paddingHorizontal: 14,
             height: 44,
             marginBottom: 10,
           }}
         >
-          <Ionicons name="search" size={18} color="#60725c" />
+          <Ionicons name="search" size={18} color={themeColor("#60725c", "#E6E6E6")} />
           <TextInput
             placeholder="Search farms & fresh produce"
-            placeholderTextColor="#8a9985"
+            placeholderTextColor={themeColor("#8a9985", "#E6E6E6")}
             value={searchText}
             onChangeText={setSearchText}
             style={{
               flex: 1,
               fontSize: 14,
-              color: "#243b2c",
+              color: themeColor("#243b2c", "#E6E6E6"),
               marginLeft: 10,
               paddingVertical: 0,
               height: "100%",
@@ -1433,7 +1437,7 @@ export default function ExploreMap() {
               accessibilityRole="button"
               accessibilityLabel="Clear search"
             >
-              <Ionicons name="close-circle" size={18} color="#8a9985" />
+              <Ionicons name="close-circle" size={18} color={themeColor("#8a9985", "#E6E6E6")} />
             </TouchableOpacity>
           )}
         </View>
@@ -1486,17 +1490,17 @@ export default function ExploreMap() {
           })}
         </View>
       </View>
-      {showNearby && <View style={{ position: 'absolute', zIndex: 20, bottom: navigationHeight, left: 0, right: 0, height: nearbyHeight, backgroundColor: '#faf9f5', paddingTop: 16, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderColor: '#e3e9dd', boxShadow: '0 -5px 24px rgba(40, 60, 45, .06)' }}>
+      {showNearby && <View style={{ position: 'absolute', zIndex: 20, bottom: navigationHeight, left: 0, right: 0, height: nearbyHeight, backgroundColor: themeColor("#faf9f5", "#181818"), paddingTop: 16, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderColor: themeColor("#e3e9dd", "#414141"), boxShadow: '0 -5px 24px rgba(40, 60, 45, .06)' }}>
         <View style={{ marginHorizontal: 22, marginBottom: 13, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View><Text style={{ fontSize: 9, letterSpacing: 1.8, color: '#819080', marginBottom: 5 }}>FROM YOUR COMMUNITY</Text><Text style={{ fontSize: 19, fontWeight: '600', color: '#293f34', letterSpacing: -.6 }}>Fresh finds near you</Text></View>
-          <View style={{ backgroundColor: '#eef2e9', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 }}><Text style={{ color: '#61745b', fontSize: 10 }}>{filteredFarms.length} places</Text></View>
+          <View><Text style={{ fontSize: 9, letterSpacing: 1.8, color: themeColor("#819080", "#E6E6E6"), marginBottom: 5 }}>FROM YOUR COMMUNITY</Text><Text style={{ fontSize: 19, fontWeight: '600', color: themeColor("#293f34", "#E6E6E6"), letterSpacing: -.6 }}>Fresh finds near you</Text></View>
+          <View style={{ backgroundColor: themeColor("#eef2e9", "#181818"), paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 }}><Text style={{ color: themeColor("#61745b", "#E6E6E6"), fontSize: 10 }}>{filteredFarms.length} places</Text></View>
         </View>
         <NearbyCarousel>
-          {filteredFarms.slice(0, 12).map(farm => <TouchableOpacity key={farm.id} accessibilityRole="button" accessibilityLabel={'View ' + farm.title} onPress={() => setSelectedLocation(farm)} style={{ width: 168, flexShrink: 0, borderRadius: 16, backgroundColor: '#fff', overflow: 'hidden', borderWidth: 1, borderColor: '#e5e9df' }}>
+          {filteredFarms.slice(0, 12).map(farm => <TouchableOpacity key={farm.id} accessibilityRole="button" accessibilityLabel={'View ' + farm.title} onPress={() => setSelectedLocation(farm)} style={{ width: 168, flexShrink: 0, borderRadius: 16, backgroundColor: themeColor("#fff", "#242424"), overflow: 'hidden', borderWidth: 1, borderColor: themeColor("#e5e9df", "#414141") }}>
             <NearbyPhoto uri={farm.imageUrl}/>
-            <View style={{ padding: 11 }}><Text numberOfLines={1} style={{ fontSize: 12, color: '#2d4433', fontWeight: '600' }}>{farm.title}</Text><Text numberOfLines={1} style={{ fontSize: 11, marginTop: 5, color: '#71806b' }}>{farm.priceRange || farm.produce}</Text><View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}><Ionicons name={farm.type === 'Farm' ? 'leaf-outline' : 'storefront-outline'} size={10} color="#809077"/><Text style={{ fontSize: 9, color: '#809077' }}>{farm.type === 'Farm' ? 'Local grower' : 'Wholesale partner'}</Text></View></View>
+            <View style={{ padding: 11 }}><Text numberOfLines={1} style={{ fontSize: 12, color: themeColor("#2d4433", "#E6E6E6"), fontWeight: '600' }}>{farm.title}</Text><Text numberOfLines={1} style={{ fontSize: 11, marginTop: 5, color: themeColor("#71806b", "#E6E6E6") }}>{farm.priceRange || farm.produce}</Text><View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}><Ionicons name={farm.type === 'Farm' ? 'leaf-outline' : 'storefront-outline'} size={10} color={themeColor("#809077", "#E6E6E6")}/><Text style={{ fontSize: 9, color: themeColor("#809077", "#E6E6E6") }}>{farm.type === 'Farm' ? 'Local grower' : 'Wholesale partner'}</Text></View></View>
           </TouchableOpacity>)}
-          {filteredFarms.length === 0 && <Text style={{ color: '#71806b', paddingTop: 24 }}>No nearby listings match your search.</Text>}
+          {filteredFarms.length === 0 && <Text style={{ color: themeColor("#71806b", "#E6E6E6"), paddingTop: 24 }}>No nearby listings match your search.</Text>}
         </NearbyCarousel>
       </View>}
       {/* 2.5 Filtered Single Location Floating Banner */}
@@ -1509,18 +1513,18 @@ export default function ExploreMap() {
             right: 16,
             zIndex: 35,
           }}
-          className="bg-white rounded-2xl p-3 shadow-xl elevation-6 border border-emerald-200 flex-row items-center justify-between"
+          className="bg-white rounded-2xl p-3 shadow-xl elevation-6 border border-emerald-200 flex-row items-center justify-between dark:bg-[#242424] dark:border-[#414141] "
         >
           <View className="flex-row items-center gap-2 flex-1 mr-2">
-            <View className="w-8 h-8 rounded-full bg-[#72AF5B]/15 items-center justify-center">
-              <Ionicons name="location-sharp" size={18} color="#237227" />
+            <View className="w-8 h-8 rounded-full bg-[#72AF5B]/15 items-center justify-center dark:bg-[#E6E6E6]/15 ">
+              <Ionicons name="location-sharp" size={18} color={themeColor("#237227", "#E6E6E6")} />
             </View>
             <View className="flex-1">
-              <Text className="text-[10px] font-bold uppercase tracking-wider text-[#237227]">
+              <Text className="text-[10px] font-bold uppercase tracking-wider text-[#237227] dark:text-[#E6E6E6] ">
                 Viewing Location
               </Text>
               <Text
-                className="text-xs font-bold text-gray-900"
+                className="text-xs font-bold text-gray-900 dark:text-[#E6E6E6] "
                 numberOfLines={1}
               >
                 {filterLocationName}
@@ -1533,10 +1537,10 @@ export default function ExploreMap() {
               setFilterLocationName(null);
               handleCloseSelectedLocation();
             }}
-            className="bg-[#72AF5B] px-3 py-1.5 rounded-full flex-row items-center gap-1 active:bg-[#5e944a]"
+            className="bg-[#72AF5B] px-3 py-1.5 rounded-full flex-row items-center gap-1 active:bg-[#5e944a] dark:bg-[#E6E6E6] dark:active:bg-[#E6E6E6] "
           >
-            <Text className="text-white text-xs font-bold">View All</Text>
-            <Ionicons name="close-circle" size={14} color="#ffffff" />
+            <Text className="text-white text-xs font-bold dark:text-[#181818] ">View All</Text>
+            <Ionicons name="close-circle" size={14} color={themeColor("#ffffff", "#181818")} />
           </TouchableOpacity>
         </View>
       )}
@@ -1551,25 +1555,25 @@ export default function ExploreMap() {
             right: 16,
             zIndex: 35,
           }}
-          className="bg-white rounded-2xl p-3.5 shadow-2xl elevation-8 border border-emerald-100"
+          className="bg-white rounded-2xl p-3.5 shadow-2xl elevation-8 border border-emerald-100 dark:bg-[#242424] dark:border-[#414141] "
         >
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2.5 flex-1 mr-2">
-              <View className="w-9 h-9 rounded-full bg-[#72AF5B]/15 border border-[#72AF5B]/30 items-center justify-center">
-                <Ionicons name="navigate-circle" size={24} color="#72AF5B" />
+              <View className="w-9 h-9 rounded-full bg-[#72AF5B]/15 border border-[#72AF5B]/30 items-center justify-center dark:bg-[#E6E6E6]/15 dark:border-[#414141]/30 ">
+                <Ionicons name="navigate-circle" size={24} color={themeColor("#72AF5B", "#E6E6E6")} />
               </View>
               <View className="flex-1">
                 <View className="flex-row items-center gap-1.5">
-                  <Text className="text-[10px] font-bold uppercase tracking-wider text-[#4e7d3b]">
+                  <Text className="text-[10px] font-bold uppercase tracking-wider text-[#4e7d3b] dark:text-[#E6E6E6] ">
                     Active Route
                   </Text>
-                  <Text className="text-gray-300 text-[10px]">•</Text>
-                  <Text className="text-[10px] font-medium text-gray-500">
+                  <Text className="text-gray-300 text-[10px] dark:text-[#E6E6E6] ">•</Text>
+                  <Text className="text-[10px] font-medium text-gray-500 dark:text-[#ADADAD] ">
                     From My Location
                   </Text>
                 </View>
                 <Text
-                  className="text-sm font-bold text-gray-900 leading-tight"
+                  className="text-sm font-bold text-gray-900 leading-tight dark:text-[#E6E6E6] "
                   numberOfLines={1}
                 >
                   {activeRouteLocation.title}
@@ -1585,30 +1589,30 @@ export default function ExploreMap() {
                 sendMapMessage({ type: "CLEAR_ROUTE" });
                 sendMapMessage({ type: "ZOOM_OUT" });
               }}
-              className="w-7 h-7 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200"
+              className="w-7 h-7 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200 dark:bg-[#181818] dark:active:bg-[#181818] "
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel="Exit active route"
             >
-              <Ionicons name="close" size={16} color="#4B5563" />
+              <Ionicons name="close" size={16} color={themeColor("#4B5563", "#ADADAD")} />
             </TouchableOpacity>
           </View>
 
           {/* Route Stats: Drive & Walk */}
-          <View className="flex-row items-center gap-2 mt-2.5 pt-2 border-t border-gray-100">
-            <View className="flex-row items-center bg-[#72AF5B]/15 px-2.5 py-1 rounded-lg">
-              <Ionicons name="car" size={14} color="#4e7d3b" />
-              <Text className="text-xs font-bold text-[#2d4b20] ml-1.5">
+          <View className="flex-row items-center gap-2 mt-2.5 pt-2 border-t border-gray-100 dark:border-[#414141] ">
+            <View className="flex-row items-center bg-[#72AF5B]/15 px-2.5 py-1 rounded-lg dark:bg-[#E6E6E6]/15 ">
+              <Ionicons name="car" size={14} color={themeColor("#4e7d3b", "#E6E6E6")} />
+              <Text className="text-xs font-bold text-[#2d4b20] ml-1.5 dark:text-[#E6E6E6] ">
                 {activeRouteDetails.durationDrive}
               </Text>
-              <Text className="text-[11px] text-[#4e7d3b] ml-1">
+              <Text className="text-[11px] text-[#4e7d3b] ml-1 dark:text-[#E6E6E6] ">
                 ({activeRouteDetails.distance})
               </Text>
             </View>
 
-            <View className="flex-row items-center bg-emerald-50 px-2.5 py-1 rounded-lg">
+            <View className="flex-row items-center bg-emerald-50 px-2.5 py-1 rounded-lg dark:bg-[#181818] ">
               <Ionicons name="walk" size={14} color="#059669" />
-              <Text className="text-xs font-bold text-emerald-900 ml-1.5">
+              <Text className="text-xs font-bold text-emerald-900 ml-1.5 dark:text-[#E6E6E6] ">
                 {activeRouteDetails.durationWalk}
               </Text>
             </View>
@@ -1624,11 +1628,11 @@ export default function ExploreMap() {
                   activeRouteLocation.title,
                 );
               }}
-              className="flex-row items-center gap-1 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-lg active:bg-gray-100"
+              className="flex-row items-center gap-1 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-lg active:bg-gray-100 dark:bg-[#242424] dark:border-[#414141] dark:active:bg-[#181818] "
               activeOpacity={0.7}
             >
-              <Ionicons name="open-outline" size={13} color="#4B5563" />
-              <Text className="text-[11px] font-semibold text-gray-700">
+              <Ionicons name="open-outline" size={13} color={themeColor("#4B5563", "#ADADAD")} />
+              <Text className="text-[11px] font-semibold text-gray-700 dark:text-[#E6E6E6] ">
                 Maps
               </Text>
             </TouchableOpacity>
@@ -1640,7 +1644,7 @@ export default function ExploreMap() {
       <TouchableOpacity
         onPress={handleRecenterUser}
         activeOpacity={0.8}
-        className="w-11 h-11 rounded-full bg-white items-center justify-center shadow-lg elevation-5 border border-gray-100"
+        className="w-11 h-11 rounded-full bg-white items-center justify-center shadow-lg elevation-5 border border-gray-100 dark:bg-[#242424] dark:border-[#414141] "
         style={{
           position: "absolute",
           right: 16,
@@ -1651,13 +1655,13 @@ export default function ExploreMap() {
         accessibilityRole="button"
         accessibilityLabel="Recenter to my location"
       >
-        <Ionicons name="locate-sharp" size={22} color="#72AF5B" />
+        <Ionicons name="locate-sharp" size={22} color={themeColor("#72AF5B", "#E6E6E6")} />
       </TouchableOpacity>
 
       {/* 5. Floating Farm / Wholesaler Info Card (React Native UI) */}
       {selectedLocation !== null && (
         <View
-          className="absolute bottom-20 left-4 right-4 bg-white rounded-2xl p-4 shadow-xl elevation-6 z-30 border border-gray-100"
+          className="absolute bottom-20 left-4 right-4 bg-white rounded-2xl p-4 shadow-xl elevation-6 z-30 border border-gray-100 dark:bg-[#242424] dark:border-[#414141] "
           style={{
             zIndex: 30,
             bottom: navigationHeight + 12,
@@ -1680,10 +1684,10 @@ export default function ExploreMap() {
                 className={`absolute bottom-0 left-0 right-0 rounded-b-xl py-0.5 items-center ${
                   selectedLocation.type === "Wholesaler"
                     ? "bg-amber-700/90"
-                    : "bg-green-700/90"
+                    : "bg-green-700/90 dark:bg-[#E6E6E6]/90 "
                 }`}
               >
-                <Text className="text-[9px] font-bold text-white">
+                <Text className="text-[9px] font-bold text-white dark:text-[#181818] ">
                   ⭐ {selectedLocation.rating}
                 </Text>
               </View>
@@ -1692,7 +1696,7 @@ export default function ExploreMap() {
             {/* Middle: Title, Type badge, Farmer, Produce */}
             <View className="flex-1 justify-center mr-1">
               <Text
-                className="text-base font-bold text-gray-900 leading-tight"
+                className="text-base font-bold text-gray-900 leading-tight dark:text-[#E6E6E6] "
                 numberOfLines={1}
               >
                 {selectedLocation.title}
@@ -1704,14 +1708,14 @@ export default function ExploreMap() {
                   className={`px-1.5 py-0.5 rounded ${
                     selectedLocation.type === "Wholesaler"
                       ? "bg-amber-100 border border-amber-300"
-                      : "bg-green-100 border border-green-300"
+                      : "bg-green-100 border border-green-300 dark:bg-[#303030] dark:border-[#414141] "
                   }`}
                 >
                   <Text
                     className={`text-[9px] font-bold ${
                       selectedLocation.type === "Wholesaler"
                         ? "text-amber-800"
-                        : "text-green-800"
+                        : "text-green-800 dark:text-[#E6E6E6] "
                     }`}
                   >
                     {selectedLocation.type === "Wholesaler"
@@ -1721,7 +1725,7 @@ export default function ExploreMap() {
                 </View>
 
                 <Text
-                  className="text-xs text-gray-600 font-medium flex-1"
+                  className="text-xs text-gray-600 font-medium flex-1 dark:text-[#ADADAD] "
                   numberOfLines={1}
                 >
                   {selectedLocation.farmerName}
@@ -1729,17 +1733,17 @@ export default function ExploreMap() {
               </View>
 
               <Text
-                className="text-xs text-gray-700 font-medium mt-1"
+                className="text-xs text-gray-700 font-medium mt-1 dark:text-[#E6E6E6] "
                 numberOfLines={1}
               >
                 {selectedLocation.produce}
               </Text>
 
               <View className="flex-row items-center mt-0.5 justify-between">
-                <Text className="text-xs font-bold text-gray-900">
+                <Text className="text-xs font-bold text-gray-900 dark:text-[#E6E6E6] ">
                   {selectedLocation.priceRange}
                 </Text>
-                <Text className="text-[11px] text-gray-500 font-medium">
+                <Text className="text-[11px] text-gray-500 font-medium dark:text-[#ADADAD] ">
                   {selectedLocation.distance}
                 </Text>
               </View>
@@ -1748,24 +1752,24 @@ export default function ExploreMap() {
             {/* Right: Close Button ('X' icon) */}
             <TouchableOpacity
               onPress={handleCloseSelectedLocation}
-              className="w-7 h-7 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200"
+              className="w-7 h-7 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200 dark:bg-[#181818] dark:active:bg-[#181818] "
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel="Close info card"
             >
-              <Ionicons name="close" size={18} color="#4B5563" />
+              <Ionicons name="close" size={18} color={themeColor("#4B5563", "#ADADAD")} />
             </TouchableOpacity>
           </View>
 
           {/* Bottom Action Row: Direction & Message */}
-          <View className="flex-row items-center gap-2 mt-3 pt-2.5 border-t border-gray-100">
+          <View className="flex-row items-center gap-2 mt-3 pt-2.5 border-t border-gray-100 dark:border-[#414141] ">
             {/* Direction Button */}
             <TouchableOpacity
               onPress={() => handleToggleRoute(selectedLocation)}
               className={`flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-1.5 ${
                 activeRouteLocation?.id === selectedLocation.id
                   ? "bg-slate-800 active:bg-slate-900"
-                  : "bg-[#72AF5B] active:bg-[#5e944a]"
+                  : "bg-[#72AF5B] active:bg-[#5e944a] dark:bg-[#E6E6E6] dark:active:bg-[#E6E6E6] "
               }`}
               activeOpacity={0.8}
               accessibilityRole="button"
@@ -1778,9 +1782,9 @@ export default function ExploreMap() {
                     : "navigate"
                 }
                 size={15}
-                color="#ffffff"
+                color={themeColor("#ffffff", "#181818")}
               />
-              <Text className="text-white font-bold text-xs">
+              <Text className="text-white font-bold text-xs dark:text-[#181818] ">
                 {activeRouteLocation?.id === selectedLocation.id
                   ? "Clear Route"
                   : "Direction"}
@@ -1809,32 +1813,32 @@ export default function ExploreMap() {
               className={`flex-1 py-2.5 rounded-xl flex-row items-center justify-center gap-1.5 ${
                 selectedLocation.type === "Wholesaler"
                   ? "bg-[#d97706] active:bg-[#b45309]"
-                  : "bg-[#16a34a] active:bg-[#15803d]"
+                  : "bg-[#16a34a] active:bg-[#15803d] dark:active:bg-[#E6E6E6] "
               }`}
               activeOpacity={0.8}
               accessibilityRole="button"
               accessibilityLabel={`Message ${selectedLocation.farmerName}`}
             >
-              <Ionicons name="chatbubble-ellipses" size={15} color="#ffffff" />
-              <Text className="text-white font-bold text-xs">Message</Text>
+              <Ionicons name="chatbubble-ellipses" size={15} color={themeColor("#ffffff", "#E6E6E6")} />
+              <Text className="text-white font-bold text-xs dark:text-[#E6E6E6] ">Message</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
       {/* 6. Bottom Navigation Bar */}
-      <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: navigationHeight, backgroundColor: "#fff", zIndex: 50 }}><Navigation showFab={false} activeTabName="explore" /></View>
+      <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: navigationHeight, backgroundColor: themeColor("#fff", "#242424"), zIndex: 50 }}><Navigation showFab={false} activeTabName="explore" /></View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColor: (light: string, dark: string) => string) => StyleSheet.create({
   rootContainer: {
     flex: 1,
     width: "100%",
     minHeight: 0,
     position: "relative",
     overflow: "hidden",
-    backgroundColor: "#faf9f5",
+    backgroundColor: themeColor("#faf9f5", "#181818"),
   },
 });

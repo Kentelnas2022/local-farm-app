@@ -10,7 +10,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  TouchableWithoutFeedback,
+  Pressable,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -208,9 +208,7 @@ export default function ShareProfileModal({
         )}
 
         {/* Full Screen Tap Layer: Tapping anywhere on the background cycles color / emoji */}
-        <TouchableWithoutFeedback onPress={handleScreenPress}>
-          <View style={StyleSheet.absoluteFill} />
-        </TouchableWithoutFeedback>
+        <Pressable onPress={handleScreenPress} style={StyleSheet.absoluteFill} />
 
         <StatusBar style={mode === "colour" ? "light" : "dark"} />
 

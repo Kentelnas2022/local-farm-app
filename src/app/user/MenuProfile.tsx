@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useAuth } from "@/hooks/use-auth";
 import { getRSBSAApplication, RSBSAApplication } from "@/services/rsbsa-service";
 import { getMyReservationsApi } from "@/services/reservation-service";
@@ -101,10 +102,12 @@ function TactileTouchable({
 }
 
 export default function MenuProfile() {
+  const { themeColor } = useAppTheme();
+  const styles = createStyles(themeColor);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { isDark: isDarkMode, setDarkMode: setIsDarkMode } = useAppTheme();
   const [rsbsaApp, setRsbsaApp] = useState<RSBSAApplication | null>(null);
   const [pendingReservationsCount, setPendingReservationsCount] = useState(0);
 
@@ -197,7 +200,7 @@ export default function MenuProfile() {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="chevron-back" size={21} color="#34594A" />
+          <Ionicons name="chevron-back" size={21} color={themeColor("#34594A", "#E6E6E6")} />
         </TactileTouchable>
 
         <Text style={styles.headerTitle}>Profile</Text>
@@ -248,12 +251,12 @@ export default function MenuProfile() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <Ionicons name="person" size={24} color="#7A8D81" />
+                      <Ionicons name="person" size={24} color={themeColor("#7A8D81", "#E6E6E6")} />
                     )}
                   </View>
                   {isRSBSAVerified && (
                     <View style={styles.verifiedBadgeCircle}>
-                      <Ionicons name="checkmark-circle" size={17} color="#2A734D" />
+                      <Ionicons name="checkmark-circle" size={17} color={themeColor("#2A734D", "#E6E6E6")} />
                     </View>
                   )}
                 </View>
@@ -279,7 +282,7 @@ export default function MenuProfile() {
                 </View>
 
                 <View style={styles.chevronBox}>
-                  <Ionicons name="chevron-forward" size={18} color="#97A69C" />
+                  <Ionicons name="chevron-forward" size={18} color={themeColor("#97A69C", "#E6E6E6")} />
                 </View>
               </View>
             </TactileTouchable>
@@ -297,12 +300,12 @@ export default function MenuProfile() {
                 accessibilityRole="button"
               >
                 <View style={styles.menuIconBox}>
-                  <Ionicons name="person-outline" size={19} color="#34594A" />
+                  <Ionicons name="person-outline" size={19} color={themeColor("#34594A", "#E6E6E6")} />
                 </View>
                 <View style={styles.menuTextWrap}>
                   <Text style={styles.menuTitle}>Personal Information</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={17} color="#A2B0A6" />
+                <Ionicons name="chevron-forward" size={17} color={themeColor("#A2B0A6", "#E6E6E6")} />
               </TactileTouchable>
 
               <View style={styles.divider} />
@@ -315,7 +318,7 @@ export default function MenuProfile() {
                 accessibilityLabel="Security and Verification"
               >
                 <View style={styles.menuIconBox}>
-                  <Ionicons name="shield-checkmark-outline" size={19} color="#34594A" />
+                  <Ionicons name="shield-checkmark-outline" size={19} color={themeColor("#34594A", "#E6E6E6")} />
                 </View>
                 <View style={styles.menuTextWrap}>
                   <Text style={styles.menuTitle}>Security & Verification</Text>
@@ -323,7 +326,7 @@ export default function MenuProfile() {
                     Password, 2FA & RSBSA Grower Badge
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={17} color="#A2B0A6" />
+                <Ionicons name="chevron-forward" size={17} color={themeColor("#A2B0A6", "#E6E6E6")} />
               </TactileTouchable>
 
               <View style={styles.divider} />
@@ -336,7 +339,7 @@ export default function MenuProfile() {
                 accessibilityLabel="Harvest Reservations"
               >
                 <View style={[styles.menuIconBox, styles.reservationIconBox]}>
-                  <Ionicons name="basket-outline" size={19} color="#2A4F3E" />
+                  <Ionicons name="basket-outline" size={19} color={themeColor("#2A4F3E", "#E6E6E6")} />
                 </View>
                 <View style={styles.menuTextWrap}>
                   <View style={styles.rowInlineWithBadge}>
@@ -353,7 +356,7 @@ export default function MenuProfile() {
                     View buyers & manage pre-harvest bookings
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={17} color="#2A4F3E" />
+                <Ionicons name="chevron-forward" size={17} color={themeColor("#2A4F3E", "#E6E6E6")} />
               </TactileTouchable>
 
               <View style={styles.divider} />
@@ -365,12 +368,12 @@ export default function MenuProfile() {
                 accessibilityRole="button"
               >
                 <View style={styles.menuIconBox}>
-                  <Ionicons name="bookmark-outline" size={19} color="#34594A" />
+                  <Ionicons name="bookmark-outline" size={19} color={themeColor("#34594A", "#E6E6E6")} />
                 </View>
                 <View style={styles.menuTextWrap}>
                   <Text style={styles.menuTitle}>Saved</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={17} color="#A2B0A6" />
+                <Ionicons name="chevron-forward" size={17} color={themeColor("#A2B0A6", "#E6E6E6")} />
               </TactileTouchable>
 
               <View style={styles.divider} />
@@ -378,7 +381,7 @@ export default function MenuProfile() {
               {/* Item 5: Darkmode */}
               <View style={[styles.menuRow, { paddingVertical: 10 }]}>
                 <View style={styles.menuIconBox}>
-                  <Ionicons name="moon-outline" size={19} color="#34594A" />
+                  <Ionicons name="moon-outline" size={19} color={themeColor("#34594A", "#E6E6E6")} />
                 </View>
                 <View style={styles.menuTextWrap}>
                   <Text style={styles.menuTitle}>Darkmode</Text>
@@ -386,8 +389,8 @@ export default function MenuProfile() {
                 <Switch
                   value={isDarkMode}
                   onValueChange={setIsDarkMode}
-                  trackColor={{ false: "#E2E8E3", true: "#34594A" }}
-                  thumbColor="#FFFFFF"
+                  trackColor={{ false: "#E2E8E3", true: "#ADADAD" }}
+                  thumbColor={isDarkMode ? "#E6E6E6" : "#FFFFFF"}
                   ios_backgroundColor="#E2E8E3"
                 />
               </View>
@@ -401,19 +404,13 @@ export default function MenuProfile() {
             <View style={styles.groupCard}>
               {/* Item 1: Help and support */}
               <TactileTouchable
-                onPress={() =>
-                  Alert.alert(
-                    "Help & Support",
-                    "Help & Support features are currently being updated. Please check back soon!",
-                    [{ text: "OK" }]
-                  )
-                }
+                onPress={() => router.push("/user/HelpSupport" as any)}
                 style={styles.menuRow}
                 accessibilityRole="button"
                 accessibilityLabel="Help and support"
               >
                 <View style={styles.menuIconBox}>
-                  <Ionicons name="help-circle-outline" size={19} color="#34594A" />
+                  <Ionicons name="help-circle-outline" size={19} color={themeColor("#34594A", "#E6E6E6")} />
                 </View>
                 <View style={styles.menuTextWrap}>
                   <Text style={styles.menuTitle}>Help & support</Text>
@@ -421,7 +418,7 @@ export default function MenuProfile() {
                     FAQs, reporting & grower guides
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={17} color="#A2B0A6" />
+                <Ionicons name="chevron-forward" size={17} color={themeColor("#A2B0A6", "#E6E6E6")} />
               </TactileTouchable>
 
               <View style={styles.divider} />
@@ -434,7 +431,7 @@ export default function MenuProfile() {
                 accessibilityLabel="Privacy Center"
               >
                 <View style={styles.menuIconBox}>
-                  <Ionicons name="shield-checkmark-outline" size={19} color="#34594A" />
+                  <Ionicons name="shield-checkmark-outline" size={19} color={themeColor("#34594A", "#E6E6E6")} />
                 </View>
                 <View style={styles.menuTextWrap}>
                   <Text style={styles.menuTitle}>Privacy Center</Text>
@@ -442,7 +439,7 @@ export default function MenuProfile() {
                     Location safety, audience & policies
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={17} color="#A2B0A6" />
+                <Ionicons name="chevron-forward" size={17} color={themeColor("#A2B0A6", "#E6E6E6")} />
               </TactileTouchable>
             </View>
           </FadeEntrance>
@@ -463,9 +460,9 @@ export default function MenuProfile() {
                 accessibilityLabel="Switch account"
               >
                 {isSwitching ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={themeColor("#FFFFFF", "#181818")} />
                 ) : (
-                  <Ionicons name="swap-horizontal" size={18} color="#FFFFFF" />
+                  <Ionicons name="swap-horizontal" size={18} color={themeColor("#FFFFFF", "#181818")} />
                 )}
                 <Text style={styles.primaryButtonText}>
                   {isSwitching ? "Switching..." : "Switch account"}
@@ -485,9 +482,9 @@ export default function MenuProfile() {
                 accessibilityLabel="Logout"
               >
                 {isLoggingOut ? (
-                  <ActivityIndicator size="small" color="#5A6D61" />
+                  <ActivityIndicator size="small" color={themeColor("#5A6D61", "#E6E6E6")} />
                 ) : (
-                  <Ionicons name="log-out-outline" size={18} color="#6E5454" />
+                  <Ionicons name="log-out-outline" size={18} color={themeColor("#6E5454", "#ADADAD")} />
                 )}
                 <Text style={styles.secondaryButtonText}>
                   {isLoggingOut ? "Logging out..." : "Log out"}
@@ -507,10 +504,10 @@ export default function MenuProfile() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColor: (light: string, dark: string) => string) => StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#F7F9F7", // Calm organic background matching Reservations
+    backgroundColor: themeColor("#F7F9F7", "#181818"), // Calm organic background matching Reservations
   },
   headerBar: {
     flexDirection: "row",
@@ -519,15 +516,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 8,
     paddingBottom: 14,
-    backgroundColor: "#F7F9F7",
+    backgroundColor: themeColor("#F7F9F7", "#181818"),
   },
   backButton: {
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderWidth: 1,
-    borderColor: "#E5ECE6",
+    borderColor: themeColor("#E5ECE6", "#414141"),
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#293E33",
@@ -540,7 +537,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     letterSpacing: -0.4,
-    color: "#23382D", // Calm deep forest
+    color: themeColor("#23382D", "#E6E6E6"), // Calm deep forest
   },
   headerSpacer: {
     width: 38,
@@ -562,12 +559,12 @@ const styles = StyleSheet.create({
 
   // Profile Hero Card
   profileCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderRadius: 20,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#E5ECE6",
+    borderColor: themeColor("#E5ECE6", "#414141"),
     shadowColor: "#293E33",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.04,
@@ -586,12 +583,12 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 27,
-    backgroundColor: "#EDF3EE",
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
     borderWidth: 1.5,
-    borderColor: "#E3ECE5",
+    borderColor: themeColor("#E3ECE5", "#414141"),
   },
   avatarImage: {
     width: "100%",
@@ -601,7 +598,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: -1,
     right: -1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderRadius: 10,
     padding: 1,
   },
@@ -617,15 +614,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     letterSpacing: -0.3,
-    color: "#23382D",
+    color: themeColor("#23382D", "#E6E6E6"),
   },
   profileSubtitle: {
     fontSize: 12,
-    color: "#75867B",
+    color: themeColor("#75867B", "#E6E6E6"),
     marginTop: 2,
   },
   profileSubtitleVerified: {
-    color: "#2C754E",
+    color: themeColor("#2C754E", "#E6E6E6"),
     fontWeight: "600",
   },
   chevronBox: {
@@ -638,20 +635,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.4,
     textTransform: "uppercase",
-    color: "#738579",
+    color: themeColor("#738579", "#E6E6E6"),
     marginBottom: 8,
     marginLeft: 6,
   },
 
   // Grouped Menu Cards
   groupCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 4,
     marginBottom: 22,
     borderWidth: 1,
-    borderColor: "#E5ECE6",
+    borderColor: themeColor("#E5ECE6", "#414141"),
     shadowColor: "#293E33",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.035,
@@ -667,7 +664,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 11,
-    backgroundColor: "#EDF3EE",
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
     alignItems: "center",
     justifyContent: "center",
     marginRight: 13,
@@ -679,27 +676,27 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontSize: 14.5,
     fontWeight: "600",
-    color: "#24372C",
+    color: themeColor("#24372C", "#E6E6E6"),
     letterSpacing: -0.2,
   },
   menuDescription: {
     fontSize: 11,
-    color: "#7C8D82",
+    color: themeColor("#7C8D82", "#E6E6E6"),
     marginTop: 2,
   },
   divider: {
     height: 1,
-    backgroundColor: "#F0F4F0",
+    backgroundColor: themeColor("#F0F4F0", "#181818"),
     marginLeft: 49,
   },
 
   // Highlighted Harvest Reservation item
   reservationRow: {
-    backgroundColor: "#FCFDFC",
+    backgroundColor: themeColor("#FCFDFC", "#242424"),
     borderRadius: 12,
   },
   reservationIconBox: {
-    backgroundColor: "#E4EDE6",
+    backgroundColor: themeColor("#E4EDE6", "#181818"),
   },
   rowInlineWithBadge: {
     flexDirection: "row",
@@ -707,7 +704,7 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   pendingBadge: {
-    backgroundColor: "#F3EBD8",
+    backgroundColor: themeColor("#F3EBD8", "#303030"),
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 8,
@@ -737,7 +734,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   primaryActionButton: {
-    backgroundColor: "#34594A", // Calm deep forest green from Reservations
+    backgroundColor: themeColor("#34594A", "#E6E6E6"), // Calm deep forest green from Reservations
     shadowColor: "#293E33",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
@@ -747,13 +744,13 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: themeColor("#FFFFFF", "#181818"),
     letterSpacing: -0.2,
   },
   secondaryActionButton: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderWidth: 1.2,
-    borderColor: "#E0E7E1",
+    borderColor: themeColor("#E0E7E1", "#414141"),
     shadowColor: "#293E33",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,
@@ -763,7 +760,7 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#6E5454", // Subtle muted calm tone for destructive action
+    color: themeColor("#6E5454", "#ADADAD"), // Subtle muted calm tone for destructive action
     letterSpacing: -0.2,
   },
   buttonDisabled: {
@@ -772,7 +769,7 @@ const styles = StyleSheet.create({
   footerBrand: {
     fontSize: 11,
     fontWeight: "500",
-    color: "#96A49B",
+    color: themeColor("#96A49B", "#E6E6E6"),
     textAlign: "center",
     marginTop: 8,
     letterSpacing: 0.3,

@@ -268,7 +268,14 @@ async function initDB() {
     await safeAddColumn("users", "\`two_factor_method\` VARCHAR(50) NOT NULL DEFAULT 'none'");
     await safeAddColumn("users", "\`two_factor_secret\` VARCHAR(255) DEFAULT NULL");
     await safeAddColumn("users", "\`eula_accepted_at\` TIMESTAMP NULL DEFAULT NULL");
+    await safeAddColumn("users", "\`farm_name\` VARCHAR(255) DEFAULT NULL");
+    await safeAddColumn("users", "\`farm_location\` VARCHAR(255) DEFAULT NULL");
+    await safeAddColumn("users", "\`primary_crops\` VARCHAR(255) DEFAULT NULL");
+    await safeAddColumn("users", "\`is_verified\` TINYINT(1) NOT NULL DEFAULT 0");
     await safeAddColumn("otps", "\`is_used\` TINYINT(1) NOT NULL DEFAULT 0 AFTER \`expires_at\`");
+    await safeAddColumn("notifications", "\`actor_type\` VARCHAR(50) DEFAULT 'user'");
+    await safeAddColumn("notifications", "\`message\` TEXT DEFAULT NULL");
+    await safeAddColumn("notifications", "\`reference_id\` INT DEFAULT NULL");
 
     // Sync existing users between password and password_hash
     try {

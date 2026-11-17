@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import React from 'react';
 import {
   Modal,
@@ -93,6 +94,7 @@ export default function DigitalReceiptModal({
   onOpenWeighIn,
   isSeller = false,
 }: DigitalReceiptModalProps) {
+  const { themeColor } = useAppTheme();
   const { showToast } = useToast();
 
   if (!reservation) return null;
@@ -135,20 +137,20 @@ export default function DigitalReceiptModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: 'rgba(18, 27, 21, 0.55)', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-        <View style={{ backgroundColor: '#faf9f6', borderRadius: 28, width: '100%', maxWidth: 360, overflow: 'hidden', borderWidth: 1, borderColor: '#e6ece2', shadowColor: '#122017', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.16, shadowRadius: 18, elevation: 12 }}>
+        <View style={{ backgroundColor: themeColor("#faf9f6", "#181818"), borderRadius: 28, width: '100%', maxWidth: 360, overflow: 'hidden', borderWidth: 1, borderColor: themeColor("#e6ece2", "#414141"), shadowColor: '#122017', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.16, shadowRadius: 18, elevation: 12 }}>
           
           {/* Header Bar */}
-          <View style={{ paddingHorizontal: 18, paddingVertical: 14, backgroundColor: '#274332', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ paddingHorizontal: 18, paddingVertical: 14, backgroundColor: themeColor("#274332", "#E6E6E6"), flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(255, 255, 255, 0.15)', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="receipt-outline" size={15} color="#ffffff" />
+                <Ionicons name="receipt-outline" size={15} color={themeColor("#ffffff", "#E6E6E6")} />
               </View>
-              <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 13.5, letterSpacing: 0.2 }}>
+              <Text style={{ color: themeColor("#ffffff", "#E6E6E6"), fontWeight: '700', fontSize: 13.5, letterSpacing: 0.2 }}>
                 Digital Pickup Receipt
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
-              <Ionicons name="close" size={19} color="#ffffff" />
+              <Ionicons name="close" size={19} color={themeColor("#ffffff", "#E6E6E6")} />
             </TouchableOpacity>
           </View>
 
@@ -186,76 +188,76 @@ export default function DigitalReceiptModal({
                 </Text>
               </View>
 
-              <Text style={{ fontSize: 20, fontWeight: '800', color: '#1a271f', marginTop: 8, letterSpacing: 0.5 }}>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: themeColor("#1a271f", "#E6E6E6"), marginTop: 8, letterSpacing: 0.5 }}>
                 {reservationCode}
               </Text>
-              <Text style={{ fontSize: 11, color: '#7a8e81', marginTop: 2 }}>
+              <Text style={{ fontSize: 11, color: themeColor("#7a8e81", "#E6E6E6"), marginTop: 2 }}>
                 Issued on {reservation.created_at ? new Date(reservation.created_at).toLocaleDateString() : 'Today'}
               </Text>
             </View>
 
             {/* QR Code Container */}
-            <View style={{ alignItems: 'center', justifyContent: 'center', padding: 16, backgroundColor: '#ffffff', borderRadius: 18, borderWidth: 1, borderColor: '#e4ece0', marginVertical: 12 }}>
+            <View style={{ alignItems: 'center', justifyContent: 'center', padding: 16, backgroundColor: themeColor("#ffffff", "#242424"), borderRadius: 18, borderWidth: 1, borderColor: themeColor("#e4ece0", "#414141"), marginVertical: 12 }}>
               <RenderSvgQrCode code={qrCodeValue} size={144} />
-              <Text style={{ fontSize: 10, color: '#7a8e81', fontWeight: '500', marginTop: 10 }}>
+              <Text style={{ fontSize: 10, color: themeColor("#7a8e81", "#E6E6E6"), fontWeight: '500', marginTop: 10 }}>
                 Scan or present this code at pickup hub
               </Text>
             </View>
 
             {/* Receipt Details Breakdown */}
-            <View style={{ paddingTop: 10, borderTopWidth: 1, borderTopColor: '#edf1ea', gap: 9 }}>
+            <View style={{ paddingTop: 10, borderTopWidth: 1, borderTopColor: themeColor("#edf1ea", "#414141"), gap: 9 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 11.5, color: '#687e70' }}>Crop Variety</Text>
-                <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#1a271f' }}>
+                <Text style={{ fontSize: 11.5, color: themeColor("#687e70", "#E6E6E6") }}>Crop Variety</Text>
+                <Text style={{ fontSize: 11.5, fontWeight: '700', color: themeColor("#1a271f", "#E6E6E6") }}>
                   {cropName}
                 </Text>
               </View>
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 11.5, color: '#687e70' }}>Reserved Quantity</Text>
-                <Text style={{ fontSize: 11.5, fontWeight: '600', color: '#274332' }}>
+                <Text style={{ fontSize: 11.5, color: themeColor("#687e70", "#E6E6E6") }}>Reserved Quantity</Text>
+                <Text style={{ fontSize: 11.5, fontWeight: '600', color: themeColor("#274332", "#E6E6E6") }}>
                   {quantity} {unit} @ ₱{pricePerUnit.toFixed(2)}
                 </Text>
               </View>
 
               {reservation.actual_weighed_quantity && (
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, borderRadius: 10, backgroundColor: '#edf4e9', borderWidth: 1, borderColor: '#d7e4d2' }}>
-                  <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#274332' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 8, borderRadius: 10, backgroundColor: themeColor("#edf4e9", "#181818"), borderWidth: 1, borderColor: themeColor("#d7e4d2", "#414141") }}>
+                  <Text style={{ fontSize: 11.5, fontWeight: '700', color: themeColor("#274332", "#E6E6E6") }}>
                     Actual Scale Weight
                   </Text>
-                  <Text style={{ fontSize: 11.5, fontWeight: '800', color: '#274332' }}>
+                  <Text style={{ fontSize: 11.5, fontWeight: '800', color: themeColor("#274332", "#E6E6E6") }}>
                     {reservation.actual_weighed_quantity} {unit}
                   </Text>
                 </View>
               )}
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 11.5, color: '#687e70' }}>Pickup Hub</Text>
-                <Text style={{ fontSize: 11.5, fontWeight: '500', color: '#1a271f', textAlign: 'right', maxWidth: 180 }}>
+                <Text style={{ fontSize: 11.5, color: themeColor("#687e70", "#E6E6E6") }}>Pickup Hub</Text>
+                <Text style={{ fontSize: 11.5, fontWeight: '500', color: themeColor("#1a271f", "#E6E6E6"), textAlign: 'right', maxWidth: 180 }}>
                   {pickupLocation}
                 </Text>
               </View>
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 11.5, color: '#687e70' }}>Farmer</Text>
-                <Text style={{ fontSize: 11.5, fontWeight: '500', color: '#1a271f' }}>
+                <Text style={{ fontSize: 11.5, color: themeColor("#687e70", "#E6E6E6") }}>Farmer</Text>
+                <Text style={{ fontSize: 11.5, fontWeight: '500', color: themeColor("#1a271f", "#E6E6E6") }}>
                   {reservation.seller_name || 'Verified Farmer'}
                 </Text>
               </View>
 
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 11.5, color: '#687e70' }}>Buyer</Text>
-                <Text style={{ fontSize: 11.5, fontWeight: '500', color: '#1a271f' }}>
+                <Text style={{ fontSize: 11.5, color: themeColor("#687e70", "#E6E6E6") }}>Buyer</Text>
+                <Text style={{ fontSize: 11.5, fontWeight: '500', color: themeColor("#1a271f", "#E6E6E6") }}>
                   {reservation.buyer_name || 'Registered Buyer'}
                 </Text>
               </View>
 
               {/* Total Settlement */}
-              <View style={{ paddingTop: 10, marginTop: 4, borderTopWidth: 1, borderTopColor: '#e3ece0', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#1a271f' }}>
+              <View style={{ paddingTop: 10, marginTop: 4, borderTopWidth: 1, borderTopColor: themeColor("#e3ece0", "#414141"), flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: themeColor("#1a271f", "#E6E6E6") }}>
                   {isCompleted ? 'Final Settled Price' : 'Estimated Total'}
                 </Text>
-                <Text style={{ fontSize: 19, fontWeight: '800', color: '#274332' }}>
+                <Text style={{ fontSize: 19, fontWeight: '800', color: themeColor("#274332", "#E6E6E6") }}>
                   ₱{totalAmount}
                 </Text>
               </View>
@@ -265,22 +267,22 @@ export default function DigitalReceiptModal({
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 18, marginBottom: 8 }}>
               <TouchableOpacity
                 onPress={handleCopyCode}
-                style={{ flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#dce5da', backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}
+                style={{ flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: themeColor("#dce5da", "#414141"), backgroundColor: themeColor("#ffffff", "#242424"), alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}
                 activeOpacity={0.7}
               >
-                <Ionicons name="copy-outline" size={14} color="#45584b" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#324538' }}>
+                <Ionicons name="copy-outline" size={14} color={themeColor("#45584b", "#E6E6E6")} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: themeColor("#324538", "#E6E6E6") }}>
                   Copy Code
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={handleShareReceipt}
-                style={{ flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#dce5da', backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}
+                style={{ flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: themeColor("#dce5da", "#414141"), backgroundColor: themeColor("#ffffff", "#242424"), alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}
                 activeOpacity={0.7}
               >
-                <Ionicons name="share-social-outline" size={14} color="#45584b" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#324538' }}>
+                <Ionicons name="share-social-outline" size={14} color={themeColor("#45584b", "#E6E6E6")} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: themeColor("#324538", "#E6E6E6") }}>
                   Share
                 </Text>
               </TouchableOpacity>
@@ -293,11 +295,11 @@ export default function DigitalReceiptModal({
                   onClose();
                   onOpenWeighIn(reservation);
                 }}
-                style={{ width: '100%', marginTop: 6, paddingVertical: 12, borderRadius: 14, backgroundColor: '#274332', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, shadowColor: '#274332', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 4, elevation: 3 }}
+                style={{ width: '100%', marginTop: 6, paddingVertical: 12, borderRadius: 14, backgroundColor: themeColor("#274332", "#E6E6E6"), alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, shadowColor: '#274332', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 4, elevation: 3 }}
                 activeOpacity={0.85}
               >
-                <Ionicons name="scale-outline" size={16} color="#ffffff" />
-                <Text style={{ color: '#ffffff', fontSize: 12.5, fontWeight: '700' }}>
+                <Ionicons name="scale-outline" size={16} color={themeColor("#ffffff", "#E6E6E6")} />
+                <Text style={{ color: themeColor("#ffffff", "#E6E6E6"), fontSize: 12.5, fontWeight: '700' }}>
                   Weigh-In & Complete Order
                 </Text>
               </TouchableOpacity>

@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { getBadgeCountsApi } from "@/services/badge-service";
 import { Ionicons } from "@expo/vector-icons";
 import { router, usePathname } from "expo-router";
@@ -48,6 +49,7 @@ export function UserTabBar({
   onFabPress,
   showFab = true,
 }: NavigationProps) {
+  const { themeColor } = useAppTheme();
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 0);
   const [badgeCounts, setBadgeCounts] = useState({ requestsCount: 0, unreadMessagesCount: 0 });
@@ -84,20 +86,20 @@ export function UserTabBar({
       {/* Floating Action Button (FAB) */}
       {showFab && (
         <TouchableOpacity
-          className="absolute right-4 h-14 w-14 rounded-full bg-[#34594A] items-center justify-center shadow-lg elevation-6 z-[60]"
+          className="absolute right-4 h-14 w-14 rounded-full bg-[#34594A] items-center justify-center shadow-lg elevation-6 z-[60] dark:bg-[#E6E6E6] "
           style={{ position: "absolute", bottom: 72 + bottomInset, right: 16, zIndex: 60 }}
           activeOpacity={0.8}
           onPress={onFabPress}
           accessibilityRole="button"
           accessibilityLabel="Add new item"
         >
-          <Ionicons name="add" size={30} color="#FFFFFF" />
+          <Ionicons name="add" size={30} color={themeColor("#FFFFFF", "#181818")} />
         </TouchableOpacity>
       )}
 
       {/* Navigation Bar */}
       <View
-        className="flex-row items-center justify-around w-full bg-white border-t border-gray-200 shadow-2xl elevation-10"
+        className="flex-row items-center justify-around w-full bg-white border-t border-gray-200 shadow-2xl elevation-10 dark:bg-[#242424] dark:border-[#414141] "
         style={{
           height: BOTTOM_NAV_BAR_BASE_HEIGHT + bottomInset,
           paddingBottom: bottomInset,
@@ -124,7 +126,7 @@ export function UserTabBar({
             iconName = "home";
           }
 
-          const iconColor = isFocused ? ACTIVE_COLOR : INACTIVE_COLOR;
+          const iconColor = isFocused ? themeColor(ACTIVE_COLOR, "#E6E6E6") : themeColor(INACTIVE_COLOR, "#ADADAD");
 
           const onPress = () => {
             if (isFocused) return;
@@ -192,7 +194,7 @@ export function UserTabBar({
                     top: 0,
                     width: 34,
                     height: 3.5,
-                    backgroundColor: ACTIVE_COLOR,
+                    backgroundColor: themeColor(ACTIVE_COLOR, "#E6E6E6"),
                     borderBottomLeftRadius: 3,
                     borderBottomRightRadius: 3,
                   }}
@@ -203,7 +205,7 @@ export function UserTabBar({
 
               {badgeCount > 0 && (
                 <View className="absolute top-2 right-[20%] min-w-[17px] h-[17px] px-1 rounded-full bg-red-600 items-center justify-center shadow-2xs">
-                  <Text className="text-white text-[10px] font-bold text-center leading-tight">
+                  <Text className="text-white text-[10px] font-bold text-center leading-tight dark:text-[#E6E6E6] ">
                     {badgeCount > 99 ? "99+" : badgeCount}
                   </Text>
                 </View>
@@ -217,6 +219,7 @@ export function UserTabBar({
 }
 
 export default function Navigation(props?: NavigationProps) {
+  const { themeColor } = useAppTheme();
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 0);
   const pathname = usePathname();
@@ -374,20 +377,20 @@ export default function Navigation(props?: NavigationProps) {
       {/* Floating Action Button (FAB) */}
       {showFab && (
         <TouchableOpacity
-          className="absolute right-4 h-14 w-14 rounded-full bg-[#34594A] items-center justify-center shadow-lg elevation-6 z-[60]"
-          style={{ position: "absolute", bottom: 72 + bottomInset, right: 20, zIndex: 60, ...(props?.premium ? { backgroundColor: ACTIVE_COLOR, width: 56, height: 56, borderRadius: 28, borderWidth: 1, borderColor: "#6e886b", boxShadow: "0 6px 18px rgba(255, 255, 255, .65)", shadowColor: "#ffffff" } : {}) }}
+          className="absolute right-4 h-14 w-14 rounded-full bg-[#34594A] items-center justify-center shadow-lg elevation-6 z-[60] dark:bg-[#E6E6E6] "
+          style={{ position: "absolute", bottom: 72 + bottomInset, right: 20, zIndex: 60, ...(props?.premium ? { backgroundColor: themeColor(ACTIVE_COLOR, "#E6E6E6"), width: 56, height: 56, borderRadius: 28, borderWidth: 1, borderColor: themeColor("#6e886b", "#414141"), boxShadow: themeColor("0 6px 18px rgba(255, 255, 255, .65)", "0 6px 18px rgba(0, 0, 0, .3)"), shadowColor: "#ffffff" } : {}) }}
           activeOpacity={0.8}
           onPress={props?.onFabPress}
           accessibilityRole="button"
           accessibilityLabel="Add new item"
         >
-          <Ionicons name="add" size={30} color="#FFFFFF" />
+          <Ionicons name="add" size={30} color={themeColor("#FFFFFF", "#181818")} />
         </TouchableOpacity>
       )}
 
       {/* Bottom Navigation Bar */}
       <View
-        className="flex-row items-center justify-around w-full bg-white border-t border-gray-200 shadow-2xl elevation-10"
+        className="flex-row items-center justify-around w-full bg-white border-t border-gray-200 shadow-2xl elevation-10 dark:bg-[#242424] dark:border-[#414141] "
         style={{
           height: BOTTOM_NAV_BAR_BASE_HEIGHT + bottomInset,
           paddingBottom: bottomInset,
@@ -399,7 +402,9 @@ export default function Navigation(props?: NavigationProps) {
             activeKey === tab.title ||
             activeKey.toLowerCase() === tab.title.toLowerCase();
 
-          const iconColor = props?.accentColor ? (isFocused ? props.accentColor : INACTIVE_COLOR) : props?.premium ? (isFocused ? ACTIVE_COLOR : "#879386") : isFocused ? ACTIVE_COLOR : INACTIVE_COLOR;
+          const iconColor = isFocused
+            ? themeColor(props?.accentColor ?? ACTIVE_COLOR, "#E6E6E6")
+            : themeColor(props?.premium ? "#879386" : INACTIVE_COLOR, "#ADADAD");
 
           return (
             <TouchableOpacity
@@ -419,7 +424,7 @@ export default function Navigation(props?: NavigationProps) {
                     top: 0,
                     width: 34,
                     height: 3.5,
-                    backgroundColor: props?.accentColor ?? (props?.premium ? ACTIVE_COLOR : ACTIVE_COLOR),
+                    backgroundColor: themeColor(props?.accentColor ?? ACTIVE_COLOR, "#E6E6E6"),
                     borderBottomLeftRadius: 3,
                     borderBottomRightRadius: 3,
                   }}
@@ -430,7 +435,7 @@ export default function Navigation(props?: NavigationProps) {
 
               {tab.badge !== undefined && tab.badge > 0 && (
                 <View className="absolute top-2 right-[20%] min-w-[17px] h-[17px] px-1 rounded-full bg-red-600 items-center justify-center shadow-2xs">
-                  <Text className="text-white text-[10px] font-bold text-center leading-tight">
+                  <Text className="text-white text-[10px] font-bold text-center leading-tight dark:text-[#E6E6E6] ">
                     {tab.badge > 99 ? "99+" : tab.badge}
                   </Text>
                 </View>

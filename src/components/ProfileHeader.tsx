@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { ActivityIndicator, Image, TouchableOpacity, View } from "react-native";
@@ -27,8 +28,9 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   onPressChangePicture,
   onPressCoverPhoto,
 }) => {
+  const { themeColor } = useAppTheme();
   return (
-    <View className="w-full h-48 bg-gray-200 relative mb-14">
+    <View className="w-full h-48 bg-gray-200 relative mb-14 dark:bg-[#181818] ">
       {/* Cover Photo */}
       <TouchableOpacity
         activeOpacity={0.92}
@@ -59,7 +61,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             zIndex: 15,
           }}
         >
-          <ActivityIndicator size="large" color="#FFFFFF" />
+          <ActivityIndicator size="large" color={themeColor("#FFFFFF", "#E6E6E6")} />
         </View>
       )}
 
@@ -83,7 +85,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={20} color={themeColor("#FFFFFF", "#E6E6E6")} />
         </TouchableOpacity>
       )}
 
@@ -107,7 +109,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           accessibilityRole="button"
           accessibilityLabel="Edit cover photo"
         >
-          <Ionicons name="pencil" size={17} color="#FFFFFF" />
+          <Ionicons name="pencil" size={17} color={themeColor("#FFFFFF", "#E6E6E6")} />
         </TouchableOpacity>
       )}
 
@@ -130,7 +132,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         accessibilityRole="button"
         accessibilityLabel="Profile options"
       >
-        <Ionicons name="ellipsis-horizontal" size={20} color="#FFFFFF" />
+        <Ionicons name="ellipsis-horizontal" size={20} color={themeColor("#FFFFFF", "#E6E6E6")} />
       </TouchableOpacity>
 
       {/* Avatar */}
@@ -141,8 +143,8 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             height: 96,
             borderRadius: 48,
             borderWidth: 4,
-            borderColor: "#FFFFFF",
-            backgroundColor: "#EDF3EE",
+            borderColor: themeColor("#FFFFFF", "#414141"),
+            backgroundColor: themeColor("#EDF3EE", "#181818"),
             alignItems: "center",
             justifyContent: "center",
             overflow: "hidden",
@@ -160,7 +162,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               resizeMode="cover"
             />
           ) : (
-            <Ionicons name="person" size={48} color="#7A8D81" />
+            <Ionicons name="person" size={48} color={themeColor("#7A8D81", "#E6E6E6")} />
           )}
         </View>
 
@@ -175,9 +177,9 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               width: 28,
               height: 28,
               borderRadius: 14,
-              backgroundColor: "#F4F7F4",
+              backgroundColor: themeColor("#F4F7F4", "#181818"),
               borderWidth: 2,
-              borderColor: "#FFFFFF",
+              borderColor: themeColor("#FFFFFF", "#414141"),
               alignItems: "center",
               justifyContent: "center",
               shadowColor: "#1e2a22",
@@ -189,7 +191,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             accessibilityRole="button"
             accessibilityLabel="Change profile picture"
           >
-            <Ionicons name="camera" size={13} color="#34594A" />
+            <Ionicons name="camera" size={13} color={themeColor("#34594A", "#E6E6E6")} />
           </TouchableOpacity>
         )}
 
@@ -202,7 +204,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               right: -2,
               width: 26,
               height: 26,
-              backgroundColor: "#FFFFFF",
+              backgroundColor: themeColor("#FFFFFF", "#242424"),
               borderRadius: 13,
               alignItems: "center",
               justifyContent: "center",
@@ -214,7 +216,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             }}
             accessibilityLabel="Verified RSBSA Grower"
           >
-            <Ionicons name="checkmark-circle" size={22} color="#2A734D" />
+            <Ionicons name="checkmark-circle" size={22} color={themeColor("#2A734D", "#E6E6E6")} />
           </View>
         )}
       </View>

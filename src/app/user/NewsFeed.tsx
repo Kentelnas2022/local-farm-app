@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useToast } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
@@ -238,6 +239,7 @@ const isPostExpired = (post: PostItem | Post) => {
 const STORY_DURATION = 4000;
 
 export default function NewsFeed() {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -441,7 +443,7 @@ export default function NewsFeed() {
           Animated.timing(standaloneCommentsTranslateY, {
             toValue: Dimensions.get("window").height,
             duration: 180,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== "web",
           }).start(() => {
             setActiveCommentsPostId(null);
             setReplyingTo(null);
@@ -451,14 +453,14 @@ export default function NewsFeed() {
           Animated.spring(standaloneCommentsTranslateY, {
             toValue: 0,
             bounciness: 4,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== "web",
           }).start();
         }
       },
       onPanResponderTerminate: () => {
         Animated.spring(standaloneCommentsTranslateY, {
           toValue: 0,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }).start();
       },
     }),
@@ -1105,7 +1107,7 @@ export default function NewsFeed() {
             Animated.timing(postOptionsMenuTranslateY, {
               toValue: Dimensions.get("window").height,
               duration: 180,
-              useNativeDriver: true,
+              useNativeDriver: Platform.OS !== "web",
             }).start(() => {
               setIsPostMenuVisible(false);
               postOptionsMenuTranslateY.setValue(0);
@@ -1114,14 +1116,14 @@ export default function NewsFeed() {
             Animated.spring(postOptionsMenuTranslateY, {
               toValue: 0,
               bounciness: 4,
-              useNativeDriver: true,
+              useNativeDriver: Platform.OS !== "web",
             }).start();
           }
         },
         onPanResponderTerminate: () => {
           Animated.spring(postOptionsMenuTranslateY, {
             toValue: 0,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== "web",
           }).start();
         },
       }),
@@ -1421,12 +1423,12 @@ export default function NewsFeed() {
         toValue: 1,
         friction: 6,
         tension: 50,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== "web",
       }),
       Animated.timing(cardOpacityAnim, {
         toValue: 1,
         duration: 250,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== "web",
       }),
     ]).start(({ finished }) => {
       if (finished && !isReplyingStoryRef.current) {
@@ -1560,8 +1562,8 @@ export default function NewsFeed() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white relative h-full"
-      style={{ flex: 1, position: "relative", minHeight: "100%", backgroundColor: "#faf9f5" }}
+      className="flex-1 bg-white relative h-full dark:bg-[#181818] "
+      style={{ flex: 1, position: "relative", minHeight: "100%", backgroundColor: themeColor("#faf9f5", "#181818") }}
     >
       <Pressable
         className="flex-1"
@@ -1576,7 +1578,7 @@ export default function NewsFeed() {
 
           {/* Main Content */}
           <ScrollView
-            className="flex-1" style={{ backgroundColor: "#faf9f5" }}
+            className="flex-1" style={{ backgroundColor: themeColor("#faf9f5", "#181818") }}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 120 }}
             keyboardShouldPersistTaps="handled"
@@ -1597,14 +1599,8 @@ export default function NewsFeed() {
               if (activeReactionCommentId) setActiveReactionCommentId(null);
             }}
           >
-            <View style={{ paddingHorizontal: 22, paddingTop: 6, paddingBottom: 7 }}>
-              <Text style={{ color: '#283e32', fontSize: 25, fontWeight: '600', letterSpacing: -.9 }}>
-                {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}{user?.name ? ', ' + user.name.trim().split(/\s+/)[0] : ''}
-              </Text>
-              <Text style={{ color: '#7b897b', fontSize: 12, marginTop: 5, lineHeight: 18 }}>See what’s growing around you.</Text>
-            </View>
             {/* Stories Section */}
-            <View className="py-4" style={{ backgroundColor: "#faf9f5" }}>
+            <View className="py-4" style={{ backgroundColor: themeColor("#faf9f5", "#181818") }}>
               <ScrollView
                 ref={storyScrollViewRef}
                 horizontal
@@ -1660,12 +1656,12 @@ export default function NewsFeed() {
                             className="items-center"
                           >
                             <View
-                              className={`w-16 h-16 rounded-full p-[2px] items-center justify-center bg-white ${
-                                hasMyStory ? "border-2 border-[#72AF5B]" : "border border-gray-200"
+                              className={`w-16 h-16 rounded-full p-[2px] items-center justify-center bg-white  dark:bg-[#242424] ${
+                                hasMyStory ? "border-2 border-[#72AF5B] dark:border-[#414141] " : "border border-gray-200 dark:border-[#414141] "
                               }`}
-                              style={hasMyStory ? { borderColor: "#72AF5B" } : undefined}
+                              style={hasMyStory ? { borderColor: themeColor("#72AF5B", "#414141") } : undefined}
                             >
-                              <View className="w-full h-full rounded-full bg-gray-200 items-center justify-center overflow-hidden">
+                              <View className="w-full h-full rounded-full bg-gray-200 items-center justify-center overflow-hidden dark:bg-[#181818] ">
                                 {Boolean(myAvatar) ? (
                                   <Image
                                     source={{ uri: myAvatar }}
@@ -1673,7 +1669,7 @@ export default function NewsFeed() {
                                     resizeMode="cover"
                                   />
                                 ) : (
-                                  <Ionicons name="person" size={32} color="#9CA3AF" />
+                                  <Ionicons name="person" size={32} color={themeColor("#9CA3AF", "#ADADAD")} />
                                 )}
                               </View>
                             </View>
@@ -1686,14 +1682,14 @@ export default function NewsFeed() {
                               setStoryModalVisible(true);
                             }}
                             activeOpacity={0.85}
-                            className="absolute bottom-0 right-0 bg-[#72AF5B] w-5 h-5 rounded-full items-center justify-center border-2 border-white shadow-xs z-10"
-                            style={{ backgroundColor: "#72AF5B" }}
+                            className="absolute bottom-0 right-0 bg-[#72AF5B] w-5 h-5 rounded-full items-center justify-center border-2 border-white shadow-xs z-10 dark:bg-[#E6E6E6] dark:border-[#414141] "
+                            style={{ backgroundColor: themeColor("#72AF5B", "#E6E6E6") }}
                           >
-                            <Ionicons name="add" size={14} color="#FFFFFF" />
+                            <Ionicons name="add" size={14} color={themeColor("#FFFFFF", "#181818")} />
                           </TouchableOpacity>
                         </View>
                         <Text
-                          className="text-xs font-medium text-gray-700 mt-1 max-w-[76px] text-center"
+                          className="text-xs font-medium text-gray-700 mt-1 max-w-[76px] text-center dark:text-[#E6E6E6] "
                           numberOfLines={1}
                         >
                           {hasMyStory ? "Your story" : "Add story"}
@@ -1721,14 +1717,14 @@ export default function NewsFeed() {
                                 className="items-center"
                               >
                                 <View
-                                  className={`w-16 h-16 rounded-full p-[2px] items-center justify-center bg-white ${
+                                  className={`w-16 h-16 rounded-full p-[2px] items-center justify-center bg-white  dark:bg-[#242424] ${
                                     hasUnseen
-                                      ? "border-2 border-[#72AF5B]"
-                                      : "border border-gray-300"
+                                      ? "border-2 border-[#72AF5B] dark:border-[#414141] "
+                                      : "border border-gray-300 dark:border-[#414141] "
                                   }`}
-                                  style={hasUnseen ? { borderColor: "#72AF5B" } : undefined}
+                                  style={hasUnseen ? { borderColor: themeColor("#72AF5B", "#414141") } : undefined}
                                 >
-                                  <View className="w-full h-full rounded-full bg-gray-200 items-center justify-center overflow-hidden">
+                                  <View className="w-full h-full rounded-full bg-gray-200 items-center justify-center overflow-hidden dark:bg-[#181818] ">
                                     {Boolean(userStory.userAvatar && userStory.userAvatar.trim()) ? (
                                       <Image
                                         source={{ uri: userStory.userAvatar!.trim() }}
@@ -1736,12 +1732,12 @@ export default function NewsFeed() {
                                         resizeMode="cover"
                                       />
                                     ) : (
-                                      <Ionicons name="person" size={28} color="#6B7280" />
+                                      <Ionicons name="person" size={28} color={themeColor("#6B7280", "#ADADAD")} />
                                     )}
                                   </View>
                                 </View>
                                 <Text
-                                  className="text-xs font-medium text-gray-700 mt-1 max-w-[76px] text-center"
+                                  className="text-xs font-medium text-gray-700 mt-1 max-w-[76px] text-center dark:text-[#E6E6E6] "
                                   numberOfLines={1}
                                 >
                                   {userStory.userName}
@@ -1756,91 +1752,35 @@ export default function NewsFeed() {
               </ScrollView>
             </View>
 
-            {/* Quick Advance Harvest Reservations Bar */}
-            <View
-              className="px-4 py-2.5 flex-row items-center justify-between"
-              style={{
-                marginHorizontal: 16,
-                marginBottom: 14,
-                borderRadius: 16,
-                backgroundColor: "#ffffff",
-                borderWidth: 1,
-                borderColor: "#eae7df",
-                shadowColor: "#1e2a22",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.04,
-                shadowRadius: 8,
-                elevation: 2,
-              }}
-            >
-              <View className="flex-row items-center gap-2.5">
-                <View
-                  className="w-7 h-7 rounded-lg items-center justify-center"
-                  style={{ backgroundColor: "#f2f5f1" }}
-                >
-                  <Ionicons name="leaf" size={14} color="#355842" />
-                </View>
-                <Text
-                  className="text-xs font-semibold tracking-tight"
-                  style={{ color: "#1f2b23" }}
-                >
-                  Pre-harvest reservations
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={async () => {
-                  try {
-                    const { getMyReservationsApi } = await import('@/services/reservation-service');
-                    const res = await getMyReservationsApi('all', 'all');
-                    if (res.reservations && res.reservations.length > 0) {
-                      setActiveReceipt(res.reservations[0]);
-                    } else {
-                      showToast('No active bookings. Reserve a pre-harvest batch below to generate a digital QR pickup receipt.', 'info');
-                    }
-                  } catch (err: any) {
-                    showToast('Browse batches below to reserve.', 'error');
-                  }
-                }}
-                className="px-3 py-1.5 rounded-full flex-row items-center gap-1.5 active:opacity-75"
-                style={{
-                  backgroundColor: "#f5f7f3",
-                  borderWidth: 1,
-                  borderColor: "#e1e7de",
-                }}
-              >
-                <Ionicons name="qr-code-outline" size={13} color="#2d4a37" />
-                <Text
-                  className="text-[11px] font-semibold"
-                  style={{ color: "#2d4a37" }}
-                >
-                  My QR Receipts
-                </Text>
-              </TouchableOpacity>
+            <View style={{ paddingHorizontal: 22, paddingTop: 6, paddingBottom: 7 }}>
+              <Text style={{ color: themeColor("#283e32", "#E6E6E6"), fontSize: 25, fontWeight: '600', letterSpacing: -.9 }}>
+                {new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening'}{user?.name ? ', ' + user.name.trim().split(/\s+/)[0] : ''}
+              </Text>
+              <Text style={{ color: themeColor("#7b897b", "#E6E6E6"), fontSize: 12, marginTop: 5, lineHeight: 18 }}>See what’s growing around you.</Text>
             </View>
 
             {/* Feed Posts Section */}
             <View className="pb-24 pt-2">
               {isLoadingPosts ? (
                 <View className="py-16 items-center justify-center">
-                  <ActivityIndicator size="large" color="#72AF5B" />
-                  <Text className="text-xs text-gray-500 mt-2 font-medium">
+                  <ActivityIndicator size="large" color={themeColor("#72AF5B", "#E6E6E6")} />
+                  <Text className="text-xs text-gray-500 mt-2 font-medium dark:text-[#ADADAD] ">
                     Loading farming community feed...
                   </Text>
                 </View>
               ) : posts.length === 0 ? (
                 <View className="py-16 items-center justify-center px-6">
-                  <View className="w-16 h-16 rounded-full bg-green-50 items-center justify-center mb-3">
+                  <View className="w-16 h-16 rounded-full bg-green-50 items-center justify-center mb-3 dark:bg-[#181818] ">
                     <Ionicons
                       name="newspaper-outline"
                       size={32}
-                      color="#72AF5B"
+                      color={themeColor("#72AF5B", "#E6E6E6")}
                     />
                   </View>
-                  <Text className="text-base font-bold text-gray-800 mb-1">
+                  <Text className="text-base font-bold text-gray-800 mb-1 dark:text-[#E6E6E6] ">
                     No posts yet
                   </Text>
-                  <Text className="text-xs text-gray-400 text-center">
+                  <Text className="text-xs text-gray-400 text-center dark:text-[#ADADAD] ">
                     Be the first to share an update with your farming community!
                   </Text>
                 </View>
@@ -1873,8 +1813,8 @@ export default function NewsFeed() {
                         }`}
                         style={{
                           zIndex: isCardElevated ? 50 : 1,
-                          backgroundColor: "#ffffff",
-                          borderColor: "#eae7df",
+                          backgroundColor: themeColor("#ffffff", "#242424"),
+                          borderColor: themeColor("#eae7df", "#414141"),
                           borderRadius: 20,
                           shadowColor: "#1e2a22",
                           shadowOffset: { width: 0, height: 3 },
@@ -1886,7 +1826,7 @@ export default function NewsFeed() {
                         {/* Inline Reaction Popover (Absolute Positioning) */}
                         {isReactionMenuOpen && (
                           <View
-                            className="absolute bottom-12 left-4 z-50 bg-white rounded-full shadow-lg border border-gray-100 flex-row items-center px-4 py-2 gap-4"
+                            className="absolute bottom-12 left-4 z-50 bg-white rounded-full shadow-lg border border-gray-100 flex-row items-center px-4 py-2 gap-4 dark:bg-[#242424] dark:border-[#414141] "
                             style={{
                               elevation: 8,
                               boxShadow: "0 4px 10px rgba(0, 0, 0, 0.15)",
@@ -1910,32 +1850,32 @@ export default function NewsFeed() {
                         <View className="p-4">
                           {/* Temporary Flash Post Urgency Banner */}
                           {post.category === "Temporary" && (
-                            <View className="flex-row items-center justify-between px-3 py-2 mb-3 bg-amber-50 border border-amber-200/90 rounded-xl">
+                            <View className="flex-row items-center justify-between px-3 py-2 mb-3 bg-amber-50 border border-amber-200/90 rounded-xl dark:bg-[#292720] dark:border-[#4A4334] ">
                               <View className="flex-row items-center gap-1.5 flex-1 mr-2">
                                 <Ionicons
                                   name="flash"
                                   size={13}
-                                  color="#D97706"
+                                  color={themeColor("#D97706", "#D3BC8D")}
                                 />
                                 <Text
-                                  className="text-xs font-bold text-amber-900"
+                                  className="text-xs font-bold text-amber-900 dark:text-[#D3BC8D]"
                                   numberOfLines={1}
                                 >
                                   Temporary Post
                                 </Text>
                                 {Boolean(post.durationLabel) && (
-                                  <Text className="text-[11px] text-amber-700 font-medium">
+                                  <Text className="text-[11px] text-amber-700 font-medium dark:text-[#BCAF96]">
                                     • {post.durationLabel}
                                   </Text>
                                 )}
                               </View>
-                              <View className="flex-row items-center gap-1 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-200">
+                              <View className="flex-row items-center gap-1 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-200 dark:bg-[#383226] dark:border-[#4A4334]">
                                 <Ionicons
                                   name="time"
                                   size={12}
-                                  color="#B45309"
+                                  color={themeColor("#B45309", "#D3BC8D")}
                                 />
-                                <Text className="text-[11px] font-bold text-amber-900">
+                                <Text className="text-[11px] font-bold text-amber-900 dark:text-[#D3BC8D]">
                                   {formatTemporaryRemainingTime(post.expiresAt)}
                                 </Text>
                               </View>
@@ -1945,7 +1885,7 @@ export default function NewsFeed() {
                           {/* Live Replay Banner */}
                           {(post.content.includes("[Live Replay]") ||
                             post.content.includes("🔴 [Live Replay]")) && (
-                            <View className="flex-row items-center justify-between px-3 py-2 mb-3 bg-red-50 border border-red-200 rounded-xl">
+                            <View className="flex-row items-center justify-between px-3 py-2 mb-3 bg-red-50 border border-red-200 rounded-xl dark:bg-[#181818] ">
                               <View className="flex-row items-center gap-1.5 flex-1 mr-2">
                                 <View className="w-2.5 h-2.5 rounded-full bg-red-600 mr-0.5" />
                                 <Text className="text-xs font-bold text-red-800 tracking-wide">
@@ -1957,7 +1897,7 @@ export default function NewsFeed() {
                                   </Text>
                                 )}
                               </View>
-                              <View className="flex-row items-center gap-1 bg-red-100 px-2.5 py-0.5 rounded-full border border-red-200">
+                              <View className="flex-row items-center gap-1 bg-red-100 px-2.5 py-0.5 rounded-full border border-red-200 dark:bg-[#181818] ">
                                 <Ionicons
                                   name="videocam"
                                   size={12}
@@ -1976,10 +1916,10 @@ export default function NewsFeed() {
                               <Ionicons
                                 name="arrow-redo"
                                 size={15}
-                                color="#72AF5B"
+                                color={themeColor("#72AF5B", "#E6E6E6")}
                               />
                               <View className="flex-row items-center ml-1.5 flex-wrap">
-                                <Text className="font-bold text-gray-900 text-xs">
+                                <Text className="font-bold text-gray-900 text-xs dark:text-[#E6E6E6] ">
                                   {post.authorName}
                                 </Text>
                                 {(post.isVerified || (Boolean(user?.id && post.userId && String(post.userId) === String(user.id)) && isRSBSAVerified)) && (
@@ -1990,7 +1930,7 @@ export default function NewsFeed() {
                                     style={{ marginHorizontal: 3 }}
                                   />
                                 )}
-                                <Text className="text-xs text-gray-500 font-medium ml-1">
+                                <Text className="text-xs text-gray-500 font-medium ml-1 dark:text-[#ADADAD] ">
                                   shared a post
                                 </Text>
                               </View>
@@ -2025,7 +1965,7 @@ export default function NewsFeed() {
                               }}
                               className="flex-row items-center flex-1 pr-2"
                             >
-                              <View className="h-10 w-10 rounded-full border items-center justify-center mr-3 overflow-hidden" style={{ borderColor: "#ecefe9", backgroundColor: "#f4f6f3" }}>
+                              <View className="h-10 w-10 rounded-full border items-center justify-center mr-3 overflow-hidden" style={{ borderColor: themeColor("#ecefe9", "#414141"), backgroundColor: themeColor("#f4f6f3", "#181818") }}>
                                 {Boolean(post.avatarUri && post.avatarUri.trim()) ? (
                                   <Image
                                     source={{ uri: post.avatarUri.trim() }}
@@ -2036,22 +1976,22 @@ export default function NewsFeed() {
                                   <Ionicons
                                     name="person"
                                     size={20}
-                                    color="#72AF5B"
+                                    color={themeColor("#72AF5B", "#E6E6E6")}
                                   />
                                 )}
                               </View>
                               <View className="flex-1">
                                 <View className="flex-row items-center flex-wrap">
-                                  <Text className="font-semibold mr-1.5 text-sm" style={{ color: "#19281f" }}>
+                                  <Text className="font-semibold mr-1.5 text-sm" style={{ color: themeColor("#19281f", "#E6E6E6") }}>
                                     {post.authorName}
                                   </Text>
                                   {Boolean(
                                     post.taggedUsers &&
                                     post.taggedUsers.length > 0,
                                   ) && (
-                                    <Text className="text-xs text-gray-500 mr-1.5 font-normal">
+                                    <Text className="text-xs text-gray-500 mr-1.5 font-normal dark:text-[#ADADAD] ">
                                       is with{" "}
-                                      <Text className="font-semibold text-gray-800">
+                                      <Text className="font-semibold text-gray-800 dark:text-[#E6E6E6] ">
                                         {post.taggedUsers![0].name}
                                       </Text>
                                       {post.taggedUsers!.length > 1
@@ -2071,8 +2011,8 @@ export default function NewsFeed() {
                                     className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
                                     style={
                                       Boolean(user?.id && post.userId && String(post.userId) === String(user.id)) && isRSBSAVerified
-                                        ? { color: "#235338", backgroundColor: "#eaf3ec" }
-                                        : { color: "#2d6342", backgroundColor: "#edf5ef" }
+                                        ? { color: themeColor("#235338", "#E6E6E6"), backgroundColor: themeColor("#eaf3ec", "#181818") }
+                                        : { color: themeColor("#2d6342", "#E6E6E6"), backgroundColor: themeColor("#edf5ef", "#181818") }
                                     }
                                   >
                                     {Boolean(user?.id && post.userId && String(post.userId) === String(user.id)) && isRSBSAVerified
@@ -2109,14 +2049,14 @@ export default function NewsFeed() {
                                       <Ionicons
                                         name="location"
                                         size={12}
-                                        color="#72AF5B"
+                                        color={themeColor("#72AF5B", "#E6E6E6")}
                                       />
-                                      <Text className="text-xs text-gray-500 ml-1 mr-1.5 hover:underline">
+                                      <Text className="text-xs text-gray-500 ml-1 mr-1.5 hover:underline dark:text-[#ADADAD] ">
                                         {post.location} •
                                       </Text>
                                     </TouchableOpacity>
                                   )}
-                                  <Text className="text-xs text-gray-500 mr-2">
+                                  <Text className="text-xs text-gray-500 mr-2 dark:text-[#ADADAD] ">
                                     {post.timeAgo}
                                   </Text>
                                   <Ionicons
@@ -2128,7 +2068,7 @@ export default function NewsFeed() {
                                           : "globe-outline"
                                     }
                                     size={12}
-                                    color="#9ca3af"
+                                    color={themeColor("#9ca3af", "#ADADAD")}
                                   />
                                 </View>
                               </View>
@@ -2142,21 +2082,21 @@ export default function NewsFeed() {
                               <Ionicons
                                 name="ellipsis-horizontal"
                                 size={20}
-                                color="#9ca3af"
+                                color={themeColor("#9ca3af", "#ADADAD")}
                               />
                             </TouchableOpacity>
                           </View>
 
                           {/* Post Content (Sharer's caption or post content) */}
                           {!!post.content && (
-                            <Text className="text-gray-800 text-sm mb-3 leading-5">
+                            <Text className="text-gray-800 text-sm mb-3 leading-5 dark:text-[#E6E6E6] ">
                               {post.content}
                             </Text>
                           )}
 
                           {/* Shared Post: Embedded Original Post Card */}
                           {post.isShared && post.originalPost ? (
-                            <View className="border border-gray-200 rounded-xl p-3 bg-gray-50/80 mb-3">
+                            <View className="border border-gray-200 rounded-xl p-3 bg-gray-50/80 mb-3 dark:border-[#414141] dark:bg-[#242424]/80 ">
                               {/* Original Author Info */}
                               <TouchableOpacity
                                 activeOpacity={0.85}
@@ -2176,7 +2116,7 @@ export default function NewsFeed() {
                                 }}
                                 className="flex-row items-center mb-2"
                               >
-                                <View className="h-8 w-8 rounded-full border border-gray-300 items-center justify-center bg-gray-200 mr-2.5 overflow-hidden">
+                                <View className="h-8 w-8 rounded-full border border-gray-300 items-center justify-center bg-gray-200 mr-2.5 overflow-hidden dark:border-[#414141] dark:bg-[#181818] ">
                                   {Boolean(post.originalPost.avatarUri && post.originalPost.avatarUri.trim()) ? (
                                     <Image
                                       source={{
@@ -2189,13 +2129,13 @@ export default function NewsFeed() {
                                     <Ionicons
                                       name="person"
                                       size={16}
-                                      color="#6b7280"
+                                      color={themeColor("#6b7280", "#ADADAD")}
                                     />
                                   )}
                                 </View>
                                 <View>
                                   <View className="flex-row items-center flex-wrap">
-                                    <Text className="font-bold text-gray-900 text-sm mr-1.5">
+                                    <Text className="font-bold text-gray-900 text-sm mr-1.5 dark:text-[#E6E6E6] ">
                                       {post.originalPost.authorName}
                                     </Text>
                                     {post.originalPost.isVerified && (
@@ -2206,11 +2146,11 @@ export default function NewsFeed() {
                                         style={{ marginRight: 4 }}
                                       />
                                     )}
-                                    <Text className="text-gray-500 text-[10px] font-semibold bg-gray-200 px-1.5 py-0.5 rounded">
+                                    <Text className="text-gray-500 text-[10px] font-semibold bg-gray-200 px-1.5 py-0.5 rounded dark:text-[#ADADAD] dark:bg-[#181818] ">
                                       {post.originalPost.authorRole}
                                     </Text>
                                   </View>
-                                  <Text className="text-[11px] text-gray-400 mt-0.5">
+                                  <Text className="text-[11px] text-gray-400 mt-0.5 dark:text-[#ADADAD] ">
                                     {Boolean(
                                       post.originalPost.location &&
                                       post.originalPost.location.trim().length >
@@ -2227,7 +2167,7 @@ export default function NewsFeed() {
 
                               {/* Original Content Text */}
                               {!!post.originalPost.content && (
-                                <Text className="text-gray-700 text-sm mb-2 leading-5">
+                                <Text className="text-gray-700 text-sm mb-2 leading-5 dark:text-[#E6E6E6] ">
                                   {post.originalPost.content}
                                 </Text>
                               )}
@@ -2324,7 +2264,7 @@ export default function NewsFeed() {
                             >
                               <Image
                                 source={(post as any).imageSource}
-                                className="w-full rounded-lg mb-4 bg-gray-100"
+                                className="w-full rounded-lg mb-4 bg-gray-100 dark:bg-[#181818] "
                                 style={{
                                   width: "100%",
                                   height: 224,
@@ -2353,30 +2293,30 @@ export default function NewsFeed() {
                                 });
                                 setIsLiveViewerVisible(true);
                               }}
-                              className="w-full h-44 rounded-2xl mb-4 bg-gray-900 overflow-hidden items-center justify-center relative border border-gray-800"
+                              className="w-full h-44 rounded-2xl mb-4 bg-gray-900 overflow-hidden items-center justify-center relative border border-gray-800 dark:border-[#414141] "
                             >
                               <View className="w-14 h-14 rounded-full bg-red-600 items-center justify-center shadow-lg active:scale-95">
                                 <Ionicons
                                   name="play"
                                   size={26}
-                                  color="#FFFFFF"
+                                  color={themeColor("#FFFFFF", "#E6E6E6")}
                                   style={{ marginLeft: 3 }}
                                 />
                               </View>
                               <View className="absolute top-3 left-3 flex-row items-center bg-red-600 px-2.5 py-1 rounded-full">
-                                <Text className="text-white text-[10px] font-extrabold tracking-wider">
+                                <Text className="text-white text-[10px] font-extrabold tracking-wider dark:text-[#E6E6E6] ">
                                   REPLAY
                                 </Text>
                               </View>
                               <View className="absolute bottom-3 left-3 right-3 flex-row items-center justify-between">
                                 <Text
-                                  className="text-white text-xs font-semibold"
+                                  className="text-white text-xs font-semibold dark:text-[#E6E6E6] "
                                   numberOfLines={1}
                                 >
                                   Recorded Live Stream
                                 </Text>
                                 {Boolean(post.durationLabel) && (
-                                  <Text className="text-gray-300 text-xs font-medium">
+                                  <Text className="text-gray-300 text-xs font-medium dark:text-[#E6E6E6] ">
                                     {post.durationLabel}
                                   </Text>
                                 )}
@@ -2407,15 +2347,15 @@ export default function NewsFeed() {
                                   },
                                 } as any);
                               }}
-                              className="flex-row items-center self-start gap-1.5 px-3 py-1.5 mb-3 rounded-full bg-emerald-50 border border-emerald-200/60 active:bg-emerald-100"
+                              className="flex-row items-center self-start gap-1.5 px-3 py-1.5 mb-3 rounded-full bg-emerald-50 border border-emerald-200/60 active:bg-emerald-100 dark:bg-[#181818] dark:border-[#414141]/60 dark:active:bg-[#303030] "
                             >
                               <Ionicons
                                 name="location-sharp"
                                 size={13}
-                                color="#237227"
+                                color={themeColor("#237227", "#E6E6E6")}
                               />
                               <Text
-                                className="text-xs font-semibold text-[#237227]"
+                                className="text-xs font-semibold text-[#237227] dark:text-[#E6E6E6] "
                                 numberOfLines={1}
                               >
                                 {post.location}
@@ -2426,13 +2366,13 @@ export default function NewsFeed() {
                               <Ionicons
                                 name="chevron-forward"
                                 size={12}
-                                color="#72AF5B"
+                                color={themeColor("#72AF5B", "#E6E6E6")}
                               />
                             </TouchableOpacity>
                           )}
 
                           {/* Post Interaction Bar */}
-                          <View className="flex-row justify-between items-center pt-2.5 border-t" style={{ borderColor: "#f1f0ec" }}>
+                          <View className="flex-row justify-between items-center pt-2.5 border-t" style={{ borderColor: themeColor("#f1f0ec", "#414141") }}>
                             <View className="flex-row gap-6">
                               {/* Like / Reaction Button Trigger */}
                               <TouchableOpacity
@@ -2478,9 +2418,9 @@ export default function NewsFeed() {
                                     <Ionicons
                                       name="heart-outline"
                                       size={24}
-                                      color="#6b7280"
+                                      color={themeColor("#6b7280", "#ADADAD")}
                                     />
-                                    <Text className="font-medium text-gray-500">
+                                    <Text className="font-medium text-gray-500 dark:text-[#ADADAD] ">
                                       {post.likes}
                                     </Text>
                                   </>
@@ -2495,9 +2435,9 @@ export default function NewsFeed() {
                                 <Ionicons
                                   name="chatbubble-outline"
                                   size={22}
-                                  color="#6b7280"
+                                  color={themeColor("#6b7280", "#ADADAD")}
                                 />
-                                <Text className="font-medium text-gray-500">
+                                <Text className="font-medium text-gray-500 dark:text-[#ADADAD] ">
                                   {postComments[post.id] !== undefined
                                     ? postComments[post.id].length
                                     : post.comments}
@@ -2512,9 +2452,9 @@ export default function NewsFeed() {
                                 <Ionicons
                                   name="share-social-outline"
                                   size={22}
-                                  color="#6b7280"
+                                  color={themeColor("#6b7280", "#ADADAD")}
                                 />
-                                <Text className="font-medium text-gray-500">
+                                <Text className="font-medium text-gray-500 dark:text-[#ADADAD] ">
                                   {post.shares}
                                 </Text>
                               </TouchableOpacity>
@@ -2528,9 +2468,9 @@ export default function NewsFeed() {
                                   accessibilityRole="button"
                                   accessibilityLabel={`Reserve ${post.cropName || "this product"}`}
                                   accessibilityHint="Opens harvest details and the reservation form"
-                                  style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: "#F0F5EE", alignItems: "center", justifyContent: "center" }}
+                                  style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: themeColor("#F0F5EE", "#181818"), alignItems: "center", justifyContent: "center" }}
                                 >
-                                  <Ionicons name="bag-add-outline" size={21} color="#45664E" />
+                                  <Ionicons name="bag-add-outline" size={21} color={themeColor("#45664E", "#E6E6E6")} />
                                 </TouchableOpacity>
                               )}
                             {/* Bookmark / Save Button Trigger - Opens Instagram Save To Collection Modal */}
@@ -2574,7 +2514,7 @@ export default function NewsFeed() {
                               onPress={() => toggleExpandComments(post.id)}
                               className="mt-2.5 active:opacity-70"
                             >
-                              <Text className="text-xs font-semibold text-gray-500 hover:text-[#72AF5B]">
+                              <Text className="text-xs font-semibold text-gray-500 hover:text-[#72AF5B] dark:text-[#ADADAD] dark:hover:text-[#E6E6E6] ">
                                 View all{" "}
                                 {postComments[post.id] !== undefined
                                   ? postComments[post.id].length
@@ -2670,13 +2610,13 @@ export default function NewsFeed() {
                   return (
                     <View
                       key={s.id}
-                      className="flex-1 h-1 bg-white/40 rounded-full overflow-hidden"
+                      className="flex-1 h-1 bg-white/40 rounded-full overflow-hidden dark:bg-[#181818]/40 "
                     >
                       {isPast ? (
-                        <View className="h-full w-full bg-white" />
+                        <View className="h-full w-full bg-white dark:bg-[#242424] " />
                       ) : isCurrent ? (
                         <Animated.View
-                          className="h-full bg-white"
+                          className="h-full bg-white dark:bg-[#242424] "
                           style={{
                             width: progressAnim.interpolate({
                               inputRange: [0, 1],
@@ -2695,7 +2635,7 @@ export default function NewsFeed() {
                 <View className="flex-row items-center">
                   <View
                     className="h-10 w-10 rounded-full border-2 items-center justify-center bg-gray-800 mr-3 overflow-hidden"
-                    style={{ borderColor: "#72AF5B" }}
+                    style={{ borderColor: themeColor("#72AF5B", "#414141") }}
                   >
                     {Boolean(currentStoryUser.userAvatar && currentStoryUser.userAvatar.trim()) ? (
                       <Image
@@ -2704,20 +2644,20 @@ export default function NewsFeed() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <Ionicons name="person" size={20} color="#9CA3AF" />
+                      <Ionicons name="person" size={20} color={themeColor("#9CA3AF", "#ADADAD")} />
                     )}
                   </View>
                   <View>
-                    <Text className="text-white font-bold text-base">
+                    <Text className="text-white font-bold text-base dark:text-[#E6E6E6] ">
                       {isOwnActiveStory ? "My story" : currentStoryUser.userName}
                     </Text>
                     <View className="flex-row items-center gap-1.5 mt-0.5">
                       {currentSubStory.timeAgo && (
-                        <Text className="text-white/80 text-xs">
+                        <Text className="text-white/80 text-xs dark:text-[#E6E6E6]/80 ">
                           {currentSubStory.timeAgo}
                         </Text>
                       )}
-                      <Text className="text-white/50 text-xs">•</Text>
+                      <Text className="text-white/50 text-xs dark:text-[#E6E6E6]/50 ">•</Text>
                       <Ionicons
                         name={
                           currentSubStory.privacy === "Only me"
@@ -2729,14 +2669,14 @@ export default function NewsFeed() {
                         size={11}
                         color="rgba(255,255,255,0.75)"
                       />
-                      <Text className="text-white/70 text-[10px]">
+                      <Text className="text-white/70 text-[10px] dark:text-[#E6E6E6]/70 ">
                         {currentSubStory.privacy || "Public"}
                       </Text>
                     </View>
                     {currentSubStory.musicTitle && !currentSubStory.overlays?.music ? (
-                      <View className="flex-row items-center mt-1 bg-white/20 px-2 py-0.5 rounded-full self-start">
-                        <Ionicons name="musical-notes" size={11} color="#A7F3D0" />
-                        <Text className="text-emerald-100 text-[10px] font-semibold ml-1">
+                      <View className="flex-row items-center mt-1 bg-white/20 px-2 py-0.5 rounded-full self-start dark:bg-[#242424]/20 ">
+                        <Ionicons name="musical-notes" size={11} color={themeColor("#A7F3D0", "#E6E6E6")} />
+                        <Text className="text-emerald-100 text-[10px] font-semibold ml-1 dark:text-[#E6E6E6] ">
                           {currentSubStory.musicTitle}
                         </Text>
                       </View>
@@ -2765,7 +2705,7 @@ export default function NewsFeed() {
                     accessibilityRole="button"
                     accessibilityLabel="Close story viewer"
                   >
-                    <Ionicons name="close" size={24} color="white" />
+                    <Ionicons name="close" size={24} color={themeColor("white", "#E6E6E6")} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -2784,7 +2724,7 @@ export default function NewsFeed() {
                       top: stk.y,
                       zIndex: 15,
                     }}
-                    className="px-3.5 py-1.5 rounded-2xl bg-black/60 border border-white/30 shadow-lg pointer-events-none"
+                    className="px-3.5 py-1.5 rounded-2xl bg-black/60 border border-white/30 shadow-lg pointer-events-none dark:border-[#414141]/30 "
                   >
                     <Text className="text-2xl">{stk.emoji}</Text>
                   </View>
@@ -2799,10 +2739,10 @@ export default function NewsFeed() {
                       top: Math.max(70, Math.min(currentSubStory.overlays!.music!.y, Dimensions.get("window").height - 180)),
                       zIndex: 15,
                     }}
-                    className="flex-row items-center bg-black/75 px-3.5 py-2 rounded-full border border-white/20 shadow-xl pointer-events-none"
+                    className="flex-row items-center bg-black/75 px-3.5 py-2 rounded-full border border-white/20 shadow-xl pointer-events-none dark:border-[#414141]/20 "
                   >
-                    <Ionicons name="musical-notes" size={13} color="#72AF5B" />
-                    <Text className="text-white text-xs font-semibold ml-1.5 mr-1" numberOfLines={1}>
+                    <Ionicons name="musical-notes" size={13} color={themeColor("#72AF5B", "#E6E6E6")} />
+                    <Text className="text-white text-xs font-semibold ml-1.5 mr-1 dark:text-[#E6E6E6] " numberOfLines={1}>
                       {currentSubStory.musicTitle}
                     </Text>
                   </View>
@@ -2821,9 +2761,9 @@ export default function NewsFeed() {
                         maxWidth: 320,
                         zIndex: 18,
                       }}
-                      className="bg-white/95 px-5 py-3.5 rounded-2xl shadow-2xl border border-white/60 pointer-events-none"
+                      className="bg-white/95 px-5 py-3.5 rounded-2xl shadow-2xl border border-white/60 pointer-events-none dark:bg-[#242424]/95 dark:border-[#414141]/60 "
                     >
-                      <Text className="text-slate-900 font-extrabold text-base sm:text-lg text-center tracking-tight">
+                      <Text className="text-slate-900 font-extrabold text-base sm:text-lg text-center tracking-tight dark:text-[#E6E6E6] ">
                         {currentSubStory.content}
                       </Text>
                     </Animated.View>
@@ -2835,9 +2775,9 @@ export default function NewsFeed() {
                           opacity: cardOpacityAnim,
                           maxWidth: 480,
                         }}
-                        className="bg-white/95 px-5 py-3 rounded-2xl shadow-2xl border border-white/60"
+                        className="bg-white/95 px-5 py-3 rounded-2xl shadow-2xl border border-white/60 dark:bg-[#242424]/95 dark:border-[#414141]/60 "
                       >
-                        <Text className="text-slate-900 font-extrabold text-base sm:text-lg text-center tracking-tight">
+                        <Text className="text-slate-900 font-extrabold text-base sm:text-lg text-center tracking-tight dark:text-[#E6E6E6] ">
                           {currentSubStory.content}
                         </Text>
                       </Animated.View>
@@ -2859,9 +2799,9 @@ export default function NewsFeed() {
                         width: "100%",
                         maxWidth: 500,
                       }}
-                      className="bg-black/65 px-5 py-3 rounded-2xl border border-white/15 shadow-lg"
+                      className="bg-black/65 px-5 py-3 rounded-2xl border border-white/15 shadow-lg dark:border-[#414141]/15 "
                     >
-                      <Text className="text-white text-sm font-semibold text-center leading-5">
+                      <Text className="text-white text-sm font-semibold text-center leading-5 dark:text-[#E6E6E6] ">
                         {currentSubStory.caption}
                       </Text>
                     </Animated.View>
@@ -2885,7 +2825,7 @@ export default function NewsFeed() {
                     className="items-center justify-center p-4"
                   >
                     <Text
-                      className="text-white text-2xl sm:text-3xl font-extrabold text-center leading-9 sm:leading-10 tracking-wide"
+                      className="text-white text-2xl sm:text-3xl font-extrabold text-center leading-9 sm:leading-10 tracking-wide dark:text-[#E6E6E6] "
                       style={{
                         textShadowColor: "rgba(0, 0, 0, 0.55)",
                         textShadowOffset: { width: 0, height: 2 },
@@ -2931,17 +2871,17 @@ export default function NewsFeed() {
                 <TouchableOpacity
                   onPress={handleOpenStoryViewers}
                   activeOpacity={0.8}
-                  className="flex-row items-center bg-black/60 px-4 py-2.5 rounded-full border border-white/20"
+                  className="flex-row items-center bg-black/60 px-4 py-2.5 rounded-full border border-white/20 dark:border-[#414141]/20 "
                 >
-                  <Ionicons name="eye-outline" size={18} color="white" />
-                  <Text className="text-white text-xs font-semibold ml-2">
+                  <Ionicons name="eye-outline" size={18} color={themeColor("white", "#E6E6E6")} />
+                  <Text className="text-white text-xs font-semibold ml-2 dark:text-[#E6E6E6] ">
                     {currentSubStory?.viewsCount ?? 0}{" "}
                     {(currentSubStory?.viewsCount ?? 0) === 1 ? "view" : "views"}
                   </Text>
                   <Ionicons
                     name="chevron-up"
                     size={14}
-                    color="#d1d5db"
+                    color={themeColor("#d1d5db", "#E6E6E6")}
                     style={{ marginLeft: 4 }}
                   />
                 </TouchableOpacity>
@@ -2960,7 +2900,7 @@ export default function NewsFeed() {
               >
                 {/* Floating Quick Reaction Emojis (shown when input is focused) */}
                 {isReplyingStory && (
-                  <View className="flex-row items-center justify-around mb-3 px-2 py-2 bg-black/70 rounded-full border border-white/20">
+                  <View className="flex-row items-center justify-around mb-3 px-2 py-2 bg-black/70 rounded-full border border-white/20 dark:border-[#414141]/20 ">
                     {["❤️", "🙌", "🔥", "👏", "😂", "😮", "😢", "😍"].map(
                       (emoji) => (
                         <TouchableOpacity
@@ -2978,7 +2918,7 @@ export default function NewsFeed() {
 
                 <View className="flex-row items-center gap-2">
                   {/* Rounded Message Input Pill */}
-                  <View className="flex-1 flex-row items-center bg-black/50 border border-white/25 rounded-full px-4 py-1.5 h-12">
+                  <View className="flex-1 flex-row items-center bg-black/50 border border-white/25 rounded-full px-4 py-1.5 h-12 dark:border-[#414141]/25 ">
                     <TextInput
                       ref={storyReplyInputRef}
                       value={storyReplyText}
@@ -2991,7 +2931,7 @@ export default function NewsFeed() {
                           : "user"
                       }...`}
                       placeholderTextColor="rgba(255, 255, 255, 0.6)"
-                      className="flex-1 text-white text-sm py-1.5 mr-2"
+                      className="flex-1 text-white text-sm py-1.5 mr-2 dark:text-[#E6E6E6] "
                       returnKeyType="send"
                       onSubmitEditing={handleSendStoryReply}
                     />
@@ -3000,12 +2940,12 @@ export default function NewsFeed() {
                       <TouchableOpacity
                         onPress={handleSendStoryReply}
                         disabled={isSendingStoryReply}
-                        className="bg-[#72AF5B] w-8 h-8 rounded-full items-center justify-center active:opacity-80"
+                        className="bg-[#72AF5B] w-8 h-8 rounded-full items-center justify-center active:opacity-80 dark:bg-[#E6E6E6] "
                       >
                         {isSendingStoryReply ? (
-                          <ActivityIndicator size="small" color="white" />
+                          <ActivityIndicator size="small" color={themeColor("white", "#181818")} />
                         ) : (
-                          <Ionicons name="arrow-up" size={18} color="white" />
+                          <Ionicons name="arrow-up" size={18} color={themeColor("white", "#181818")} />
                         )}
                       </TouchableOpacity>
                     )}
@@ -3016,7 +2956,7 @@ export default function NewsFeed() {
                     <TouchableOpacity
                       onPress={() => handleSendStoryReaction("❤️")}
                       activeOpacity={0.7}
-                      className="w-12 h-12 rounded-full bg-black/50 border border-white/25 items-center justify-center active:scale-110"
+                      className="w-12 h-12 rounded-full bg-black/50 border border-white/25 items-center justify-center active:scale-110 dark:border-[#414141]/25 "
                       accessibilityLabel="Send love reaction"
                     >
                       <Ionicons name="heart" size={26} color="#ef4444" />
@@ -3044,36 +2984,36 @@ export default function NewsFeed() {
             accessibilityRole="button"
             accessibilityLabel="Close story viewers backdrop"
           />
-          <View className="bg-white rounded-t-3xl max-h-[75%] min-h-[40%] pb-8 pt-3 px-5 shadow-2xl">
+          <View className="bg-white rounded-t-3xl max-h-[75%] min-h-[40%] pb-8 pt-3 px-5 shadow-2xl dark:bg-[#242424] ">
             {/* Drag handle */}
             <View className="items-center mb-3">
-              <View className="w-12 h-1.5 rounded-full bg-gray-300" />
+              <View className="w-12 h-1.5 rounded-full bg-gray-300 dark:bg-[#303030] " />
             </View>
 
             {/* Header */}
-            <View className="flex-row justify-between items-center pb-3 border-b border-gray-100">
+            <View className="flex-row justify-between items-center pb-3 border-b border-gray-100 dark:border-[#414141] ">
               <View className="flex-row items-center">
                 <Ionicons name="eye" size={20} color="#16a34a" />
-                <Text className="text-lg font-bold text-gray-900 ml-2">
+                <Text className="text-lg font-bold text-gray-900 ml-2 dark:text-[#E6E6E6] ">
                   Story Viewers
                 </Text>
-                <View className="bg-gray-100 px-2.5 py-0.5 rounded-full ml-2">
-                  <Text className="text-xs font-semibold text-gray-600">
+                <View className="bg-gray-100 px-2.5 py-0.5 rounded-full ml-2 dark:bg-[#181818] ">
+                  <Text className="text-xs font-semibold text-gray-600 dark:text-[#ADADAD] ">
                     {storyViewersList.length}
                   </Text>
                 </View>
               </View>
               <TouchableOpacity
                 onPress={handleCloseStoryViewers}
-                className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200"
+                className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200 dark:bg-[#181818] dark:active:bg-[#181818] "
                 accessibilityRole="button"
                 accessibilityLabel="Close viewers sheet"
               >
-                <Ionicons name="close" size={18} color="#4b5563" />
+                <Ionicons name="close" size={18} color={themeColor("#4b5563", "#ADADAD")} />
               </TouchableOpacity>
             </View>
 
-            <Text className="text-xs text-gray-500 my-2.5">
+            <Text className="text-xs text-gray-500 my-2.5 dark:text-[#ADADAD] ">
               Only you can see who viewed this story.
             </Text>
 
@@ -3081,19 +3021,19 @@ export default function NewsFeed() {
             {isLoadingStoryViewers ? (
               <View className="py-12 items-center justify-center">
                 <ActivityIndicator size="large" color="#16a34a" />
-                <Text className="text-sm text-gray-500 mt-3 font-medium">
+                <Text className="text-sm text-gray-500 mt-3 font-medium dark:text-[#ADADAD] ">
                   Loading viewers...
                 </Text>
               </View>
             ) : storyViewersList.length === 0 ? (
               <View className="py-12 items-center justify-center px-4">
-                <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-                  <Ionicons name="eye-off-outline" size={32} color="#9ca3af" />
+                <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3 dark:bg-[#181818] ">
+                  <Ionicons name="eye-off-outline" size={32} color={themeColor("#9ca3af", "#ADADAD")} />
                 </View>
-                <Text className="text-base font-bold text-gray-800">
+                <Text className="text-base font-bold text-gray-800 dark:text-[#E6E6E6] ">
                   No views yet
                 </Text>
-                <Text className="text-xs text-gray-500 text-center mt-1">
+                <Text className="text-xs text-gray-500 text-center mt-1 dark:text-[#ADADAD] ">
                   When someone views your story, their profile will appear here.
                 </Text>
               </View>
@@ -3104,16 +3044,16 @@ export default function NewsFeed() {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingTop: 8, paddingBottom: 16 }}
                 renderItem={({ item }) => (
-                  <View className="flex-row items-center justify-between py-3 border-b border-gray-50">
+                  <View className="flex-row items-center justify-between py-3 border-b border-gray-50 dark:border-[#414141] ">
                     <View className="flex-row items-center flex-1 mr-3">
                       {Boolean(item.avatarUrl && item.avatarUrl.trim()) ? (
                         <Image
                           source={{ uri: item.avatarUrl.trim() }}
-                          className="w-11 h-11 rounded-full bg-gray-100"
+                          className="w-11 h-11 rounded-full bg-gray-100 dark:bg-[#181818] "
                         />
                       ) : (
-                        <View className="w-11 h-11 rounded-full bg-green-100 items-center justify-center">
-                          <Text className="text-green-800 font-bold text-base">
+                        <View className="w-11 h-11 rounded-full bg-green-100 items-center justify-center dark:bg-[#303030] ">
+                          <Text className="text-green-800 font-bold text-base dark:text-[#E6E6E6] ">
                             {(item.name || item.username || "U")[0]?.toUpperCase()}
                           </Text>
                         </View>
@@ -3121,14 +3061,14 @@ export default function NewsFeed() {
                       <View className="ml-3 flex-1">
                         <View className="flex-row items-center">
                           <Text
-                            className="font-semibold text-gray-900 text-sm"
+                            className="font-semibold text-gray-900 text-sm dark:text-[#E6E6E6] "
                             numberOfLines={1}
                           >
                             {item.name}
                           </Text>
                           {item.role && (
-                            <View className="ml-2 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
-                              <Text className="text-[10px] text-green-700 font-medium">
+                            <View className="ml-2 bg-green-50 px-2 py-0.5 rounded-full border border-green-200 dark:bg-[#181818] dark:border-[#414141] ">
+                              <Text className="text-[10px] text-green-700 font-medium dark:text-[#E6E6E6] ">
                                 {item.role}
                               </Text>
                             </View>
@@ -3136,7 +3076,7 @@ export default function NewsFeed() {
                         </View>
                       </View>
                     </View>
-                    <Text className="text-xs text-gray-400 font-medium">
+                    <Text className="text-xs text-gray-400 font-medium dark:text-[#ADADAD] ">
                       {item.viewedAt}
                     </Text>
                   </View>
@@ -3165,10 +3105,10 @@ export default function NewsFeed() {
       >
         {storyStep === "SELECT_MEDIA" ? (
           /* Step 1: Facebook / Instagram Style Device Photo Picker */
-          <SafeAreaView className="flex-1 bg-white">
+          <SafeAreaView className="flex-1 bg-white dark:bg-[#181818] ">
             {/* Header */}
-            <View className="flex-row justify-between items-center px-4 pt-2 pb-3 border-b border-gray-100">
-              <Text className="text-xl font-bold text-gray-900">
+            <View className="flex-row justify-between items-center px-4 pt-2 pb-3 border-b border-gray-100 dark:border-[#414141] ">
+              <Text className="text-xl font-bold text-gray-900 dark:text-[#E6E6E6] ">
                 Create story
               </Text>
               <TouchableOpacity
@@ -3176,11 +3116,11 @@ export default function NewsFeed() {
                   stopStorySoundtrack();
                   setStoryModalVisible(false);
                 }}
-                className="w-9 h-9 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200"
+                className="w-9 h-9 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200 dark:bg-[#181818] dark:active:bg-[#181818] "
                 accessibilityRole="button"
                 accessibilityLabel="Close create story modal"
               >
-                <Ionicons name="close" size={24} color="#111827" />
+                <Ionicons name="close" size={24} color={themeColor("#111827", "#E6E6E6")} />
               </TouchableOpacity>
             </View>
 
@@ -3193,15 +3133,15 @@ export default function NewsFeed() {
                   setStoryTextContent("");
                   setStoryStep("EDIT_STORY");
                 }}
-                className="flex-1 bg-indigo-50 border border-indigo-100 rounded-2xl p-3 items-center justify-center active:opacity-80"
+                className="flex-1 bg-indigo-50 border border-indigo-100 rounded-2xl p-3 items-center justify-center active:opacity-80 dark:bg-[#181818] dark:border-[#414141] "
                 activeOpacity={0.7}
               >
                 <View className="w-10 h-10 rounded-full bg-indigo-600 items-center justify-center mb-1 shadow-sm">
-                  <Text className="text-white text-lg font-bold font-serif">
+                  <Text className="text-white text-lg font-bold font-serif dark:text-[#E6E6E6] ">
                     Aa
                   </Text>
                 </View>
-                <Text className="text-xs font-semibold text-gray-800">
+                <Text className="text-xs font-semibold text-gray-800 dark:text-[#E6E6E6] ">
                   Text
                 </Text>
               </TouchableOpacity>
@@ -3209,13 +3149,13 @@ export default function NewsFeed() {
               {/* Camera Snap */}
               <TouchableOpacity
                 onPress={handlePickCamera}
-                className="flex-1 bg-blue-50 border border-blue-100 rounded-2xl p-3 items-center justify-center active:opacity-80"
+                className="flex-1 bg-blue-50 border border-blue-100 rounded-2xl p-3 items-center justify-center active:opacity-80 dark:bg-[#181818] dark:border-[#414141] "
                 activeOpacity={0.7}
               >
                 <View className="w-10 h-10 rounded-full bg-blue-600 items-center justify-center mb-1 shadow-sm">
-                  <Ionicons name="camera" size={20} color="#FFFFFF" />
+                  <Ionicons name="camera" size={20} color={themeColor("#FFFFFF", "#E6E6E6")} />
                 </View>
-                <Text className="text-xs font-semibold text-gray-800">
+                <Text className="text-xs font-semibold text-gray-800 dark:text-[#E6E6E6] ">
                   Camera
                 </Text>
               </TouchableOpacity>
@@ -3223,35 +3163,35 @@ export default function NewsFeed() {
               {/* Browse Gallery / Files */}
               <TouchableOpacity
                 onPress={handlePickGallery}
-                className="flex-1 bg-emerald-50 border border-emerald-100 rounded-2xl p-3 items-center justify-center active:opacity-80"
+                className="flex-1 bg-emerald-50 border border-emerald-100 rounded-2xl p-3 items-center justify-center active:opacity-80 dark:bg-[#181818] dark:border-[#414141] "
                 activeOpacity={0.7}
               >
-                <View className="w-10 h-10 rounded-full bg-[#72AF5B] items-center justify-center mb-1 shadow-sm">
-                  <Ionicons name="images" size={20} color="#FFFFFF" />
+                <View className="w-10 h-10 rounded-full bg-[#72AF5B] items-center justify-center mb-1 shadow-sm dark:bg-[#E6E6E6] ">
+                  <Ionicons name="images" size={20} color={themeColor("#FFFFFF", "#181818")} />
                 </View>
-                <Text className="text-xs font-semibold text-gray-800">
+                <Text className="text-xs font-semibold text-gray-800 dark:text-[#E6E6E6] ">
                   Browse
                 </Text>
               </TouchableOpacity>
             </View>
 
             {/* Recents Bar */}
-            <View className="flex-row items-center justify-between px-4 py-2 bg-gray-50 border-y border-gray-100">
+            <View className="flex-row items-center justify-between px-4 py-2 bg-gray-50 border-y border-gray-100 dark:bg-[#242424] dark:border-[#414141] ">
               <View className="flex-row items-center">
-                <Text className="text-sm font-bold text-gray-800">Recents</Text>
+                <Text className="text-sm font-bold text-gray-800 dark:text-[#E6E6E6] ">Recents</Text>
                 <Ionicons
                   name="chevron-down"
                   size={16}
-                  color="#4B5563"
+                  color={themeColor("#4B5563", "#ADADAD")}
                   style={{ marginLeft: 4 }}
                 />
               </View>
               <TouchableOpacity
                 onPress={handlePickGallery}
-                className="px-2.5 py-1 rounded-full bg-white border border-gray-200"
+                className="px-2.5 py-1 rounded-full bg-white border border-gray-200 dark:bg-[#242424] dark:border-[#414141] "
                 activeOpacity={0.7}
               >
-                <Text className="text-xs font-medium text-gray-600">
+                <Text className="text-xs font-medium text-gray-600 dark:text-[#ADADAD] ">
                   Browse all
                 </Text>
               </TouchableOpacity>
@@ -3260,28 +3200,28 @@ export default function NewsFeed() {
             {/* Photos Grid or Fallback State */}
             {loadingDevicePhotos && devicePhotos.length === 0 ? (
               <View className="flex-1 items-center justify-center py-20">
-                <ActivityIndicator size="large" color="#72AF5B" />
-                <Text className="text-sm text-gray-500 mt-3 font-medium">
+                <ActivityIndicator size="large" color={themeColor("#72AF5B", "#E6E6E6")} />
+                <Text className="text-sm text-gray-500 mt-3 font-medium dark:text-[#ADADAD] ">
                   Loading photos from your device...
                 </Text>
               </View>
             ) : mediaPermissionDenied ? (
               <View className="flex-1 items-center justify-center px-6 py-12">
-                <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-4">
-                  <Ionicons name="images-outline" size={32} color="#6B7280" />
+                <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-4 dark:bg-[#181818] ">
+                  <Ionicons name="images-outline" size={32} color={themeColor("#6B7280", "#ADADAD")} />
                 </View>
-                <Text className="text-base font-bold text-gray-800 text-center mb-1">
+                <Text className="text-base font-bold text-gray-800 text-center mb-1 dark:text-[#E6E6E6] ">
                   Allow Access to Your Photos
                 </Text>
-                <Text className="text-xs text-gray-500 text-center mb-6 leading-5">
+                <Text className="text-xs text-gray-500 text-center mb-6 leading-5 dark:text-[#ADADAD] ">
                   Grant permission to view your device photos and share them directly as stories.
                 </Text>
                 <TouchableOpacity
                   onPress={() => loadDevicePhotos(true)}
-                  className="bg-[#72AF5B] px-6 py-2.5 rounded-full mb-3"
+                  className="bg-[#72AF5B] px-6 py-2.5 rounded-full mb-3 dark:bg-[#E6E6E6] "
                   activeOpacity={0.8}
                 >
-                  <Text className="text-white text-sm font-semibold">
+                  <Text className="text-white text-sm font-semibold dark:text-[#181818] ">
                     Grant Permission
                   </Text>
                 </TouchableOpacity>
@@ -3290,7 +3230,7 @@ export default function NewsFeed() {
                   className="px-4 py-2"
                   activeOpacity={0.7}
                 >
-                  <Text className="text-xs text-gray-600">
+                  <Text className="text-xs text-gray-600 dark:text-[#ADADAD] ">
                     Or select from file picker
                   </Text>
                 </TouchableOpacity>
@@ -3316,10 +3256,10 @@ export default function NewsFeed() {
                         className="bg-gray-900 items-center justify-center active:opacity-80"
                         activeOpacity={0.7}
                       >
-                        <View className="w-10 h-10 rounded-full bg-white/20 items-center justify-center mb-1">
-                          <Ionicons name="camera" size={22} color="#FFFFFF" />
+                        <View className="w-10 h-10 rounded-full bg-white/20 items-center justify-center mb-1 dark:bg-[#242424]/20 ">
+                          <Ionicons name="camera" size={22} color={themeColor("#FFFFFF", "#E6E6E6")} />
                         </View>
-                        <Text className="text-white text-xs font-semibold">
+                        <Text className="text-white text-xs font-semibold dark:text-[#E6E6E6] ">
                           Camera
                         </Text>
                       </TouchableOpacity>
@@ -3338,7 +3278,7 @@ export default function NewsFeed() {
                         height: (screenWidth - 4) / 3,
                         margin: 0.6,
                       }}
-                      className="bg-gray-100"
+                      className="bg-gray-100 dark:bg-[#181818] "
                     >
                       <Image
                         source={{ uri: item.uri }}
@@ -3350,18 +3290,18 @@ export default function NewsFeed() {
                 }}
                 ListEmptyComponent={
                   <View className="items-center justify-center py-16 px-4">
-                    <Ionicons name="images-outline" size={40} color="#9CA3AF" />
-                    <Text className="text-sm font-semibold text-gray-700 mt-3">
+                    <Ionicons name="images-outline" size={40} color={themeColor("#9CA3AF", "#ADADAD")} />
+                    <Text className="text-sm font-semibold text-gray-700 mt-3 dark:text-[#E6E6E6] ">
                       No photos found on device
                     </Text>
-                    <Text className="text-xs text-gray-400 text-center mt-1 mb-4">
+                    <Text className="text-xs text-gray-400 text-center mt-1 mb-4 dark:text-[#ADADAD] ">
                       Take a new picture or choose from the system picker
                     </Text>
                     <TouchableOpacity
                       onPress={handlePickGallery}
-                      className="bg-[#72AF5B] px-5 py-2 rounded-full"
+                      className="bg-[#72AF5B] px-5 py-2 rounded-full dark:bg-[#E6E6E6] "
                     >
-                      <Text className="text-white text-xs font-semibold">
+                      <Text className="text-white text-xs font-semibold dark:text-[#181818] ">
                         Browse Gallery
                       </Text>
                     </TouchableOpacity>
@@ -3370,25 +3310,25 @@ export default function NewsFeed() {
                 ListFooterComponent={
                   devicePhotos.length === 0 ? (
                     <View className="items-center justify-center py-12 px-6">
-                      <View className="w-14 h-14 rounded-full bg-gray-100 items-center justify-center mb-3">
+                      <View className="w-14 h-14 rounded-full bg-gray-100 items-center justify-center mb-3 dark:bg-[#181818] ">
                         <Ionicons
                           name="images-outline"
                           size={28}
-                          color="#9CA3AF"
+                          color={themeColor("#9CA3AF", "#ADADAD")}
                         />
                       </View>
-                      <Text className="text-sm font-bold text-gray-800 text-center mb-1">
+                      <Text className="text-sm font-bold text-gray-800 text-center mb-1 dark:text-[#E6E6E6] ">
                         No photos in emulator storage
                       </Text>
-                      <Text className="text-xs text-gray-500 text-center mb-4 leading-4">
+                      <Text className="text-xs text-gray-500 text-center mb-4 leading-4 dark:text-[#ADADAD] ">
                         Emulators start with an empty camera roll. Snap a photo with the Camera above, or tap Browse All to select from Google Photos or downloads.
                       </Text>
                       <TouchableOpacity
                         onPress={handlePickGallery}
-                        className="bg-[#72AF5B] px-5 py-2.5 rounded-full shadow-sm active:opacity-80"
+                        className="bg-[#72AF5B] px-5 py-2.5 rounded-full shadow-sm active:opacity-80 dark:bg-[#E6E6E6] "
                         activeOpacity={0.8}
                       >
-                        <Text className="text-white text-xs font-semibold">
+                        <Text className="text-white text-xs font-semibold dark:text-[#181818] ">
                           Browse All / Google Photos
                         </Text>
                       </TouchableOpacity>
@@ -3400,25 +3340,25 @@ export default function NewsFeed() {
           </SafeAreaView>
         ) : storyStep === "PRIVACY_SETTINGS" ? (
           /* Step 3: Story Privacy Settings (Dynamic & Modern) */
-          <SafeAreaView className="flex-1 bg-white">
+          <SafeAreaView className="flex-1 bg-white dark:bg-[#181818] ">
             <View className="flex-1 justify-between px-5 pt-2 pb-4 h-full">
               {/* Top Content */}
               <View>
                 {/* Back Arrow Button */}
                 <TouchableOpacity
                   onPress={() => setStoryStep("EDIT_STORY")}
-                  className="w-10 h-10 -ml-2 mb-2 rounded-full items-center justify-center active:bg-gray-100"
+                  className="w-10 h-10 -ml-2 mb-2 rounded-full items-center justify-center active:bg-gray-100 dark:active:bg-[#181818] "
                   accessibilityRole="button"
                   accessibilityLabel="Go back"
                 >
-                  <Ionicons name="chevron-back" size={28} color="#111827" />
+                  <Ionicons name="chevron-back" size={28} color={themeColor("#111827", "#E6E6E6")} />
                 </TouchableOpacity>
 
                 {/* Header Title */}
-                <Text className="text-2xl font-bold text-gray-900 mb-1.5">
+                <Text className="text-2xl font-bold text-gray-900 mb-1.5 dark:text-[#E6E6E6] ">
                   Story Privacy
                 </Text>
-                <Text className="text-sm text-gray-500 mb-6 leading-5">
+                <Text className="text-sm text-gray-500 mb-6 leading-5 dark:text-[#ADADAD] ">
                   Choose who can see your story. Your story will stay visible on LocalFarm for 24 hours.
                 </Text>
 
@@ -3433,14 +3373,14 @@ export default function NewsFeed() {
                         onPress={() => setStoryPrivacy(option.title as any)}
                         className={`flex-row items-center p-4 rounded-2xl mb-3 border ${
                           isSelected
-                            ? "bg-green-50/70 border-[#72AF5B]"
-                            : "bg-white border-gray-200"
+                            ? "bg-green-50/70 border-[#72AF5B] dark:bg-[#181818]/70 dark:border-[#414141] "
+                            : "bg-white border-gray-200 dark:bg-[#242424] dark:border-[#414141] "
                         }`}
                         activeOpacity={0.7}
                       >
                         <View
                           className={`w-11 h-11 rounded-full items-center justify-center mr-3.5 ${
-                            isSelected ? "bg-[#72AF5B]" : "bg-gray-100"
+                            isSelected ? "bg-[#72AF5B] dark:bg-[#E6E6E6] " : "bg-gray-100 dark:bg-[#181818] "
                           }`}
                         >
                           <Ionicons
@@ -3453,13 +3393,13 @@ export default function NewsFeed() {
                           <Text
                             className={`text-base mb-0.5 ${
                               isSelected
-                                ? "font-bold text-gray-900"
-                                : "font-semibold text-gray-800"
+                                ? "font-bold text-gray-900 dark:text-[#E6E6E6] "
+                                : "font-semibold text-gray-800 dark:text-[#E6E6E6] "
                             }`}
                           >
                             {option.title}
                           </Text>
-                          <Text className="text-xs text-gray-500 leading-4">
+                          <Text className="text-xs text-gray-500 leading-4 dark:text-[#ADADAD] ">
                             {option.subtitle}
                           </Text>
                         </View>
@@ -3479,12 +3419,12 @@ export default function NewsFeed() {
               {/* Bottom Actions */}
               <View className="mt-auto pb-2">
                 {/* Set as default audience Row */}
-                <View className="flex-row justify-between items-center mb-4 px-1 py-3 border-t border-gray-100">
+                <View className="flex-row justify-between items-center mb-4 px-1 py-3 border-t border-gray-100 dark:border-[#414141] ">
                   <View className="flex-1 mr-3">
-                    <Text className="text-sm text-gray-900 font-semibold">
+                    <Text className="text-sm text-gray-900 font-semibold dark:text-[#E6E6E6] ">
                       Set as default audience
                     </Text>
-                    <Text className="text-xs text-gray-400 mt-0.5">
+                    <Text className="text-xs text-gray-400 mt-0.5 dark:text-[#ADADAD] ">
                       Remember this privacy setting for future stories
                     </Text>
                   </View>
@@ -3511,10 +3451,10 @@ export default function NewsFeed() {
                 {/* Done Button */}
                 <TouchableOpacity
                   onPress={handleSaveStoryPrivacy}
-                  className="w-full bg-[#72AF5B] py-3.5 rounded-xl items-center justify-center active:opacity-80 shadow-md"
+                  className="w-full bg-[#72AF5B] py-3.5 rounded-xl items-center justify-center active:opacity-80 shadow-md dark:bg-[#E6E6E6] "
                   activeOpacity={0.8}
                 >
-                  <Text className="text-white font-bold text-base">Done</Text>
+                  <Text className="text-white font-bold text-base dark:text-[#181818] ">Done</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -3551,11 +3491,11 @@ export default function NewsFeed() {
                     initialPosition={musicBadgePos}
                     onPositionChange={setMusicBadgePos}
                   >
-                    <View className="flex-row items-center bg-black/80 px-3.5 py-2 rounded-full border border-white/25 shadow-xl">
+                    <View className="flex-row items-center bg-black/80 px-3.5 py-2 rounded-full border border-white/25 shadow-xl dark:border-[#414141]/25 ">
                       <View className="w-5 h-5 rounded-full bg-emerald-500/20 items-center justify-center mr-1.5">
-                        <Ionicons name="musical-notes" size={12} color="#72AF5B" />
+                        <Ionicons name="musical-notes" size={12} color={themeColor("#72AF5B", "#E6E6E6")} />
                       </View>
-                      <Text className="text-white text-xs font-semibold mr-2 max-w-[170px]" numberOfLines={1}>
+                      <Text className="text-white text-xs font-semibold mr-2 max-w-[170px] dark:text-[#E6E6E6] " numberOfLines={1}>
                         {storyMusicTitle}
                       </Text>
                       <TouchableOpacity
@@ -3565,10 +3505,10 @@ export default function NewsFeed() {
                           showToast("Soundtrack removed", "info");
                         }}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        className="p-0.5 rounded-full bg-white/10 active:bg-white/20"
+                        className="p-0.5 rounded-full bg-white/10 active:bg-white/20 dark:bg-[#242424]/10 dark:active:bg-[#242424]/20 "
                         accessibilityLabel="Remove soundtrack"
                       >
-                        <Ionicons name="close-circle" size={16} color="#CBD5E1" />
+                        <Ionicons name="close-circle" size={16} color={themeColor("#CBD5E1", "#E6E6E6")} />
                       </TouchableOpacity>
                     </View>
                   </DraggableStoryElement>
@@ -3585,7 +3525,7 @@ export default function NewsFeed() {
                       )
                     }
                   >
-                    <View className="flex-row items-center bg-black/75 border border-white/30 px-3.5 py-1.5 rounded-2xl shadow-xl">
+                    <View className="flex-row items-center bg-black/75 border border-white/30 px-3.5 py-1.5 rounded-2xl shadow-xl dark:border-[#414141]/30 ">
                       <Text className="text-2xl">{sticker.emoji}</Text>
                       <TouchableOpacity
                         onPress={() => {
@@ -3593,10 +3533,10 @@ export default function NewsFeed() {
                           showToast("Sticker removed", "info");
                         }}
                         hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                        className="ml-2 p-0.5 rounded-full bg-white/15 active:bg-white/30"
+                        className="ml-2 p-0.5 rounded-full bg-white/15 active:bg-white/30 dark:bg-[#242424]/15 dark:active:bg-[#242424]/30 "
                         accessibilityLabel="Remove sticker"
                       >
-                        <Ionicons name="close" size={12} color="#FFFFFF" />
+                        <Ionicons name="close" size={12} color={themeColor("#FFFFFF", "#E6E6E6")} />
                       </TouchableOpacity>
                     </View>
                   </DraggableStoryElement>
@@ -3659,13 +3599,13 @@ export default function NewsFeed() {
                   <TouchableOpacity
                     onPress={() => setIsAddingTextOverlay(true)}
                     activeOpacity={0.7}
-                    className="absolute z-10 px-4 py-2 rounded-full bg-black/50 border border-white/20 items-center justify-center shadow-md"
+                    className="absolute z-10 px-4 py-2 rounded-full bg-black/50 border border-white/20 items-center justify-center shadow-md dark:border-[#414141]/20 "
                     style={{ alignSelf: "center", top: "40%" }}
                   >
                     <View className="flex-row items-center">
-                      <Ionicons name="text-outline" size={14} color="#CBD5E1" />
-                      <Text className="text-white/90 text-xs font-semibold ml-1.5">
-                        Tap <Text className="font-extrabold text-white">Aa</Text> to add text sticker
+                      <Ionicons name="text-outline" size={14} color={themeColor("#CBD5E1", "#E6E6E6")} />
+                      <Text className="text-white/90 text-xs font-semibold ml-1.5 dark:text-[#E6E6E6]/90 ">
+                        Tap <Text className="font-extrabold text-white dark:text-[#E6E6E6] ">Aa</Text> to add text sticker
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -3684,11 +3624,11 @@ export default function NewsFeed() {
                     initialPosition={musicBadgePos}
                     onPositionChange={setMusicBadgePos}
                   >
-                    <View className="flex-row items-center bg-black/80 px-3.5 py-2 rounded-full border border-white/25 shadow-xl">
+                    <View className="flex-row items-center bg-black/80 px-3.5 py-2 rounded-full border border-white/25 shadow-xl dark:border-[#414141]/25 ">
                       <View className="w-5 h-5 rounded-full bg-emerald-500/20 items-center justify-center mr-1.5">
-                        <Ionicons name="musical-notes" size={12} color="#72AF5B" />
+                        <Ionicons name="musical-notes" size={12} color={themeColor("#72AF5B", "#E6E6E6")} />
                       </View>
-                      <Text className="text-white text-xs font-semibold ml-1.5 mr-2 max-w-[170px]" numberOfLines={1}>
+                      <Text className="text-white text-xs font-semibold ml-1.5 mr-2 max-w-[170px] dark:text-[#E6E6E6] " numberOfLines={1}>
                         {storyMusicTitle}
                       </Text>
                       <TouchableOpacity
@@ -3698,10 +3638,10 @@ export default function NewsFeed() {
                           showToast("Soundtrack removed", "info");
                         }}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        className="p-0.5 rounded-full bg-white/10 active:bg-white/20"
+                        className="p-0.5 rounded-full bg-white/10 active:bg-white/20 dark:bg-[#242424]/10 dark:active:bg-[#242424]/20 "
                         accessibilityLabel="Remove soundtrack"
                       >
-                        <Ionicons name="close-circle" size={16} color="#CBD5E1" />
+                        <Ionicons name="close-circle" size={16} color={themeColor("#CBD5E1", "#E6E6E6")} />
                       </TouchableOpacity>
                     </View>
                   </DraggableStoryElement>
@@ -3718,7 +3658,7 @@ export default function NewsFeed() {
                       )
                     }
                   >
-                    <View className="flex-row items-center bg-black/75 border border-white/30 px-3.5 py-1.5 rounded-2xl shadow-xl">
+                    <View className="flex-row items-center bg-black/75 border border-white/30 px-3.5 py-1.5 rounded-2xl shadow-xl dark:border-[#414141]/30 ">
                       <Text className="text-2xl">{sticker.emoji}</Text>
                       <TouchableOpacity
                         onPress={() => {
@@ -3726,10 +3666,10 @@ export default function NewsFeed() {
                           showToast("Sticker removed", "info");
                         }}
                         hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                        className="ml-2 p-0.5 rounded-full bg-white/15 active:bg-white/30"
+                        className="ml-2 p-0.5 rounded-full bg-white/15 active:bg-white/30 dark:bg-[#242424]/15 dark:active:bg-[#242424]/30 "
                         accessibilityLabel="Remove sticker"
                       >
-                        <Ionicons name="close" size={12} color="#FFFFFF" />
+                        <Ionicons name="close" size={12} color={themeColor("#FFFFFF", "#E6E6E6")} />
                       </TouchableOpacity>
                     </View>
                   </DraggableStoryElement>
@@ -3741,7 +3681,7 @@ export default function NewsFeed() {
                   placeholder="Type your story here... ✍️"
                   placeholderTextColor="rgba(255, 255, 255, 0.65)"
                   multiline
-                  className="text-white text-2xl font-bold text-center w-full px-4"
+                  className="text-white text-2xl font-bold text-center w-full px-4 dark:text-[#E6E6E6] "
                   autoFocus
                 />
 
@@ -3753,7 +3693,7 @@ export default function NewsFeed() {
                       onPress={() => setSelectedStoryBg(key)}
                       className={`w-7 h-7 rounded-full border-2 ${
                         selectedStoryBg === key
-                          ? "border-white scale-110"
+                          ? "border-white scale-110 dark:border-[#414141] "
                           : "border-transparent opacity-80"
                       }`}
                       style={{ backgroundColor: colors[1] }}
@@ -3773,12 +3713,12 @@ export default function NewsFeed() {
                   stopStorySoundtrack();
                   setStoryStep("SELECT_MEDIA");
                 }}
-                className="w-10 h-10 rounded-full bg-black/50 items-center justify-center active:bg-black/70 border border-white/20 shadow-md"
+                className="w-10 h-10 rounded-full bg-black/50 items-center justify-center active:bg-black/70 border border-white/20 shadow-md dark:border-[#414141]/20 "
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityLabel="Back to gallery"
               >
-                <Ionicons name="arrow-back" size={24} color="white" />
+                <Ionicons name="arrow-back" size={24} color={themeColor("white", "#E6E6E6")} />
               </TouchableOpacity>
 
               {/* Right: Edit Icons */}
@@ -3788,13 +3728,13 @@ export default function NewsFeed() {
                   onPress={() => setIsAddingTextOverlay(true)}
                   className={`w-10 h-10 rounded-full items-center justify-center active:bg-black/70 border shadow-md ${
                     Boolean(storyTextOverlay.trim())
-                      ? "bg-[#72AF5B] border-white"
-                      : "bg-black/50 border-white/20"
+                      ? "bg-[#72AF5B] border-white dark:bg-[#E6E6E6] dark:border-[#414141] "
+                      : "bg-black/50 border-white/20 dark:border-[#414141]/20 "
                   }`}
                   activeOpacity={0.7}
                   accessibilityLabel="Text Sticker Tool"
                 >
-                  <Text className="text-white text-base font-extrabold font-serif">
+                  <Text className="text-white text-base font-extrabold font-serif dark:text-[#181818] ">
                     Aa
                   </Text>
                 </TouchableOpacity>
@@ -3804,13 +3744,13 @@ export default function NewsFeed() {
                   onPress={() => setIsStickerPickerOpen(true)}
                   className={`w-10 h-10 rounded-full items-center justify-center active:bg-black/70 border shadow-md ${
                     storyStickers.length > 0
-                      ? "bg-[#72AF5B] border-white"
-                      : "bg-black/50 border-white/20"
+                      ? "bg-[#72AF5B] border-white dark:bg-[#E6E6E6] dark:border-[#414141] "
+                      : "bg-black/50 border-white/20 dark:border-[#414141]/20 "
                   }`}
                   activeOpacity={0.7}
                   accessibilityLabel="Stickers Tool"
                 >
-                  <Ionicons name="happy-outline" size={22} color="white" />
+                  <Ionicons name="happy-outline" size={22} color={themeColor("white", "#181818")} />
                 </TouchableOpacity>
 
                 {/* 3. Photo Filters Tint */}
@@ -3833,13 +3773,13 @@ export default function NewsFeed() {
                   }}
                   className={`w-10 h-10 rounded-full items-center justify-center active:bg-black/70 border shadow-md ${
                     storyFilter !== "normal"
-                      ? "bg-[#72AF5B] border-white"
-                      : "bg-black/50 border-white/20"
+                      ? "bg-[#72AF5B] border-white dark:bg-[#E6E6E6] dark:border-[#414141] "
+                      : "bg-black/50 border-white/20 dark:border-[#414141]/20 "
                   }`}
                   activeOpacity={0.7}
                   accessibilityLabel="Filter Tool"
                 >
-                  <Ionicons name="pencil-outline" size={20} color="white" />
+                  <Ionicons name="pencil-outline" size={20} color={themeColor("white", "#181818")} />
                 </TouchableOpacity>
 
                 {/* 4. Music Tool */}
@@ -3847,8 +3787,8 @@ export default function NewsFeed() {
                   onPress={() => setIsMusicPickerOpen(true)}
                   className={`w-10 h-10 rounded-full items-center justify-center active:bg-black/70 border shadow-md ${
                     storyMusicTitle
-                      ? "bg-[#72AF5B] border-white"
-                      : "bg-black/50 border-white/20"
+                      ? "bg-[#72AF5B] border-white dark:bg-[#E6E6E6] dark:border-[#414141] "
+                      : "bg-black/50 border-white/20 dark:border-[#414141]/20 "
                   }`}
                   activeOpacity={0.7}
                   accessibilityLabel="Music Sound Tool"
@@ -3856,7 +3796,7 @@ export default function NewsFeed() {
                   <Ionicons
                     name="musical-notes-outline"
                     size={20}
-                    color="white"
+                    color={themeColor("white", "#181818")}
                   />
                 </TouchableOpacity>
               </View>
@@ -3866,10 +3806,10 @@ export default function NewsFeed() {
             {(Boolean(storyTextOverlay.trim()) || storyMusicTitle || storyStickers.length > 0) && (
               <View
                 style={{ top: 72 }}
-                className="absolute self-center z-20 bg-black/65 px-3.5 py-1.5 rounded-full border border-white/20 shadow-lg pointer-events-none flex-row items-center gap-1.5"
+                className="absolute self-center z-20 bg-black/65 px-3.5 py-1.5 rounded-full border border-white/20 shadow-lg pointer-events-none flex-row items-center gap-1.5 dark:border-[#414141]/20 "
               >
-                <Ionicons name="move" size={12} color="#72AF5B" />
-                <Text className="text-white/90 text-[11px] font-semibold">
+                <Ionicons name="move" size={12} color={themeColor("#72AF5B", "#E6E6E6")} />
+                <Text className="text-white/90 text-[11px] font-semibold dark:text-[#E6E6E6]/90 ">
                   Touch & drag items anywhere on your story
                 </Text>
               </View>
@@ -3878,20 +3818,20 @@ export default function NewsFeed() {
             {/* Bottom Controls Bar (Caption pill, Privacy selector, Share button) */}
             <View className="absolute bottom-6 left-4 right-4 flex-row items-center z-20">
               {/* Caption input pill (like "AP box" in user's screenshot) */}
-              <View className="flex-1 mr-2 bg-black/60 rounded-full px-3.5 py-2 border border-white/25 flex-row items-center shadow-md">
+              <View className="flex-1 mr-2 bg-black/60 rounded-full px-3.5 py-2 border border-white/25 flex-row items-center shadow-md dark:border-[#414141]/25 ">
                 <TextInput
                   value={storyTextContent}
                   onChangeText={setStoryTextContent}
                   placeholder="Add a caption..."
-                  placeholderTextColor="#94A3B8"
-                  className="flex-1 text-white text-xs sm:text-sm py-0.5"
+                  placeholderTextColor={themeColor("#94A3B8", "#ADADAD")}
+                  className="flex-1 text-white text-xs sm:text-sm py-0.5 dark:text-[#E6E6E6] "
                 />
                 {Boolean(storyTextContent) && (
                   <TouchableOpacity
                     onPress={() => setStoryTextContent("")}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                    <Ionicons name="close-circle" size={16} color={themeColor("#94A3B8", "#ADADAD")} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -3899,7 +3839,7 @@ export default function NewsFeed() {
               {/* Privacy pill */}
               <TouchableOpacity
                 onPress={() => setStoryStep("PRIVACY_SETTINGS")}
-                className="bg-black/60 border border-white/25 px-3 py-2.5 rounded-full flex-row items-center mr-2 shadow-md"
+                className="bg-black/60 border border-white/25 px-3 py-2.5 rounded-full flex-row items-center mr-2 shadow-md dark:border-[#414141]/25 "
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityLabel="Who can see your story"
@@ -3913,31 +3853,31 @@ export default function NewsFeed() {
                         : "lock-closed-outline"
                   }
                   size={14}
-                  color="white"
+                  color={themeColor("white", "#E6E6E6")}
                 />
-                <Text className="text-white text-xs font-bold ml-1.5 mr-1">
+                <Text className="text-white text-xs font-bold ml-1.5 mr-1 dark:text-[#E6E6E6] ">
                   {storyPrivacy}
                 </Text>
-                <Ionicons name="chevron-down" size={12} color="white" />
+                <Ionicons name="chevron-down" size={12} color={themeColor("white", "#E6E6E6")} />
               </TouchableOpacity>
 
               {/* Green Share Button */}
               <TouchableOpacity
                 onPress={handleShareStory}
                 disabled={isSharingStory}
-                className="bg-[#72AF5B] px-4 py-2.5 rounded-full flex-row items-center active:bg-[#5e944b] shadow-lg"
+                className="bg-[#72AF5B] px-4 py-2.5 rounded-full flex-row items-center active:bg-[#5e944b] shadow-lg dark:bg-[#E6E6E6] dark:active:bg-[#E6E6E6] "
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Share story"
               >
                 {isSharingStory ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" className="mr-1" />
+                  <ActivityIndicator size="small" color={themeColor("#FFFFFF", "#181818")} className="mr-1" />
                 ) : (
                   <>
-                    <Text className="text-white font-bold text-xs sm:text-sm mr-1">
+                    <Text className="text-white font-bold text-xs sm:text-sm mr-1 dark:text-[#181818] ">
                       Share
                     </Text>
-                    <Ionicons name="arrow-forward" size={15} color="white" />
+                    <Ionicons name="arrow-forward" size={15} color={themeColor("white", "#181818")} />
                   </>
                 )}
               </TouchableOpacity>
@@ -3957,19 +3897,19 @@ export default function NewsFeed() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           className="flex-1 bg-black/80 items-center justify-center px-5"
         >
-          <View className="w-full max-w-sm bg-gray-900 rounded-3xl p-5 border border-white/20 shadow-2xl">
+          <View className="w-full max-w-sm bg-gray-900 rounded-3xl p-5 border border-white/20 shadow-2xl dark:border-[#414141]/20 ">
             <View className="flex-row justify-between items-center mb-4">
               <View className="flex-row items-center">
-                <Ionicons name="text" size={20} color="#72AF5B" />
-                <Text className="text-white font-bold text-base ml-2">
+                <Ionicons name="text" size={20} color={themeColor("#72AF5B", "#E6E6E6")} />
+                <Text className="text-white font-bold text-base ml-2 dark:text-[#E6E6E6] ">
                   Text Sticker
                 </Text>
               </View>
               <TouchableOpacity
                 onPress={() => setIsAddingTextOverlay(false)}
-                className="w-8 h-8 rounded-full bg-white/10 items-center justify-center"
+                className="w-8 h-8 rounded-full bg-white/10 items-center justify-center dark:bg-[#242424]/10 "
               >
-                <Ionicons name="close" size={18} color="white" />
+                <Ionicons name="close" size={18} color={themeColor("white", "#E6E6E6")} />
               </TouchableOpacity>
             </View>
 
@@ -4008,7 +3948,7 @@ export default function NewsFeed() {
             </View>
 
             {/* Style Selector Pills */}
-            <Text className="text-gray-400 text-xs font-semibold mb-2">
+            <Text className="text-gray-400 text-xs font-semibold mb-2 dark:text-[#ADADAD] ">
               Sticker Style:
             </Text>
             <View className="flex-row gap-2 mb-5">
@@ -4023,15 +3963,15 @@ export default function NewsFeed() {
                   onPress={() => setTextOverlayBg(styleOpt.id as any)}
                   className={`flex-1 py-2 rounded-xl items-center justify-center border ${
                     textOverlayBg === styleOpt.id
-                      ? "border-[#72AF5B] bg-[#72AF5B]/20"
-                      : "border-white/15 bg-white/5"
+                      ? "border-[#72AF5B] bg-[#72AF5B]/20 dark:border-[#414141] dark:bg-[#E6E6E6]/20 "
+                      : "border-white/15 bg-white/5 dark:border-[#414141]/15 dark:bg-[#242424]/5 "
                   }`}
                 >
                   <Text
                     className={`text-[11px] font-bold ${
                       textOverlayBg === styleOpt.id
-                        ? "text-[#72AF5B]"
-                        : "text-gray-300"
+                        ? "text-[#72AF5B] dark:text-[#E6E6E6] "
+                        : "text-gray-300 dark:text-[#E6E6E6] "
                     }`}
                   >
                     {styleOpt.label}
@@ -4055,9 +3995,9 @@ export default function NewsFeed() {
               )}
               <TouchableOpacity
                 onPress={() => setIsAddingTextOverlay(false)}
-                className="flex-1 py-3 bg-[#72AF5B] rounded-xl items-center justify-center shadow-md active:bg-[#5e944b]"
+                className="flex-1 py-3 bg-[#72AF5B] rounded-xl items-center justify-center shadow-md active:bg-[#5e944b] dark:bg-[#E6E6E6] dark:active:bg-[#E6E6E6] "
               >
-                <Text className="text-white font-bold text-sm">Done</Text>
+                <Text className="text-white font-bold text-sm dark:text-[#181818] ">Done</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -4077,27 +4017,27 @@ export default function NewsFeed() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="bg-gray-900 rounded-t-3xl p-5 border-t border-white/20 max-h-[70%]"
+            className="bg-gray-900 rounded-t-3xl p-5 border-t border-white/20 max-h-[70%] dark:border-[#414141]/20 "
           >
-            <View className="w-12 h-1 bg-white/20 rounded-full self-center mb-4" />
+            <View className="w-12 h-1 bg-white/20 rounded-full self-center mb-4 dark:bg-[#242424]/20 " />
             <View className="flex-row justify-between items-center mb-4">
               <View className="flex-row items-center">
-                <Ionicons name="happy" size={20} color="#72AF5B" />
-                <Text className="text-white font-bold text-base ml-2">
+                <Ionicons name="happy" size={20} color={themeColor("#72AF5B", "#E6E6E6")} />
+                <Text className="text-white font-bold text-base ml-2 dark:text-[#E6E6E6] ">
                   Farm Stickers & Emojis
                 </Text>
               </View>
               <TouchableOpacity
                 onPress={() => setIsStickerPickerOpen(false)}
-                className="w-8 h-8 rounded-full bg-white/10 items-center justify-center"
+                className="w-8 h-8 rounded-full bg-white/10 items-center justify-center dark:bg-[#242424]/10 "
               >
-                <Ionicons name="close" size={18} color="white" />
+                <Ionicons name="close" size={18} color={themeColor("white", "#E6E6E6")} />
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
               {/* Badges Section */}
-              <Text className="text-gray-400 text-xs font-semibold mb-2 uppercase tracking-wider">
+              <Text className="text-gray-400 text-xs font-semibold mb-2 uppercase tracking-wider dark:text-[#ADADAD] ">
                 Farm Badges
               </Text>
               <View className="flex-row flex-wrap gap-2 mb-5">
@@ -4124,15 +4064,15 @@ export default function NewsFeed() {
                       setStoryStickers((prev) => [...prev, newSticker]);
                       showToast(`Added ${badge}`, "info");
                     }}
-                    className="bg-white/10 border border-white/20 px-3.5 py-2 rounded-full active:bg-[#72AF5B]/30"
+                    className="bg-white/10 border border-white/20 px-3.5 py-2 rounded-full active:bg-[#72AF5B]/30 dark:bg-[#242424]/10 dark:border-[#414141]/20 dark:active:bg-[#E6E6E6]/30 "
                   >
-                    <Text className="text-white text-xs font-bold">{badge}</Text>
+                    <Text className="text-white text-xs font-bold dark:text-[#E6E6E6] ">{badge}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
               {/* Emoji Grid */}
-              <Text className="text-gray-400 text-xs font-semibold mb-2 uppercase tracking-wider">
+              <Text className="text-gray-400 text-xs font-semibold mb-2 uppercase tracking-wider dark:text-[#ADADAD] ">
                 Crop & Farm Emojis
               </Text>
               <View className="flex-row flex-wrap justify-between gap-y-3 mb-6">
@@ -4154,7 +4094,7 @@ export default function NewsFeed() {
                       setStoryStickers((prev) => [...prev, newSticker]);
                       showToast(`Added sticker`, "info");
                     }}
-                    className="w-[14%] aspect-square bg-white/5 rounded-2xl items-center justify-center border border-white/10 active:scale-110 active:bg-white/15"
+                    className="w-[14%] aspect-square bg-white/5 rounded-2xl items-center justify-center border border-white/10 active:scale-110 active:bg-white/15 dark:bg-[#242424]/5 dark:border-[#414141]/10 dark:active:bg-[#242424]/15 "
                   >
                     <Text className="text-2xl">{emoji}</Text>
                   </TouchableOpacity>
@@ -4164,9 +4104,9 @@ export default function NewsFeed() {
               {/* Done button */}
               <TouchableOpacity
                 onPress={() => setIsStickerPickerOpen(false)}
-                className="w-full bg-[#72AF5B] py-3.5 rounded-xl items-center justify-center mb-4"
+                className="w-full bg-[#72AF5B] py-3.5 rounded-xl items-center justify-center mb-4 dark:bg-[#E6E6E6] "
               >
-                <Text className="text-white font-bold text-sm">Done</Text>
+                <Text className="text-white font-bold text-sm dark:text-[#181818] ">Done</Text>
               </TouchableOpacity>
             </ScrollView>
           </Pressable>
@@ -4196,13 +4136,13 @@ export default function NewsFeed() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="bg-gray-900 rounded-t-3xl p-5 border-t border-white/20 max-h-[75%]"
+            className="bg-gray-900 rounded-t-3xl p-5 border-t border-white/20 max-h-[75%] dark:border-[#414141]/20 "
           >
-            <View className="w-12 h-1 bg-white/20 rounded-full self-center mb-4" />
+            <View className="w-12 h-1 bg-white/20 rounded-full self-center mb-4 dark:bg-[#242424]/20 " />
             <View className="flex-row justify-between items-center mb-4">
               <View className="flex-row items-center">
-                <Ionicons name="musical-notes" size={20} color="#72AF5B" />
-                <Text className="text-white font-bold text-base ml-2">
+                <Ionicons name="musical-notes" size={20} color={themeColor("#72AF5B", "#E6E6E6")} />
+                <Text className="text-white font-bold text-base ml-2 dark:text-[#E6E6E6] ">
                   Select Story Soundtrack
                 </Text>
               </View>
@@ -4213,9 +4153,9 @@ export default function NewsFeed() {
                   else playStorySoundtrack(storyMusicTitle);
                   setIsMusicPickerOpen(false);
                 }}
-                className="w-8 h-8 rounded-full bg-white/10 items-center justify-center"
+                className="w-8 h-8 rounded-full bg-white/10 items-center justify-center dark:bg-[#242424]/10 "
               >
-                <Ionicons name="close" size={18} color="white" />
+                <Ionicons name="close" size={18} color={themeColor("white", "#E6E6E6")} />
               </TouchableOpacity>
             </View>
 
@@ -4273,14 +4213,14 @@ export default function NewsFeed() {
                       }}
                       className={`flex-row items-center justify-between p-3.5 rounded-2xl border ${
                         isSelected
-                          ? "bg-[#72AF5B]/20 border-[#72AF5B]"
-                          : "bg-white/5 border-white/10 active:bg-white/10"
+                          ? "bg-[#72AF5B]/20 border-[#72AF5B] dark:bg-[#E6E6E6]/20 dark:border-[#414141] "
+                          : "bg-white/5 border-white/10 active:bg-white/10 dark:bg-[#242424]/5 dark:border-[#414141]/10 dark:active:bg-[#242424]/10 "
                       }`}
                     >
                       <View className="flex-row items-center flex-1 mr-2">
                         <View
                           className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
-                            isSelected ? "bg-[#72AF5B]" : "bg-white/10"
+                            isSelected ? "bg-[#72AF5B] dark:bg-[#E6E6E6] " : "bg-white/10 dark:bg-[#242424]/10 "
                           }`}
                         >
                           <Ionicons
@@ -4292,13 +4232,13 @@ export default function NewsFeed() {
                         <View className="flex-1">
                           <Text
                             className={`font-bold text-sm ${
-                              isSelected ? "text-[#72AF5B]" : "text-white"
+                              isSelected ? "text-[#72AF5B] dark:text-[#E6E6E6] " : "text-white dark:text-[#181818] "
                             }`}
                             numberOfLines={1}
                           >
                             {track.title}
                           </Text>
-                          <Text className="text-gray-400 text-xs mt-0.5">
+                          <Text className="text-gray-400 text-xs mt-0.5 dark:text-[#ADADAD] ">
                             {track.genre} • {track.duration}
                           </Text>
                         </View>
@@ -4319,15 +4259,15 @@ export default function NewsFeed() {
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                           className={`w-8 h-8 rounded-full items-center justify-center border ${
                             isPreviewing
-                              ? "bg-[#72AF5B] border-[#72AF5B]"
-                              : "bg-white/10 border-white/20 active:bg-white/20"
+                              ? "bg-[#72AF5B] border-[#72AF5B] dark:bg-[#E6E6E6] dark:border-[#414141] "
+                              : "bg-white/10 border-white/20 active:bg-white/20 dark:bg-[#242424]/10 dark:border-[#414141]/20 dark:active:bg-[#242424]/20 "
                           }`}
                           accessibilityLabel={isPreviewing ? "Pause track" : "Preview track sound"}
                         >
                           <Ionicons
                             name={isPreviewing ? "pause" : "play"}
                             size={14}
-                            color="#FFFFFF"
+                            color={themeColor("#FFFFFF", "#181818")}
                           />
                         </TouchableOpacity>
 
@@ -4335,13 +4275,13 @@ export default function NewsFeed() {
                           <Ionicons
                             name="checkmark-circle"
                             size={22}
-                            color="#72AF5B"
+                            color={themeColor("#72AF5B", "#E6E6E6")}
                           />
                         ) : (
                           <Ionicons
                             name="add-circle-outline"
                             size={22}
-                            color="#94A3B8"
+                            color={themeColor("#94A3B8", "#ADADAD")}
                           />
                         )}
                       </View>
@@ -4374,9 +4314,9 @@ export default function NewsFeed() {
                   else playStorySoundtrack(storyMusicTitle);
                   setIsMusicPickerOpen(false);
                 }}
-                className="w-full bg-[#72AF5B] py-3.5 rounded-xl items-center justify-center mb-4"
+                className="w-full bg-[#72AF5B] py-3.5 rounded-xl items-center justify-center mb-4 dark:bg-[#E6E6E6] "
               >
-                <Text className="text-white font-bold text-sm">Done</Text>
+                <Text className="text-white font-bold text-sm dark:text-[#181818] ">Done</Text>
               </TouchableOpacity>
             </ScrollView>
           </Pressable>
@@ -4408,14 +4348,14 @@ export default function NewsFeed() {
           >
             <Pressable
               onPress={(e) => e.stopPropagation()}
-              className="bg-white rounded-t-3xl p-5 pb-9 shadow-2xl"
+              className="bg-white rounded-t-3xl p-5 pb-9 shadow-2xl dark:bg-[#242424] "
             >
               {/* Header Handle / Drag Indicator */}
               <View className="w-full items-center pt-0 pb-3 -mt-1">
-                <View className="w-12 h-1.5 bg-gray-300 rounded-full" />
+                <View className="w-12 h-1.5 bg-gray-300 rounded-full dark:bg-[#303030] " />
               </View>
 
-              <Text className="text-base font-bold text-gray-900 mb-3 px-1">
+              <Text className="text-base font-bold text-gray-900 mb-3 px-1 dark:text-[#E6E6E6] ">
                 Post Options
               </Text>
 
@@ -4424,20 +4364,20 @@ export default function NewsFeed() {
                   {/* Edit Post */}
                   <TouchableOpacity
                     onPress={handleOpenEditModal}
-                    className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100"
+                    className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100 dark:active:bg-[#181818] "
                   >
-                    <View className="w-10 h-10 rounded-full bg-[#72AF5B] items-center justify-center mr-3">
+                    <View className="w-10 h-10 rounded-full bg-[#72AF5B] items-center justify-center mr-3 dark:bg-[#E6E6E6] ">
                       <Ionicons
                         name="create-outline"
                         size={22}
-                        color="#ffffff"
+                        color={themeColor("#ffffff", "#181818")}
                       />
                     </View>
                     <View className="flex-1">
-                      <Text className="text-sm font-semibold text-gray-900">
+                      <Text className="text-sm font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                         Edit Post
                       </Text>
-                      <Text className="text-xs text-gray-500">
+                      <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">
                         Update content, category, or privacy
                       </Text>
                     </View>
@@ -4449,27 +4389,27 @@ export default function NewsFeed() {
                       setIsPostMenuVisible(false);
                       setIsPrivacyModalVisible(true);
                     }}
-                    className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100"
+                    className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100 dark:active:bg-[#181818] "
                   >
-                    <View className="w-10 h-10 rounded-full bg-[#72AF5B] items-center justify-center mr-3">
+                    <View className="w-10 h-10 rounded-full bg-[#72AF5B] items-center justify-center mr-3 dark:bg-[#E6E6E6] ">
                       <Ionicons
                         name="globe-outline"
                         size={22}
-                        color="#ffffff"
+                        color={themeColor("#ffffff", "#181818")}
                       />
                     </View>
                     <View className="flex-1">
-                      <Text className="text-sm font-semibold text-gray-900">
+                      <Text className="text-sm font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                         Change Audience
                       </Text>
-                      <Text className="text-xs text-gray-500">
+                      <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">
                         Current: {selectedPostForMenu?.privacy || "Public"}
                       </Text>
                     </View>
                     <Ionicons
                       name="chevron-forward"
                       size={18}
-                      color="#9CA3AF"
+                      color={themeColor("#9CA3AF", "#ADADAD")}
                     />
                   </TouchableOpacity>
 
@@ -4479,13 +4419,13 @@ export default function NewsFeed() {
                       setIsPostMenuVisible(false);
                       setIsDeleteConfirmVisible(true);
                     }}
-                    className="flex-row items-center py-3 px-2 rounded-xl active:bg-red-50"
+                    className="flex-row items-center py-3 px-2 rounded-xl active:bg-red-50 dark:active:bg-[#181818] "
                   >
                     <View className="w-10 h-10 rounded-full bg-[#E45742] items-center justify-center mr-3">
                       <Ionicons
                         name="trash-outline"
                         size={22}
-                        color="#ffffff"
+                        color={themeColor("#ffffff", "#E6E6E6")}
                       />
                     </View>
                     <View className="flex-1">
@@ -4508,9 +4448,9 @@ export default function NewsFeed() {
                       }
                       setIsPostMenuVisible(false);
                     }}
-                    className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100"
+                    className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100 dark:active:bg-[#181818] "
                   >
-                    <View className="w-10 h-10 rounded-full bg-yellow-50 items-center justify-center mr-3">
+                    <View className="w-10 h-10 rounded-full bg-yellow-50 items-center justify-center mr-3 dark:bg-[#181818] ">
                       <Ionicons
                         name="bookmark-outline"
                         size={22}
@@ -4518,10 +4458,10 @@ export default function NewsFeed() {
                       />
                     </View>
                     <View className="flex-1">
-                      <Text className="text-sm font-semibold text-gray-900">
+                      <Text className="text-sm font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                         Save Post
                       </Text>
-                      <Text className="text-xs text-gray-500">
+                      <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">
                         Add to your saved posts
                       </Text>
                     </View>
@@ -4538,20 +4478,20 @@ export default function NewsFeed() {
                       }
                       setIsPostMenuVisible(false);
                     }}
-                    className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100"
+                    className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100 dark:active:bg-[#181818] "
                   >
-                    <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3">
+                    <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3 dark:bg-[#181818] ">
                       <Ionicons
                         name="eye-off-outline"
                         size={22}
-                        color="#6B7280"
+                        color={themeColor("#6B7280", "#ADADAD")}
                       />
                     </View>
                     <View className="flex-1">
-                      <Text className="text-sm font-semibold text-gray-900">
+                      <Text className="text-sm font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                         Hide Post
                       </Text>
-                      <Text className="text-xs text-gray-500">
+                      <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">
                         See fewer posts like this
                       </Text>
                     </View>
@@ -4570,25 +4510,25 @@ export default function NewsFeed() {
         transparent={false}
         onRequestClose={() => setIsEditModalVisible(false)}
       >
-        <SafeAreaView className="flex-1 bg-white">
+        <SafeAreaView className="flex-1 bg-white dark:bg-[#181818] ">
           {/* Header */}
-          <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100">
+          <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#414141] ">
             <TouchableOpacity
               onPress={() => setIsEditModalVisible(false)}
               className="p-1 active:opacity-70"
             >
-              <Ionicons name="close" size={24} color="#374151" />
+              <Ionicons name="close" size={24} color={themeColor("#374151", "#E6E6E6")} />
             </TouchableOpacity>
-            <Text className="text-base font-bold text-gray-900">Edit Post</Text>
+            <Text className="text-base font-bold text-gray-900 dark:text-[#E6E6E6] ">Edit Post</Text>
             <TouchableOpacity
               onPress={handleSaveEditPost}
               disabled={isUpdatingPost}
-              className="bg-[#72AF5B] px-4 py-1.5 rounded-full active:opacity-80"
+              className="bg-[#72AF5B] px-4 py-1.5 rounded-full active:opacity-80 dark:bg-[#E6E6E6] "
             >
               {isUpdatingPost ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={themeColor("#FFFFFF", "#181818")} />
               ) : (
-                <Text className="text-white font-bold text-sm">Save</Text>
+                <Text className="text-white font-bold text-sm dark:text-[#181818] ">Save</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -4598,7 +4538,7 @@ export default function NewsFeed() {
             keyboardShouldPersistTaps="handled"
           >
             {/* Category Selector */}
-            <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+            <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 dark:text-[#ADADAD] ">
               Category
             </Text>
             <View className="flex-row flex-wrap gap-2 mb-4">
@@ -4609,15 +4549,15 @@ export default function NewsFeed() {
                     onPress={() => setEditPostCategory(cat)}
                     className={`px-3 py-1.5 rounded-full border ${
                       editPostCategory === cat
-                        ? "bg-[#72AF5B] border-[#72AF5B]"
-                        : "bg-gray-50 border-gray-200"
+                        ? "bg-[#72AF5B] border-[#72AF5B] dark:bg-[#E6E6E6] dark:border-[#414141] "
+                        : "bg-gray-50 border-gray-200 dark:bg-[#242424] dark:border-[#414141] "
                     }`}
                   >
                     <Text
                       className={`text-xs font-semibold ${
                         editPostCategory === cat
-                          ? "text-white"
-                          : "text-gray-700"
+                          ? "text-white dark:text-[#181818] "
+                          : "text-gray-700 dark:text-[#E6E6E6] "
                       }`}
                     >
                       {cat}
@@ -4628,7 +4568,7 @@ export default function NewsFeed() {
             </View>
 
             {/* Privacy Selector */}
-            <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+            <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 dark:text-[#ADADAD] ">
               Audience / Privacy
             </Text>
             <View className="flex-row gap-2 mb-4">
@@ -4638,8 +4578,8 @@ export default function NewsFeed() {
                   onPress={() => setEditPostPrivacy(priv)}
                   className={`flex-row items-center px-3 py-1.5 rounded-full border ${
                     editPostPrivacy === priv
-                      ? "bg-[#72AF5B] border-[#72AF5B]"
-                      : "bg-gray-50 border-gray-200"
+                      ? "bg-[#72AF5B] border-[#72AF5B] dark:bg-[#E6E6E6] dark:border-[#414141] "
+                      : "bg-gray-50 border-gray-200 dark:bg-[#242424] dark:border-[#414141] "
                   }`}
                 >
                   <Ionicons
@@ -4656,7 +4596,7 @@ export default function NewsFeed() {
                   />
                   <Text
                     className={`text-xs font-semibold ${
-                      editPostPrivacy === priv ? "text-white" : "text-gray-700"
+                      editPostPrivacy === priv ? "text-white dark:text-[#181818] " : "text-gray-700 dark:text-[#E6E6E6] "
                     }`}
                   >
                     {priv}
@@ -4666,18 +4606,18 @@ export default function NewsFeed() {
             </View>
 
             {/* Content Input */}
-            <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+            <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 dark:text-[#ADADAD] ">
               Post Content
             </Text>
             <TextInput
               value={editPostContent}
               onChangeText={setEditPostContent}
               placeholder="What do you want to update?"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
               multiline
               numberOfLines={6}
               textAlignVertical="top"
-              className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm text-gray-900 min-h-[140px]"
+              className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm text-gray-900 min-h-[140px] dark:bg-[#242424] dark:border-[#414141] dark:text-[#E6E6E6] "
             />
           </ScrollView>
         </SafeAreaView>
@@ -4696,13 +4636,13 @@ export default function NewsFeed() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="bg-white rounded-t-3xl p-5 pb-8 shadow-2xl"
+            className="bg-white rounded-t-3xl p-5 pb-8 shadow-2xl dark:bg-[#242424] "
           >
-            <View className="w-12 h-1.5 bg-gray-300 rounded-full self-center mb-4" />
-            <Text className="text-base font-bold text-gray-900 mb-1">
+            <View className="w-12 h-1.5 bg-gray-300 rounded-full self-center mb-4 dark:bg-[#303030] " />
+            <Text className="text-base font-bold text-gray-900 mb-1 dark:text-[#E6E6E6] ">
               Select Audience
             </Text>
-            <Text className="text-xs text-gray-500 mb-4">
+            <Text className="text-xs text-gray-500 mb-4 dark:text-[#ADADAD] ">
               Who can see this post on Local Farm?
             </Text>
 
@@ -4732,28 +4672,28 @@ export default function NewsFeed() {
                   onPress={() => handleQuickChangePrivacy(item.type)}
                   className={`flex-row items-center p-3 rounded-2xl border ${
                     selectedPostForMenu?.privacy === item.type
-                      ? "bg-green-50/50 border-[#72AF5B]"
-                      : "bg-gray-50 border-gray-200"
+                      ? "bg-green-50/50 border-[#72AF5B] dark:bg-[#181818]/50 dark:border-[#414141] "
+                      : "bg-gray-50 border-gray-200 dark:bg-[#242424] dark:border-[#414141] "
                   } active:opacity-80`}
                 >
-                  <View className="w-10 h-10 rounded-full bg-white items-center justify-center mr-3 border border-gray-100 shadow-xs">
+                  <View className="w-10 h-10 rounded-full bg-white items-center justify-center mr-3 border border-gray-100 shadow-xs dark:bg-[#242424] dark:border-[#414141] ">
                     <Ionicons
                       name={item.icon as any}
                       size={20}
-                      color="#72AF5B"
+                      color={themeColor("#72AF5B", "#E6E6E6")}
                     />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-sm font-bold text-gray-900">
+                    <Text className="text-sm font-bold text-gray-900 dark:text-[#E6E6E6] ">
                       {item.title}
                     </Text>
-                    <Text className="text-xs text-gray-500">{item.desc}</Text>
+                    <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">{item.desc}</Text>
                   </View>
                   {selectedPostForMenu?.privacy === item.type && (
                     <Ionicons
                       name="checkmark-circle"
                       size={22}
-                      color="#72AF5B"
+                      color={themeColor("#72AF5B", "#E6E6E6")}
                     />
                   )}
                 </TouchableOpacity>
@@ -4762,9 +4702,9 @@ export default function NewsFeed() {
 
             <TouchableOpacity
               onPress={() => setIsPrivacyModalVisible(false)}
-              className="mt-4 py-3 rounded-xl bg-gray-100 items-center justify-center active:bg-gray-200"
+              className="mt-4 py-3 rounded-xl bg-gray-100 items-center justify-center active:bg-gray-200 dark:bg-[#181818] dark:active:bg-[#181818] "
             >
-              <Text className="text-sm font-semibold text-gray-700">
+              <Text className="text-sm font-semibold text-gray-700 dark:text-[#E6E6E6] ">
                 Cancel
               </Text>
             </TouchableOpacity>
@@ -4785,15 +4725,15 @@ export default function NewsFeed() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl p-6 w-full max-w-sm items-center shadow-2xl"
+            className="bg-white rounded-3xl p-6 w-full max-w-sm items-center shadow-2xl dark:bg-[#242424] "
           >
-            <View className="w-14 h-14 rounded-full bg-red-100 items-center justify-center mb-4">
+            <View className="w-14 h-14 rounded-full bg-red-100 items-center justify-center mb-4 dark:bg-[#181818] ">
               <Ionicons name="trash-outline" size={28} color="#EF4444" />
             </View>
-            <Text className="text-lg font-bold text-gray-900 text-center mb-1.5">
+            <Text className="text-lg font-bold text-gray-900 text-center mb-1.5 dark:text-[#E6E6E6] ">
               Delete Post?
             </Text>
-            <Text className="text-xs text-gray-500 text-center mb-6 leading-4">
+            <Text className="text-xs text-gray-500 text-center mb-6 leading-4 dark:text-[#ADADAD] ">
               Are you sure you want to delete this post? This action cannot be
               undone.
             </Text>
@@ -4801,9 +4741,9 @@ export default function NewsFeed() {
             <View className="flex-row gap-3 w-full">
               <TouchableOpacity
                 onPress={() => setIsDeleteConfirmVisible(false)}
-                className="flex-1 py-3 rounded-xl bg-gray-100 items-center justify-center active:bg-gray-200"
+                className="flex-1 py-3 rounded-xl bg-gray-100 items-center justify-center active:bg-gray-200 dark:bg-[#181818] dark:active:bg-[#181818] "
               >
-                <Text className="text-sm font-semibold text-gray-700">
+                <Text className="text-sm font-semibold text-gray-700 dark:text-[#E6E6E6] ">
                   Cancel
                 </Text>
               </TouchableOpacity>
@@ -4813,9 +4753,9 @@ export default function NewsFeed() {
                 className="flex-1 py-3 rounded-xl bg-red-600 items-center justify-center active:bg-red-700"
               >
                 {isDeletingPost ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={themeColor("#FFFFFF", "#E6E6E6")} />
                 ) : (
-                  <Text className="text-sm font-bold text-white">Delete</Text>
+                  <Text className="text-sm font-bold text-white dark:text-[#E6E6E6] ">Delete</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -4866,56 +4806,56 @@ export default function NewsFeed() {
                   shadowOpacity: 0.35,
                   shadowRadius: 16,
                   transform: [{ translateY: standaloneCommentsTranslateY }],
-                  backgroundColor: "#FFFFFF",
+                  backgroundColor: themeColor("#FFFFFF", "#242424"),
                 }}
-                className="bg-white rounded-t-3xl flex-col overflow-hidden w-full"
+                className="bg-white rounded-t-3xl flex-col overflow-hidden w-full dark:bg-[#242424] "
               >
                 <KeyboardAvoidingView
                   behavior={Platform.OS === "ios" ? "padding" : undefined}
                   keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
-                  style={{ flex: 1, backgroundColor: "#FFFFFF" }}
-                  className="flex-1 flex-col bg-white"
+                  style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }}
+                  className="flex-1 flex-col bg-white dark:bg-[#181818] "
                 >
                   {/* Drawer Drag Handle & Header (Swipe down to close) */}
                   <View
                     {...standaloneCommentsPanResponder.panHandlers}
-                    style={{ backgroundColor: "#FFFFFF" }}
-                    className="pt-3 pb-2.5 px-5 border-b border-gray-100 bg-white"
+                    style={{ backgroundColor: themeColor("#FFFFFF", "#242424") }}
+                    className="pt-3 pb-2.5 px-5 border-b border-gray-100 bg-white dark:border-[#414141] dark:bg-[#242424] "
                   >
-                    <View className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-2" />
-                    <Text className="text-base font-bold text-gray-900 text-center">
+                    <View className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-2 dark:bg-[#303030] " />
+                    <Text className="text-base font-bold text-gray-900 text-center dark:text-[#E6E6E6] ">
                       Comments
                     </Text>
                   </View>
 
                   {/* Comments List */}
                   <ScrollView
-                    style={{ flex: 1, backgroundColor: "#FFFFFF" }}
-                    className="flex-1 px-4 py-3 bg-white"
+                    style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }}
+                    className="flex-1 px-4 py-3 bg-white dark:bg-[#181818] "
                     showsVerticalScrollIndicator={true}
                     keyboardShouldPersistTaps="handled"
-                    contentContainerStyle={{ paddingBottom: 24, backgroundColor: "#FFFFFF" }}
+                    contentContainerStyle={{ paddingBottom: 24, backgroundColor: themeColor("#FFFFFF", "#242424") }}
                   >
                     {loadingComments[activeCommentsPostId] ? (
                       <View className="py-16 items-center justify-center">
-                        <ActivityIndicator size="small" color="#72AF5B" />
-                        <Text className="text-xs text-gray-400 mt-2 font-medium">
+                        <ActivityIndicator size="small" color={themeColor("#72AF5B", "#E6E6E6")} />
+                        <Text className="text-xs text-gray-400 mt-2 font-medium dark:text-[#ADADAD] ">
                           Loading comments...
                         </Text>
                       </View>
                     ) : currentComments.length === 0 ? (
                       <View className="py-16 items-center justify-center px-6">
-                        <View className="w-14 h-14 rounded-full bg-emerald-50 items-center justify-center mb-3">
+                        <View className="w-14 h-14 rounded-full bg-emerald-50 items-center justify-center mb-3 dark:bg-[#181818] ">
                           <Ionicons
                             name="chatbubbles-outline"
                             size={28}
-                            color="#72AF5B"
+                            color={themeColor("#72AF5B", "#E6E6E6")}
                           />
                         </View>
-                        <Text className="text-sm font-bold text-gray-800">
+                        <Text className="text-sm font-bold text-gray-800 dark:text-[#E6E6E6] ">
                           No comments yet
                         </Text>
-                        <Text className="text-xs text-gray-400 text-center mt-1">
+                        <Text className="text-xs text-gray-400 text-center mt-1 dark:text-[#ADADAD] ">
                           Be the first to share your thoughts!
                         </Text>
                       </View>
@@ -4966,7 +4906,7 @@ export default function NewsFeed() {
                                 key={comment.id}
                                 className={`flex-row items-start mb-3.5 relative ${
                                   isReply
-                                    ? "ml-10 pl-3 border-l-2 border-gray-200 mt-1"
+                                    ? "ml-10 pl-3 border-l-2 border-gray-200 mt-1 dark:border-[#414141] "
                                     : ""
                                 }`}
                               >
@@ -4974,7 +4914,7 @@ export default function NewsFeed() {
                                 <View
                                   className={`${
                                     isReply ? "h-7 w-7" : "h-8 w-8"
-                                  } rounded-full mr-2.5 bg-gray-200 items-center justify-center overflow-hidden border border-gray-100`}
+                                  } rounded-full mr-2.5 bg-gray-200 items-center justify-center overflow-hidden border border-gray-100 dark:bg-[#181818] dark:border-[#414141] `}
                                 >
                                   {Boolean(comment.avatarUri && comment.avatarUri.trim()) ? (
                                     <Image
@@ -4989,7 +4929,7 @@ export default function NewsFeed() {
                                     <Ionicons
                                       name="person"
                                       size={isReply ? 13 : 15}
-                                      color="#9CA3AF"
+                                      color={themeColor("#9CA3AF", "#ADADAD")}
                                     />
                                   )}
                                 </View>
@@ -5002,7 +4942,7 @@ export default function NewsFeed() {
                                       <Text
                                         className={`${
                                           isReply ? "text-xs" : "text-sm"
-                                        } font-bold text-gray-900`}
+                                        } font-bold text-gray-900 dark:text-[#E6E6E6] `}
                                       >
                                         {comment.authorName}
                                       </Text>
@@ -5022,13 +4962,13 @@ export default function NewsFeed() {
                                         />
                                       )}
                                     </View>
-                                    <Text className="text-[11px] text-gray-400">
+                                    <Text className="text-[11px] text-gray-400 dark:text-[#ADADAD] ">
                                       {comment.timeAgo}
                                     </Text>
                                   </View>
 
                                   {/* Comment Text */}
-                                  <Text className="text-sm text-gray-700 leading-5">
+                                  <Text className="text-sm text-gray-700 leading-5 dark:text-[#E6E6E6] ">
                                     {comment.content}
                                   </Text>
 
@@ -5068,7 +5008,7 @@ export default function NewsFeed() {
                                         className={`text-xs ${
                                           hasCommentReaction
                                             ? "text-[#EF4444] font-bold"
-                                            : "text-gray-500 font-medium"
+                                            : "text-gray-500 font-medium dark:text-[#ADADAD] "
                                         }`}
                                       >
                                         {commentLikesCount}
@@ -5094,7 +5034,7 @@ export default function NewsFeed() {
                                     >
                                       <Text
                                         numberOfLines={1}
-                                        className="text-xs text-gray-500 font-medium hover:text-[#72AF5B]"
+                                        className="text-xs text-gray-500 font-medium hover:text-[#72AF5B] dark:text-[#ADADAD] dark:hover:text-[#E6E6E6] "
                                       >
                                         Reply
                                       </Text>
@@ -5125,11 +5065,11 @@ export default function NewsFeed() {
                                       right: 8,
                                     }}
                                   >
-                                    <View className="w-5 h-[1.5px] bg-[#72AF5B] mr-2 rounded-full" />
+                                    <View className="w-5 h-[1.5px] bg-[#72AF5B] mr-2 rounded-full dark:bg-[#E6E6E6] " />
                                     <Text
                                       numberOfLines={1}
                                       style={{ flexShrink: 0 }}
-                                      className="text-xs font-bold text-[#72AF5B]"
+                                      className="text-xs font-bold text-[#72AF5B] dark:text-[#E6E6E6] "
                                     >
                                       {childReplies.length === 1
                                         ? "View 1 reply"
@@ -5138,7 +5078,7 @@ export default function NewsFeed() {
                                     <Ionicons
                                       name="chevron-down"
                                       size={13}
-                                      color="#72AF5B"
+                                      color={themeColor("#72AF5B", "#E6E6E6")}
                                       style={{ marginLeft: 4 }}
                                     />
                                   </TouchableOpacity>
@@ -5164,18 +5104,18 @@ export default function NewsFeed() {
                                         right: 8,
                                       }}
                                     >
-                                      <View className="w-5 h-[1.5px] bg-gray-300 mr-2 rounded-full" />
+                                      <View className="w-5 h-[1.5px] bg-gray-300 mr-2 rounded-full dark:bg-[#303030] " />
                                       <Text
                                         numberOfLines={1}
                                         style={{ flexShrink: 0 }}
-                                        className="text-xs font-semibold text-gray-500 hover:text-[#72AF5B]"
+                                        className="text-xs font-semibold text-gray-500 hover:text-[#72AF5B] dark:text-[#ADADAD] dark:hover:text-[#E6E6E6] "
                                       >
                                         Hide replies
                                       </Text>
                                       <Ionicons
                                         name="chevron-up"
                                         size={13}
-                                        color="#9CA3AF"
+                                        color={themeColor("#9CA3AF", "#ADADAD")}
                                         style={{ marginLeft: 4 }}
                                       />
                                     </TouchableOpacity>
@@ -5190,23 +5130,23 @@ export default function NewsFeed() {
 
                   {/* Bottom Pinned Comment Input Section */}
                   <View
-                    style={{ paddingBottom: Math.max(insets.bottom, 16) + 6, backgroundColor: "#FFFFFF" }}
-                    className="px-4 pt-2.5 border-t border-gray-200 bg-white"
+                    style={{ paddingBottom: Math.max(insets.bottom, 16) + 6, backgroundColor: themeColor("#FFFFFF", "#242424") }}
+                    className="px-4 pt-2.5 border-t border-gray-200 bg-white dark:border-[#414141] dark:bg-[#242424] "
                   >
                     {replyingTo && (
-                      <View className="bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 flex-row justify-between items-center rounded-t-xl border-b-0 mb-1">
+                      <View className="bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 flex-row justify-between items-center rounded-t-xl border-b-0 mb-1 dark:bg-[#181818] dark:border-[#414141] ">
                         <View className="flex-row items-center gap-1.5 flex-1 pr-2">
                           <Ionicons
                             name="return-down-forward"
                             size={14}
-                            color="#72AF5B"
+                            color={themeColor("#72AF5B", "#E6E6E6")}
                           />
                           <Text
-                            className="text-xs text-gray-700"
+                            className="text-xs text-gray-700 dark:text-[#E6E6E6] "
                             numberOfLines={1}
                           >
                             Replying to{" "}
-                            <Text className="font-bold text-gray-900">
+                            <Text className="font-bold text-gray-900 dark:text-[#E6E6E6] ">
                               @{replyingTo.username}
                             </Text>
                           </Text>
@@ -5221,14 +5161,14 @@ export default function NewsFeed() {
                           <Ionicons
                             name="close-circle"
                             size={16}
-                            color="#6B7280"
+                            color={themeColor("#6B7280", "#ADADAD")}
                           />
                         </TouchableOpacity>
                       </View>
                     )}
 
                     <View
-                      className={`bg-gray-50 border border-gray-200 px-4 py-2 flex-row items-center shadow-xs ${
+                      className={`bg-gray-50 border border-gray-200 px-4 py-2 flex-row items-center shadow-xs  dark:bg-[#242424] dark:border-[#414141] ${
                         replyingTo
                           ? "rounded-b-xl rounded-t-none"
                           : "rounded-full"
@@ -5248,8 +5188,8 @@ export default function NewsFeed() {
                             ? `Reply to @${replyingTo.username}...`
                             : "Add a comment..."
                         }
-                        placeholderTextColor="#9CA3AF"
-                        className="flex-1 text-sm text-gray-800 p-0"
+                        placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+                        className="flex-1 text-sm text-gray-800 p-0 dark:text-[#E6E6E6] "
                         onSubmitEditing={() =>
                           activeCommentsPostId &&
                           handleAddComment(activeCommentsPostId)
@@ -5268,14 +5208,14 @@ export default function NewsFeed() {
                         className={`ml-2 p-2 rounded-full items-center justify-center min-w-[32px] min-h-[32px] ${
                           (commentInputs[activeCommentsPostId] || "").trim() &&
                           !submittingComments[activeCommentsPostId]
-                            ? "bg-[#72AF5B] active:opacity-85"
-                            : "bg-gray-200 opacity-60"
+                            ? "bg-[#72AF5B] active:opacity-85 dark:bg-[#E6E6E6] "
+                            : "bg-gray-200 opacity-60 dark:bg-[#181818] "
                         }`}
                       >
                         {submittingComments[activeCommentsPostId] ? (
-                          <ActivityIndicator size="small" color="#FFFFFF" />
+                          <ActivityIndicator size="small" color={themeColor("#FFFFFF", "#181818")} />
                         ) : (
-                          <Ionicons name="send" size={14} color="#FFFFFF" />
+                          <Ionicons name="send" size={14} color={themeColor("#FFFFFF", "#181818")} />
                         )}
                       </TouchableOpacity>
                     </View>
@@ -5331,7 +5271,7 @@ export default function NewsFeed() {
                 {/* Author Information */}
                 {previewImage.authorName ? (
                   <View className="flex-row items-center flex-1 mr-3">
-                    <View className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden mr-3 border border-white/20">
+                    <View className="w-10 h-10 rounded-full bg-gray-800 overflow-hidden mr-3 border border-white/20 dark:border-[#414141]/20 ">
                       {previewImage.avatarUri ? (
                         <Image
                           source={{ uri: previewImage.avatarUri }}
@@ -5340,25 +5280,25 @@ export default function NewsFeed() {
                         />
                       ) : (
                         <View className="w-full h-full items-center justify-center bg-gray-700">
-                          <Ionicons name="person" size={20} color="#FFFFFF" />
+                          <Ionicons name="person" size={20} color={themeColor("#FFFFFF", "#E6E6E6")} />
                         </View>
                       )}
                     </View>
                     <View className="flex-1">
                       <View className="flex-row items-center">
-                        <Text className="text-white font-bold text-sm" numberOfLines={1}>
+                        <Text className="text-white font-bold text-sm dark:text-[#E6E6E6] " numberOfLines={1}>
                           {previewImage.authorName}
                         </Text>
                         {previewImage.isVerified ? (
                           <Ionicons
                             name="checkmark-circle"
                             size={14}
-                            color="#72AF5B"
+                            color={themeColor("#72AF5B", "#E6E6E6")}
                             style={{ marginLeft: 4 }}
                           />
                         ) : null}
                       </View>
-                      <Text className="text-white/60 text-xs">
+                      <Text className="text-white/60 text-xs dark:text-[#E6E6E6]/60 ">
                         {previewImage.timeAgo || "Just now"}
                       </Text>
                     </View>
@@ -5370,8 +5310,8 @@ export default function NewsFeed() {
                 {/* Counter & Close Action */}
                 <View className="flex-row items-center gap-2">
                   {imagesList.length > 1 ? (
-                    <View className="bg-white/20 px-3 py-1 rounded-full">
-                      <Text className="text-white text-xs font-semibold">
+                    <View className="bg-white/20 px-3 py-1 rounded-full dark:bg-[#242424]/20 ">
+                      <Text className="text-white text-xs font-semibold dark:text-[#E6E6E6] ">
                         {currentIdx + 1} / {imagesList.length}
                       </Text>
                     </View>
@@ -5379,12 +5319,12 @@ export default function NewsFeed() {
 
                   <TouchableOpacity
                     onPress={handleCloseLightbox}
-                    className="w-10 h-10 rounded-full bg-white/20 items-center justify-center active:bg-white/30"
+                    className="w-10 h-10 rounded-full bg-white/20 items-center justify-center active:bg-white/30 dark:bg-[#242424]/20 dark:active:bg-[#242424]/30 "
                     accessibilityRole="button"
                     accessibilityLabel="Close image preview"
                     hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   >
-                    <Ionicons name="close" size={24} color="#FFFFFF" />
+                    <Ionicons name="close" size={24} color={themeColor("#FFFFFF", "#E6E6E6")} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -5516,7 +5456,7 @@ export default function NewsFeed() {
                         }}
                         activeOpacity={0.8}
                       >
-                        <Ionicons name="chevron-back" size={26} color="#FFFFFF" />
+                        <Ionicons name="chevron-back" size={26} color={themeColor("#FFFFFF", "#E6E6E6")} />
                       </TouchableOpacity>
                     )}
 
@@ -5546,7 +5486,7 @@ export default function NewsFeed() {
                         }}
                         activeOpacity={0.8}
                       >
-                        <Ionicons name="chevron-forward" size={26} color="#FFFFFF" />
+                        <Ionicons name="chevron-forward" size={26} color={themeColor("#FFFFFF", "#E6E6E6")} />
                       </TouchableOpacity>
                     )}
                   </View>
@@ -5561,8 +5501,8 @@ export default function NewsFeed() {
                       key={dotIdx}
                       className={`h-1.5 rounded-full ${
                         dotIdx === currentIdx
-                          ? "w-5 bg-white"
-                          : "w-1.5 bg-white/40"
+                          ? "w-5 bg-white dark:bg-[#242424] "
+                          : "w-1.5 bg-white/40 dark:bg-[#242424]/40 "
                       }`}
                     />
                   ))}
@@ -5576,13 +5516,13 @@ export default function NewsFeed() {
                     paddingBottom: Math.max(insets.bottom, 12) + 8,
                     backgroundColor: "rgba(0,0,0,0.8)",
                   }}
-                  className="border-t border-white/10 z-20 px-5 pt-3 pb-2"
+                  className="border-t border-white/10 z-20 px-5 pt-3 pb-2 dark:border-[#414141]/10 "
                 >
                   <ScrollView
                     style={{ maxHeight: 90 }}
                     showsVerticalScrollIndicator={false}
                   >
-                    <Text className="text-white/95 text-sm leading-5">
+                    <Text className="text-white/95 text-sm leading-5 dark:text-[#E6E6E6]/95 ">
                       {previewImage.caption}
                     </Text>
                   </ScrollView>

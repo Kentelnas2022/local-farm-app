@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import {
   resetPasswordForEmailApi,
   verifyOtpApi,
@@ -23,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const BG_IMAGE = require("../../../assets/images/background-blur.png");
 
 export default function VerifyOTPScreen() {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ email?: string }>();
@@ -130,7 +132,7 @@ export default function VerifyOTPScreen() {
           }}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back-outline" size={26} color="#4B5563" />
+          <Ionicons name="arrow-back-outline" size={26} color={themeColor("#4B5563", "#ADADAD")} />
         </TouchableOpacity>
       </View>
 
@@ -154,17 +156,17 @@ export default function VerifyOTPScreen() {
           <View className="w-full max-w-[380px] items-center">
             {/* Centered Header Block */}
             <View className="items-center mb-6 w-full">
-              <Text className="text-3xl font-extrabold text-neutral-900 text-center mb-2 tracking-tight">
+              <Text className="text-3xl font-extrabold text-neutral-900 text-center mb-2 tracking-tight dark:text-[#E6E6E6] ">
                 Verification Code
               </Text>
-              <Text className="text-md text-neutral-600 text-center leading-relaxed px-2">
+              <Text className="text-md text-neutral-600 text-center leading-relaxed px-2 dark:text-[#ADADAD] ">
                 Enter the 6-digit verification code sent to your registered
                 email address.
               </Text>
             </View>
 
             {errorMsg ? (
-              <View className="bg-[#FFEBEA] p-3.5 rounded-2xl mb-5 w-full border border-[#FF3B30]/30">
+              <View className="bg-[#FFEBEA] p-3.5 rounded-2xl mb-5 w-full border border-[#FF3B30]/30 dark:bg-[#181818] ">
                 <Text className="text-[#FF3B30] text-sm text-center font-medium">
                   {errorMsg}
                 </Text>
@@ -172,8 +174,8 @@ export default function VerifyOTPScreen() {
             ) : null}
 
             {resendSent ? (
-              <View className="bg-[#E8F5E9] p-3.5 rounded-2xl mb-5 w-full border border-[#72AF5B]/30">
-                <Text className="text-[#72AF5B] text-md text-center font-medium">
+              <View className="bg-[#E8F5E9] p-3.5 rounded-2xl mb-5 w-full border border-[#72AF5B]/30 dark:bg-[#181818] dark:border-[#414141]/30 ">
+                <Text className="text-[#72AF5B] text-md text-center font-medium dark:text-[#E6E6E6] ">
                   A new OTP code has been sent to your email!
                 </Text>
               </View>
@@ -187,13 +189,13 @@ export default function VerifyOTPScreen() {
                   ref={(el) => {
                     inputRefs.current[index] = el;
                   }}
-                  className={`w-[48px] h-[54px] bg-white/95 border ${
+                  className={`w-[48px] h-[54px] bg-white/95 border  dark:bg-[#242424]/95 ${
                     digit
-                      ? "border-[#72AF5B]"
+                      ? "border-[#72AF5B] dark:border-[#414141] "
                       : errorMsg
-                        ? "border-[#FF3B30] bg-[#FFF8F8]"
-                        : "border-gray-200"
-                  } rounded-2xl text-center text-2xl font-bold text-gray-900 shadow-sm`}
+                        ? "border-[#FF3B30] bg-[#FFF8F8] dark:bg-[#181818] "
+                        : "border-gray-200 dark:border-[#414141] "
+                  } rounded-2xl text-center text-2xl font-bold text-gray-900 shadow-sm dark:text-[#E6E6E6] `}
                   keyboardType="number-pad"
                   maxLength={6}
                   value={digit}
@@ -206,23 +208,23 @@ export default function VerifyOTPScreen() {
 
             {/* Verify Button */}
             <TouchableOpacity
-              className="w-full h-[52px] bg-[#72AF5B] rounded-2xl items-center justify-center shadow-md shadow-[#72AF5B]/30 active:opacity-90 mb-5"
+              className="w-full h-[52px] bg-[#72AF5B] rounded-2xl items-center justify-center shadow-md shadow-[#72AF5B]/30 active:opacity-90 mb-5 dark:bg-[#E6E6E6] "
               onPress={handleVerify}
               disabled={isSubmitting}
               activeOpacity={0.85}
             >
-              <Text className="text-white text-base font-bold tracking-wide">
+              <Text className="text-white text-base font-bold tracking-wide dark:text-[#181818] ">
                 {isSubmitting ? "Verifying..." : "Verify Code"}
               </Text>
             </TouchableOpacity>
 
             {/* Resend Code Link */}
             <View className="flex-row justify-center items-center py-2">
-              <Text className="text-md text-neutral-600">
+              <Text className="text-md text-neutral-600 dark:text-[#ADADAD] ">
                 Didn't receive the code?{" "}
               </Text>
               <TouchableOpacity onPress={handleResendCode} activeOpacity={0.7}>
-                <Text className="text-md font-bold text-[#72AF5B]">
+                <Text className="text-md font-bold text-[#72AF5B] dark:text-[#E6E6E6] ">
                   Resend Code
                 </Text>
               </TouchableOpacity>
@@ -239,29 +241,29 @@ export default function VerifyOTPScreen() {
         onRequestClose={handleSuccessContinue}
       >
         <View className="flex-1 bg-black/60 items-center justify-center px-6">
-          <View className="w-full max-w-[340px] bg-white rounded-3xl p-6 items-center shadow-xl">
+          <View className="w-full max-w-[340px] bg-white rounded-3xl p-6 items-center shadow-xl dark:bg-[#242424] ">
             {/* Green Badge Icon */}
-            <View className="w-16 h-16 rounded-full bg-[#E8F5E9] items-center justify-center mb-4">
-              <Ionicons name="checkmark-circle" size={48} color="#72AF5B" />
+            <View className="w-16 h-16 rounded-full bg-[#E8F5E9] items-center justify-center mb-4 dark:bg-[#181818] ">
+              <Ionicons name="checkmark-circle" size={48} color={themeColor("#72AF5B", "#E6E6E6")} />
             </View>
 
             {/* Title */}
-            <Text className="text-2xl font-bold text-gray-900 text-center mb-2">
+            <Text className="text-2xl font-bold text-gray-900 text-center mb-2 dark:text-[#E6E6E6] ">
               Verification Successful
             </Text>
 
             {/* Description Message */}
-            <Text className="text-sm text-gray-600 text-center mb-6 leading-5">
+            <Text className="text-sm text-gray-600 text-center mb-6 leading-5 dark:text-[#ADADAD] ">
               Your verification code has been confirmed successfully.
             </Text>
 
             {/* Continue Button */}
             <TouchableOpacity
               onPress={handleSuccessContinue}
-              className="w-full h-[50px] bg-[#72AF5B] rounded-2xl items-center justify-center active:opacity-90 shadow-sm"
+              className="w-full h-[50px] bg-[#72AF5B] rounded-2xl items-center justify-center active:opacity-90 shadow-sm dark:bg-[#E6E6E6] "
               activeOpacity={0.85}
             >
-              <Text className="text-white text-base font-bold">Continue</Text>
+              <Text className="text-white text-base font-bold dark:text-[#181818] ">Continue</Text>
             </TouchableOpacity>
           </View>
         </View>

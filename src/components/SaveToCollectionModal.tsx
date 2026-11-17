@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import {
   createSavedCollectionApi,
   deleteSavedCollectionApi,
@@ -45,6 +46,7 @@ export default function SaveToCollectionModal({
   onCollectionCreated,
   onShowToast,
 }: SaveToCollectionModalProps) {
+  const { themeColor } = useAppTheme();
   const [viewMode, setViewMode] = useState<"list" | "create">("list");
   const [collections, setCollections] = useState<SavedCollectionDetail[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -216,7 +218,7 @@ export default function SaveToCollectionModal({
         <Pressable className="absolute inset-0" onPress={onClose} />
 
         <View
-          className="w-full sm:max-w-md bg-white rounded-t-[28px] sm:rounded-3xl overflow-hidden shadow-2xl z-10 flex-col"
+          className="w-full sm:max-w-md bg-white rounded-t-[28px] sm:rounded-3xl overflow-hidden shadow-2xl z-10 flex-col dark:bg-[#242424] "
           style={{
             height: Math.min(560, Math.max(420, Math.round(screenHeight * 0.72))),
             shadowColor: "#000",
@@ -228,7 +230,7 @@ export default function SaveToCollectionModal({
         >
           {/* Top Drag Handle */}
           <View className="items-center pt-3 pb-2">
-            <View className="w-10 h-1 bg-[#C7C7CC] rounded-full" />
+            <View className="w-10 h-1 bg-[#C7C7CC] rounded-full dark:bg-[#303030] " />
           </View>
 
           {/* ============================================================ */}
@@ -243,7 +245,7 @@ export default function SaveToCollectionModal({
                 className="flex-row items-center justify-between px-5 py-2.5"
               >
                 <View className="flex-row items-center flex-1 mr-3">
-                  <View className="w-[54px] h-[54px] rounded-2xl overflow-hidden bg-gray-200 mr-3.5 border border-gray-100 items-center justify-center">
+                  <View className="w-[54px] h-[54px] rounded-2xl overflow-hidden bg-gray-200 mr-3.5 border border-gray-100 items-center justify-center dark:bg-[#181818] dark:border-[#414141] ">
                     {Boolean((postImageUrl && postImageUrl.trim()) || (defaultCollection.coverImageUrl && defaultCollection.coverImageUrl.trim())) ? (
                       <Image
                         source={{
@@ -253,14 +255,14 @@ export default function SaveToCollectionModal({
                         resizeMode="cover"
                       />
                     ) : (
-                      <Ionicons name="bookmark" size={26} color="#000000" />
+                      <Ionicons name="bookmark" size={26} color={themeColor("#000000", "#E6E6E6")} />
                     )}
                   </View>
                   <View className="flex-1">
-                    <Text className="text-[16px] font-bold text-black" numberOfLines={1}>
+                    <Text className="text-[16px] font-bold text-black dark:text-[#E6E6E6] " numberOfLines={1}>
                       Saved
                     </Text>
-                    <Text className="text-[13px] text-[#737373] mt-0.5 font-normal">
+                    <Text className="text-[13px] text-[#737373] mt-0.5 font-normal dark:text-[#ADADAD] ">
                       Private
                     </Text>
                   </View>
@@ -268,15 +270,15 @@ export default function SaveToCollectionModal({
 
                 {/* Solid Black Bookmark Icon on Right */}
                 <View className="p-1">
-                  <Ionicons name="bookmark" size={24} color="#000000" />
+                  <Ionicons name="bookmark" size={24} color={themeColor("#000000", "#E6E6E6")} />
                 </View>
               </TouchableOpacity>
 
-              <View className="h-[1px] bg-gray-100 my-1 mx-5" />
+              <View className="h-[1px] bg-gray-100 my-1 mx-5 dark:bg-[#181818] " />
 
               {/* Collections Header Row */}
               <View className="flex-row items-center justify-between px-5 pt-3 pb-2">
-                <Text className="text-[17px] font-bold text-black">
+                <Text className="text-[17px] font-bold text-black dark:text-[#E6E6E6] ">
                   Collections
                 </Text>
                 <TouchableOpacity
@@ -284,7 +286,7 @@ export default function SaveToCollectionModal({
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text className="text-[15px] font-semibold text-[#34594A]">
+                  <Text className="text-[15px] font-semibold text-[#34594A] dark:text-[#E6E6E6] ">
                     New collection
                   </Text>
                 </TouchableOpacity>
@@ -293,16 +295,16 @@ export default function SaveToCollectionModal({
               {/* Collections Scroll List */}
               {isLoading ? (
                 <View className="py-12 items-center justify-center">
-                  <ActivityIndicator size="small" color="#000000" />
-                  <Text className="text-xs text-gray-400 mt-2">Loading collections...</Text>
+                  <ActivityIndicator size="small" color={themeColor("#000000", "#E6E6E6")} />
+                  <Text className="text-xs text-gray-400 mt-2 dark:text-[#ADADAD] ">Loading collections...</Text>
                 </View>
               ) : customCollections.length === 0 ? (
                 <View className="py-10 items-center justify-center px-6">
-                  <Ionicons name="folder-outline" size={36} color="#D1D5DB" />
-                  <Text className="text-sm font-semibold text-gray-700 mt-2">
+                  <Ionicons name="folder-outline" size={36} color={themeColor("#D1D5DB", "#E6E6E6")} />
+                  <Text className="text-sm font-semibold text-gray-700 mt-2 dark:text-[#E6E6E6] ">
                     No custom collections yet
                   </Text>
-                  <Text className="text-xs text-gray-400 text-center mt-0.5">
+                  <Text className="text-xs text-gray-400 text-center mt-0.5 dark:text-[#ADADAD] ">
                     Tap &quot;New collection&quot; above to organize your saved posts.
                   </Text>
                 </View>
@@ -328,7 +330,7 @@ export default function SaveToCollectionModal({
                       >
                         {/* Left: Thumbnail & Name / Private */}
                         <View className="flex-row items-center flex-1 mr-3">
-                          <View className="w-[54px] h-[54px] rounded-2xl overflow-hidden bg-gray-100 mr-3.5 border border-gray-100 items-center justify-center">
+                          <View className="w-[54px] h-[54px] rounded-2xl overflow-hidden bg-gray-100 mr-3.5 border border-gray-100 items-center justify-center dark:bg-[#181818] dark:border-[#414141] ">
                             {Boolean(col.coverImageUrl && col.coverImageUrl.trim()) ? (
                               <Image
                                 source={{ uri: col.coverImageUrl!.trim() }}
@@ -336,18 +338,18 @@ export default function SaveToCollectionModal({
                                 resizeMode="cover"
                               />
                             ) : (
-                              <Ionicons name="folder" size={26} color="#9CA3AF" />
+                              <Ionicons name="folder" size={26} color={themeColor("#9CA3AF", "#ADADAD")} />
                             )}
                           </View>
 
                           <View className="flex-1">
                             <Text
-                              className="text-[16px] font-bold text-black"
+                              className="text-[16px] font-bold text-black dark:text-[#E6E6E6] "
                               numberOfLines={1}
                             >
                               {col.name}
                             </Text>
-                            <Text className="text-[13px] text-[#737373] mt-0.5 font-normal">
+                            <Text className="text-[13px] text-[#737373] mt-0.5 font-normal dark:text-[#ADADAD] ">
                               Private
                             </Text>
                           </View>
@@ -356,9 +358,9 @@ export default function SaveToCollectionModal({
                         {/* Right: Plus Icon or Checkmark + Three-dot Options */}
                         <View className="flex-row items-center">
                           {isSelected ? (
-                            <Ionicons name="checkmark-circle" size={28} color="#34594A" />
+                            <Ionicons name="checkmark-circle" size={28} color={themeColor("#34594A", "#E6E6E6")} />
                           ) : (
-                            <Ionicons name="add-circle-outline" size={28} color="#737373" />
+                            <Ionicons name="add-circle-outline" size={28} color={themeColor("#737373", "#ADADAD")} />
                           )}
 
                           <TouchableOpacity
@@ -369,7 +371,7 @@ export default function SaveToCollectionModal({
                             <Ionicons
                               name="ellipsis-vertical"
                               size={16}
-                              color="#9CA3AF"
+                              color={themeColor("#9CA3AF", "#ADADAD")}
                             />
                           </TouchableOpacity>
                         </View>
@@ -403,16 +405,16 @@ export default function SaveToCollectionModal({
               showsVerticalScrollIndicator={false}
             >
               {/* Header */}
-              <View className="flex-row items-center justify-between py-3 border-b border-gray-100 mb-5">
+              <View className="flex-row items-center justify-between py-3 border-b border-gray-100 mb-5 dark:border-[#414141] ">
                 <TouchableOpacity
                   onPress={() => setViewMode("list")}
                   className="flex-row items-center p-1 -ml-1 active:opacity-60"
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="chevron-back" size={22} color="#000000" />
+                  <Ionicons name="chevron-back" size={22} color={themeColor("#000000", "#E6E6E6")} />
                 </TouchableOpacity>
 
-                <Text className="text-base font-bold text-black">
+                <Text className="text-base font-bold text-black dark:text-[#E6E6E6] ">
                   New collection
                 </Text>
 
@@ -423,11 +425,11 @@ export default function SaveToCollectionModal({
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   {isCreating ? (
-                    <ActivityIndicator size="small" color="#34594A" />
+                    <ActivityIndicator size="small" color={themeColor("#34594A", "#E6E6E6")} />
                   ) : (
                     <Text
                       className={`text-[15px] font-bold ${
-                        newColName.trim() ? "text-[#34594A]" : "text-gray-400"
+                        newColName.trim() ? "text-[#34594A] dark:text-[#E6E6E6] " : "text-gray-400 dark:text-[#ADADAD] "
                       }`}
                     >
                       Done
@@ -438,7 +440,7 @@ export default function SaveToCollectionModal({
 
               {/* Cover Preview & Name Input */}
               <View className="items-center mb-6">
-                <View className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 shadow-sm items-center justify-center mb-2">
+                <View className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 shadow-sm items-center justify-center mb-2 dark:bg-[#181818] dark:border-[#414141] ">
                   {Boolean(postImageUrl && postImageUrl.trim()) ? (
                     <Image
                       source={{ uri: postImageUrl!.trim() }}
@@ -446,24 +448,24 @@ export default function SaveToCollectionModal({
                       resizeMode="cover"
                     />
                   ) : (
-                    <Ionicons name="images-outline" size={32} color="#9CA3AF" />
+                    <Ionicons name="images-outline" size={32} color={themeColor("#9CA3AF", "#ADADAD")} />
                   )}
                 </View>
-                <Text className="text-xs text-gray-400 font-medium">Cover preview</Text>
+                <Text className="text-xs text-gray-400 font-medium dark:text-[#ADADAD] ">Cover preview</Text>
               </View>
 
               {/* Input */}
               <View className="mb-6">
-                <Text className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
+                <Text className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider dark:text-[#ADADAD] ">
                   Collection Name
                 </Text>
                 <TextInput
                   value={newColName}
                   onChangeText={setNewColName}
                   placeholder="e.g. random, pokemon, food"
-                  placeholderTextColor="#8E8E8E"
+                  placeholderTextColor={themeColor("#8E8E8E", "#ADADAD")}
                   autoFocus={true}
-                  className="w-full bg-gray-50 border border-gray-300 rounded-2xl px-4 py-3.5 text-base text-gray-900"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-2xl px-4 py-3.5 text-base text-gray-900 dark:bg-[#242424] dark:border-[#414141] dark:text-[#E6E6E6] "
                   onSubmitEditing={handleCreateAndSave}
                   returnKeyType="done"
                 />
@@ -474,14 +476,14 @@ export default function SaveToCollectionModal({
                 disabled={!newColName.trim() || isCreating}
                 className={`w-full py-3.5 rounded-2xl items-center justify-center ${
                   newColName.trim() && !isCreating
-                    ? "bg-[#34594A] active:bg-[#2A4B3E]"
-                    : "bg-gray-200 opacity-60"
+                    ? "bg-[#34594A] active:bg-[#2A4B3E] dark:bg-[#E6E6E6] dark:active:bg-[#E6E6E6] "
+                    : "bg-gray-200 opacity-60 dark:bg-[#181818] "
                 }`}
               >
                 {isCreating ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
+                  <ActivityIndicator size="small" color={themeColor("#ffffff", "#181818")} />
                 ) : (
-                  <Text className="text-sm font-bold text-white">
+                  <Text className="text-sm font-bold text-white dark:text-[#181818] ">
                     Save
                   </Text>
                 )}
@@ -502,33 +504,33 @@ export default function SaveToCollectionModal({
                 onPress={() => setOptionsTarget(null)}
               >
                 <Pressable
-                  className="bg-white rounded-t-3xl p-5 pb-8 shadow-2xl"
+                  className="bg-white rounded-t-3xl p-5 pb-8 shadow-2xl dark:bg-[#242424] "
                   onPress={(e) => e.stopPropagation()}
                 >
                   <View className="items-center mb-3">
-                    <View className="w-10 h-1 bg-gray-300 rounded-full" />
+                    <View className="w-10 h-1 bg-gray-300 rounded-full dark:bg-[#303030] " />
                   </View>
 
-                  <Text className="text-base font-bold text-gray-900 mb-1 text-center">
+                  <Text className="text-base font-bold text-gray-900 mb-1 text-center dark:text-[#E6E6E6] ">
                     {optionsTarget.name}
                   </Text>
-                  <Text className="text-xs text-gray-500 text-center mb-4">
+                  <Text className="text-xs text-gray-500 text-center mb-4 dark:text-[#ADADAD] ">
                     {optionsTarget.itemCount} items
                   </Text>
 
                   <TouchableOpacity
                     onPress={() => handleStartRename(optionsTarget)}
-                    className="flex-row items-center py-3 px-3 rounded-xl active:bg-gray-100"
+                    className="flex-row items-center py-3 px-3 rounded-xl active:bg-gray-100 dark:active:bg-[#181818] "
                   >
-                    <Ionicons name="pencil-outline" size={20} color="#374151" />
-                    <Text className="text-sm font-semibold text-gray-800 ml-3">
+                    <Ionicons name="pencil-outline" size={20} color={themeColor("#374151", "#E6E6E6")} />
+                    <Text className="text-sm font-semibold text-gray-800 ml-3 dark:text-[#E6E6E6] ">
                       Rename Collection
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     onPress={() => handleDeleteCollection(optionsTarget)}
-                    className="flex-row items-center py-3 px-3 rounded-xl active:bg-red-50 mt-1"
+                    className="flex-row items-center py-3 px-3 rounded-xl active:bg-red-50 mt-1 dark:active:bg-[#181818] "
                   >
                     <Ionicons name="trash-outline" size={20} color="#EF4444" />
                     <Text className="text-sm font-semibold text-red-600 ml-3">
@@ -538,9 +540,9 @@ export default function SaveToCollectionModal({
 
                   <TouchableOpacity
                     onPress={() => setOptionsTarget(null)}
-                    className="mt-4 py-3 rounded-xl bg-gray-100 items-center justify-center"
+                    className="mt-4 py-3 rounded-xl bg-gray-100 items-center justify-center dark:bg-[#181818] "
                   >
-                    <Text className="text-sm font-bold text-gray-700">Cancel</Text>
+                    <Text className="text-sm font-bold text-gray-700 dark:text-[#E6E6E6] ">Cancel</Text>
                   </TouchableOpacity>
                 </Pressable>
               </Pressable>
@@ -560,40 +562,40 @@ export default function SaveToCollectionModal({
                 onPress={() => setRenameTarget(null)}
               >
                 <Pressable
-                  className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl"
+                  className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl dark:bg-[#242424] "
                   onPress={(e) => e.stopPropagation()}
                 >
-                  <Text className="text-base font-bold text-gray-900 mb-2">
+                  <Text className="text-base font-bold text-gray-900 mb-2 dark:text-[#E6E6E6] ">
                     Rename Collection
                   </Text>
                   <TextInput
                     value={renameInput}
                     onChangeText={setRenameInput}
                     autoFocus={true}
-                    className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-900 mb-5"
+                    className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-900 mb-5 dark:bg-[#242424] dark:border-[#414141] dark:text-[#E6E6E6] "
                     placeholder="Collection name"
-                    placeholderTextColor="#8E8E8E"
+                    placeholderTextColor={themeColor("#8E8E8E", "#ADADAD")}
                   />
                   <View className="flex-row justify-end gap-2">
                     <TouchableOpacity
                       onPress={() => setRenameTarget(null)}
-                      className="px-4 py-2 rounded-xl bg-gray-100"
+                      className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-[#181818] "
                     >
-                      <Text className="text-sm font-semibold text-gray-700">Cancel</Text>
+                      <Text className="text-sm font-semibold text-gray-700 dark:text-[#E6E6E6] ">Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={handleConfirmRename}
                       disabled={!renameInput.trim() || isRenaming}
                       className={`px-4 py-2 rounded-xl ${
                         renameInput.trim() && !isRenaming
-                          ? "bg-[#34594A]"
-                          : "bg-gray-200 opacity-60"
+                          ? "bg-[#34594A] dark:bg-[#E6E6E6] "
+                          : "bg-gray-200 opacity-60 dark:bg-[#181818] "
                       }`}
                     >
                       {isRenaming ? (
-                        <ActivityIndicator size="small" color="#ffffff" />
+                        <ActivityIndicator size="small" color={themeColor("#ffffff", "#181818")} />
                       ) : (
-                        <Text className="text-sm font-bold text-white">Save</Text>
+                        <Text className="text-sm font-bold text-white dark:text-[#181818] ">Save</Text>
                       )}
                     </TouchableOpacity>
                   </View>

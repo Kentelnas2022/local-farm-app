@@ -4,11 +4,27 @@ import * as Device from "expo-device";
 import { Platform } from "react-native";
 
 function getDynamicHost(): string {
+  // 1. Explicit environment variable configured in Vercel or .env (e.g. EXPO_PUBLIC_API_URL)
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl) {
+    return envUrl.endsWith("/api")
+      ? envUrl
+      : `${envUrl.replace(/\/+$/, "")}/api`;
+  }
+
+  // 2. Web browser environment
   if (Platform.OS === "web") {
+    if (typeof window !== "undefined" && window.location) {
+      const { hostname, origin } = window.location;
+      // In production deployment on Vercel or custom domain, route to the deployment origin /api
+      if (hostname && hostname !== "localhost" && hostname !== "127.0.0.1") {
+        return `${origin}/api`;
+      }
+    }
     return "http://localhost:5000/api";
   }
 
-  // In Expo Go or Dev Client, Constants provides the IP of the machine running Metro
+  // 3. In Expo Go or Dev Client, Constants provides the IP of the machine running Metro
   const metroHost =
     Constants.expoConfig?.hostUri?.split(":")[0] ||
     (Constants as any).manifest2?.extra?.expoGo?.debuggerHost?.split(":")[0] ||
@@ -18,12 +34,12 @@ function getDynamicHost(): string {
     return `http://${metroHost}:5000/api`;
   }
 
-  // Physical mobile device fallback (PC's current local Wi-Fi IP)
+  // 4. Physical mobile device fallback
   if (Device.isDevice) {
     return "http://192.168.110.229:5000/api";
   }
 
-  // Android emulator loopback alias
+  // 5. Android emulator loopback alias
   if (Platform.OS === "android") {
     return "http://10.0.2.2:5000/api";
   }

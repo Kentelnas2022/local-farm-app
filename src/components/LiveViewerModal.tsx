@@ -79,12 +79,12 @@ export default function LiveViewerModal({
           Animated.timing(pulseAnim, {
             toValue: 0.3,
             duration: 800,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== "web",
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
             duration: 800,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== "web",
           }),
         ]),
       );
@@ -158,7 +158,7 @@ export default function LiveViewerModal({
       toValue: 1,
       duration: 2200,
       easing: Easing.out(Easing.quad),
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== "web",
     }).start(() => {
       setFloatingHearts((prev) => prev.filter((h) => h.id !== id));
     });

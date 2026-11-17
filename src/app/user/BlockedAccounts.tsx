@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useToast } from "@/context/toast-context";
 import {
   BlockedUserItem,
@@ -21,6 +22,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function BlockedAccounts() {
+  const { themeColor } = useAppTheme();
   const { showToast } = useToast();
   const [blockedUsers, setBlockedUsers] = useState<BlockedUserItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -108,11 +110,11 @@ export default function BlockedAccounts() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-[#F8F9FA] relative h-full"
-      style={{ flex: 1, backgroundColor: "#F8F9FA" }}
+      className="flex-1 bg-[#F8F9FA] relative h-full dark:bg-[#181818] "
+      style={{ flex: 1, backgroundColor: themeColor("#F8F9FA", "#181818") }}
     >
       {/* Header */}
-      <View className="flex-row items-center px-4 pt-3 pb-4 bg-white border-b border-gray-100">
+      <View className="flex-row items-center px-4 pt-3 pb-4 bg-white border-b border-gray-100 dark:bg-[#242424] dark:border-[#414141] ">
         <TouchableOpacity
           onPress={handleBack}
           activeOpacity={0.7}
@@ -120,11 +122,11 @@ export default function BlockedAccounts() {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-undo" size={26} color="#1F2937" />
+          <Ionicons name="arrow-undo" size={26} color={themeColor("#1F2937", "#E6E6E6")} />
         </TouchableOpacity>
         <View className="flex-1">
-          <Text className="text-xl font-bold text-gray-900">Blocked Accounts</Text>
-          <Text className="text-xs text-gray-500">
+          <Text className="text-xl font-bold text-gray-900 dark:text-[#E6E6E6] ">Blocked Accounts</Text>
+          <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">
             {blockedUsers.length}{" "}
             {blockedUsers.length === 1 ? "person blocked" : "people blocked"}
           </Text>
@@ -132,28 +134,28 @@ export default function BlockedAccounts() {
       </View>
 
       {/* Info Callout */}
-      <View className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <Text className="text-xs text-gray-600 leading-4">
+      <View className="px-4 py-3 bg-gray-50 border-b border-gray-200 dark:bg-[#242424] dark:border-[#414141] ">
+        <Text className="text-xs text-gray-600 leading-4 dark:text-[#ADADAD] ">
           {"Once you block someone, they won't be able to find your profile, view your posts, or send you messages and connection requests."}
         </Text>
       </View>
 
       {/* Search Bar */}
       {blockedUsers.length > 0 && (
-        <View className="px-4 pt-3 pb-2 bg-white border-b border-gray-100">
-          <View className="flex-row items-center bg-gray-100 rounded-full px-3.5 h-10 border border-gray-100">
+        <View className="px-4 pt-3 pb-2 bg-white border-b border-gray-100 dark:bg-[#242424] dark:border-[#414141] ">
+          <View className="flex-row items-center bg-gray-100 rounded-full px-3.5 h-10 border border-gray-100 dark:bg-[#181818] dark:border-[#414141] ">
             <Ionicons
               name="search-outline"
               size={18}
-              color="#9CA3AF"
+              color={themeColor("#9CA3AF", "#ADADAD")}
               style={{ marginRight: 8 }}
             />
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Search blocked users..."
-              placeholderTextColor="#9CA3AF"
-              className="flex-1 text-sm text-gray-800 pr-2 h-full"
+              placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+              className="flex-1 text-sm text-gray-800 pr-2 h-full dark:text-[#E6E6E6] "
               autoCapitalize="none"
             />
             {searchQuery ? (
@@ -163,7 +165,7 @@ export default function BlockedAccounts() {
                 className="p-1"
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+                <Ionicons name="close-circle" size={16} color={themeColor("#9CA3AF", "#ADADAD")} />
               </TouchableOpacity>
             ) : null}
           </View>
@@ -186,20 +188,20 @@ export default function BlockedAccounts() {
       >
         {isLoading ? (
           <View className="py-16 items-center justify-center">
-            <ActivityIndicator size="large" color="#77af5c" />
-            <Text className="text-sm text-gray-500 mt-2 font-medium">
+            <ActivityIndicator size="large" color={themeColor("#77af5c", "#E6E6E6")} />
+            <Text className="text-sm text-gray-500 mt-2 font-medium dark:text-[#ADADAD] ">
               Loading blocked accounts...
             </Text>
           </View>
         ) : filteredUsers.length === 0 ? (
           <View className="py-16 items-center justify-center px-6">
-            <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-              <Ionicons name="ban-outline" size={32} color="#9CA3AF" />
+            <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3 dark:bg-[#181818] ">
+              <Ionicons name="ban-outline" size={32} color={themeColor("#9CA3AF", "#ADADAD")} />
             </View>
-            <Text className="text-base font-bold text-gray-800 mb-1 text-center">
+            <Text className="text-base font-bold text-gray-800 mb-1 text-center dark:text-[#E6E6E6] ">
               {searchQuery ? "No Matching Users" : "No Blocked Accounts"}
             </Text>
-            <Text className="text-xs text-gray-500 text-center leading-5">
+            <Text className="text-xs text-gray-500 text-center leading-5 dark:text-[#ADADAD] ">
               {searchQuery
                 ? "Try searching with a different name."
                 : "People you block from their profile options will appear here. You can unblock them at any time."}
@@ -207,7 +209,7 @@ export default function BlockedAccounts() {
           </View>
         ) : (
           <View
-            className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-4"
+            className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-4 dark:bg-[#242424] dark:border-[#414141] "
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 1 },
@@ -224,11 +226,11 @@ export default function BlockedAccounts() {
                 <View
                   key={user.id}
                   className={`flex-row items-center px-4 py-3.5 ${
-                    !isLast ? "border-b border-gray-100" : ""
+                    !isLast ? "border-b border-gray-100 dark:border-[#414141] " : ""
                   }`}
                 >
                   {/* Avatar */}
-                  <View className="h-12 w-12 rounded-full bg-gray-200 items-center justify-center mr-3.5 overflow-hidden border border-gray-200">
+                  <View className="h-12 w-12 rounded-full bg-gray-200 items-center justify-center mr-3.5 overflow-hidden border border-gray-200 dark:bg-[#181818] dark:border-[#414141] ">
                     {user.avatarUrl ? (
                       <Image
                         source={{ uri: user.avatarUrl }}
@@ -236,16 +238,16 @@ export default function BlockedAccounts() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <Ionicons name="person" size={24} color="#6B7280" />
+                      <Ionicons name="person" size={24} color={themeColor("#6B7280", "#ADADAD")} />
                     )}
                   </View>
 
                   {/* Info */}
                   <View className="flex-1 pr-2">
-                    <Text className="text-base font-bold text-gray-900 leading-tight">
+                    <Text className="text-base font-bold text-gray-900 leading-tight dark:text-[#E6E6E6] ">
                       {user.name}
                     </Text>
-                    <Text className="text-xs text-gray-500 mt-0.5">
+                    <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
                       {user.username ? `@${user.username}` : "Blocked User"}
                     </Text>
                   </View>
@@ -255,14 +257,14 @@ export default function BlockedAccounts() {
                     onPress={() => handleUnblockPress(user)}
                     disabled={isUnblocking}
                     activeOpacity={0.7}
-                    className="px-4 py-2 rounded-full border border-gray-300 bg-white items-center justify-center"
+                    className="px-4 py-2 rounded-full border border-gray-300 bg-white items-center justify-center dark:border-[#414141] dark:bg-[#242424] "
                     accessibilityRole="button"
                     accessibilityLabel={`Unblock ${user.name}`}
                   >
                     {isUnblocking ? (
-                      <ActivityIndicator size="small" color="#4B5563" />
+                      <ActivityIndicator size="small" color={themeColor("#4B5563", "#ADADAD")} />
                     ) : (
-                      <Text className="text-xs font-semibold text-gray-800">
+                      <Text className="text-xs font-semibold text-gray-800 dark:text-[#E6E6E6] ">
                         Unblock
                       </Text>
                     )}

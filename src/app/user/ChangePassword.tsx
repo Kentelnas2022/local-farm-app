@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useToast } from "@/context/toast-context";
 import { changePasswordApi } from "@/services/auth-service";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Navigation from "../../components/Navigation";
 
 export default function ChangePassword() {
+  const { themeColor } = useAppTheme();
   const { showToast } = useToast();
 
   const [currentPassword, setCurrentPassword] = useState("");
@@ -149,11 +151,11 @@ export default function ChangePassword() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-[#F8F9FA] relative"
-      style={{ flex: 1, backgroundColor: "#F8F9FA" }}
+      className="flex-1 bg-[#F8F9FA] relative dark:bg-[#181818] "
+      style={{ flex: 1, backgroundColor: themeColor("#F8F9FA", "#181818") }}
     >
       {/* Top Header */}
-      <View className="relative items-center justify-center pt-3 pb-4 px-4 bg-white border-b border-gray-100">
+      <View className="relative items-center justify-center pt-3 pb-4 px-4 bg-white border-b border-gray-100 dark:bg-[#242424] dark:border-[#414141] ">
         <TouchableOpacity
           onPress={handleBack}
           className="absolute left-4 top-3 p-1"
@@ -162,10 +164,10 @@ export default function ChangePassword() {
           accessibilityLabel="Go back"
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-undo" size={28} color="#000000" />
+          <Ionicons name="arrow-undo" size={28} color={themeColor("#000000", "#E6E6E6")} />
         </TouchableOpacity>
 
-        <Text className="text-xl font-bold text-gray-900">Change Password</Text>
+        <Text className="text-xl font-bold text-gray-900 dark:text-[#E6E6E6] ">Change Password</Text>
       </View>
 
       <KeyboardAvoidingView
@@ -180,15 +182,15 @@ export default function ChangePassword() {
           contentContainerStyle={{ paddingBottom: 110 }}
         >
           {/* Security Context Banner */}
-          <View className="bg-white rounded-2xl p-4 mb-5 border border-gray-100 shadow-2xs flex-row items-center gap-3.5">
-            <View className="w-12 h-12 rounded-2xl bg-[#72AF5B]/10 items-center justify-center ">
-              <Ionicons name="shield-checkmark" size={24} color="#72AF5B" />
+          <View className="bg-white rounded-2xl p-4 mb-5 border border-gray-100 shadow-2xs flex-row items-center gap-3.5 dark:bg-[#242424] dark:border-[#414141] ">
+            <View className="w-12 h-12 rounded-2xl bg-[#72AF5B]/10 items-center justify-center  dark:bg-[#E6E6E6]/10 ">
+              <Ionicons name="shield-checkmark" size={24} color={themeColor("#72AF5B", "#E6E6E6")} />
             </View>
             <View className="flex-1">
-              <Text className="text-sm font-bold text-gray-900">
+              <Text className="text-sm font-bold text-gray-900 dark:text-[#E6E6E6] ">
                 Keep Your Account Secure
               </Text>
-              <Text className="text-xs text-gray-500 mt-0.5 leading-4.5">
+              <Text className="text-xs text-gray-500 mt-0.5 leading-4.5 dark:text-[#ADADAD] ">
                 Choose a strong, unique password to protect your farm listings,
                 harvest orders, and personal data.
               </Text>
@@ -196,11 +198,11 @@ export default function ChangePassword() {
           </View>
 
           {/* Form Card */}
-          <View className="bg-white rounded-3xl p-5 mb-5 border border-gray-100 shadow-xs">
+          <View className="bg-white rounded-3xl p-5 mb-5 border border-gray-100 shadow-xs dark:bg-[#242424] dark:border-[#414141] ">
             {/* 1. Current Password */}
             <View className="mb-4">
               <View className="flex-row items-center justify-between mb-1.5">
-                <Text className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <Text className="text-xs font-bold text-gray-700 uppercase tracking-wider dark:text-[#E6E6E6] ">
                   Current Password
                 </Text>
                 <TouchableOpacity
@@ -210,10 +212,10 @@ export default function ChangePassword() {
               </View>
 
               <View
-                className={`flex-row items-center bg-white border rounded-2xl px-4 py-3 ${
+                className={`flex-row items-center bg-white border rounded-2xl px-4 py-3  dark:bg-[#242424] ${
                   focusedField === "current"
-                    ? "border-[#72AF5B] bg-[#72AF5B]/[0.02]"
-                    : "border-gray-200"
+                    ? "border-[#72AF5B] bg-[#72AF5B]/[0.02] dark:border-[#414141] dark:bg-[#E6E6E6]/[0.02] "
+                    : "border-gray-200 dark:border-[#414141] "
                 }`}
               >
                 <Ionicons
@@ -226,11 +228,11 @@ export default function ChangePassword() {
                   value={currentPassword}
                   onChangeText={setCurrentPassword}
                   placeholder="Enter your current password"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
                   secureTextEntry={!showCurrent}
                   onFocus={() => setFocusedField("current")}
                   onBlur={() => setFocusedField(null)}
-                  className="flex-1 text-sm text-gray-900 p-0 font-medium"
+                  className="flex-1 text-sm text-gray-900 p-0 font-medium dark:text-[#E6E6E6] "
                   autoCapitalize="none"
                 />
                 <TouchableOpacity
@@ -245,19 +247,19 @@ export default function ChangePassword() {
                   <Ionicons
                     name={showCurrent ? "eye-outline" : "eye-off-outline"}
                     size={20}
-                    color="#9CA3AF"
+                    color={themeColor("#9CA3AF", "#ADADAD")}
                   />
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* Subtle Divider */}
-            <View className="h-[1px] bg-gray-100 my-2" />
+            <View className="h-[1px] bg-gray-100 my-2 dark:bg-[#181818] " />
 
             {/* 2. New Password */}
             <View className="my-2">
               <View className="flex-row items-center justify-between mb-1.5">
-                <Text className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <Text className="text-xs font-bold text-gray-700 uppercase tracking-wider dark:text-[#E6E6E6] ">
                   New Password
                 </Text>
                 {newPassword.length > 0 && (
@@ -271,10 +273,10 @@ export default function ChangePassword() {
               </View>
 
               <View
-                className={`flex-row items-center bg-white border rounded-2xl px-4 py-3 ${
+                className={`flex-row items-center bg-white border rounded-2xl px-4 py-3  dark:bg-[#242424] ${
                   focusedField === "new"
-                    ? "border-[#72AF5B] bg-[#72AF5B]/[0.02]"
-                    : "border-gray-200"
+                    ? "border-[#72AF5B] bg-[#72AF5B]/[0.02] dark:border-[#414141] dark:bg-[#E6E6E6]/[0.02] "
+                    : "border-gray-200 dark:border-[#414141] "
                 }`}
               >
                 <Ionicons
@@ -287,11 +289,11 @@ export default function ChangePassword() {
                   value={newPassword}
                   onChangeText={setNewPassword}
                   placeholder="At least 8 characters"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
                   secureTextEntry={!showNew}
                   onFocus={() => setFocusedField("new")}
                   onBlur={() => setFocusedField(null)}
-                  className="flex-1 text-sm text-gray-900 p-0 font-medium"
+                  className="flex-1 text-sm text-gray-900 p-0 font-medium dark:text-[#E6E6E6] "
                   autoCapitalize="none"
                 />
                 <TouchableOpacity
@@ -306,7 +308,7 @@ export default function ChangePassword() {
                   <Ionicons
                     name={showNew ? "eye-outline" : "eye-off-outline"}
                     size={20}
-                    color="#9CA3AF"
+                    color={themeColor("#9CA3AF", "#ADADAD")}
                   />
                 </TouchableOpacity>
               </View>
@@ -333,7 +335,7 @@ export default function ChangePassword() {
             {/* 3. Confirm New Password */}
             <View className="mt-3 mb-2">
               <View className="flex-row items-center justify-between mb-1.5">
-                <Text className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <Text className="text-xs font-bold text-gray-700 uppercase tracking-wider dark:text-[#E6E6E6] ">
                   Confirm New Password
                 </Text>
                 {isMatching && (
@@ -341,9 +343,9 @@ export default function ChangePassword() {
                     <Ionicons
                       name="checkmark-circle"
                       size={14}
-                      color="#72AF5B"
+                      color={themeColor("#72AF5B", "#E6E6E6")}
                     />
-                    <Text className="text-xs font-semibold text-[#72AF5B]">
+                    <Text className="text-xs font-semibold text-[#72AF5B] dark:text-[#E6E6E6] ">
                       Passwords match
                     </Text>
                   </View>
@@ -359,14 +361,14 @@ export default function ChangePassword() {
               </View>
 
               <View
-                className={`flex-row items-center bg-white border rounded-2xl px-4 py-3 ${
+                className={`flex-row items-center bg-white border rounded-2xl px-4 py-3  dark:bg-[#242424] ${
                   focusedField === "confirm"
-                    ? "border-[#72AF5B] bg-[#72AF5B]/[0.02]"
+                    ? "border-[#72AF5B] bg-[#72AF5B]/[0.02] dark:border-[#414141] dark:bg-[#E6E6E6]/[0.02] "
                     : isMismatch
                       ? "border-red-300"
                       : isMatching
-                        ? "border-[#72AF5B]"
-                        : "border-gray-200"
+                        ? "border-[#72AF5B] dark:border-[#414141] "
+                        : "border-gray-200 dark:border-[#414141] "
                 }`}
               >
                 <Ionicons
@@ -385,11 +387,11 @@ export default function ChangePassword() {
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   placeholder="Re-type your new password"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
                   secureTextEntry={!showConfirm}
                   onFocus={() => setFocusedField("confirm")}
                   onBlur={() => setFocusedField(null)}
-                  className="flex-1 text-sm text-gray-900 p-0 font-medium"
+                  className="flex-1 text-sm text-gray-900 p-0 font-medium dark:text-[#E6E6E6] "
                   autoCapitalize="none"
                 />
                 <TouchableOpacity
@@ -404,15 +406,15 @@ export default function ChangePassword() {
                   <Ionicons
                     name={showConfirm ? "eye-outline" : "eye-off-outline"}
                     size={20}
-                    color="#9CA3AF"
+                    color={themeColor("#9CA3AF", "#ADADAD")}
                   />
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* Live Requirements Checklist */}
-            <View className="mt-4 pt-4 border-t border-gray-100 bg-[#F9FAFB] -mx-5 -mb-5 p-4 rounded-b-3xl">
-              <Text className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2.5">
+            <View className="mt-4 pt-4 border-t border-gray-100 bg-[#F9FAFB] -mx-5 -mb-5 p-4 rounded-b-3xl dark:border-[#414141] dark:bg-[#242424] ">
+              <Text className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2.5 dark:text-[#ADADAD] ">
                 Password Requirements
               </Text>
               <View className="gap-2">
@@ -440,7 +442,7 @@ export default function ChangePassword() {
                     />
                     <Text
                       className={`text-xs ${
-                        req.met ? "text-gray-800 font-medium" : "text-gray-500"
+                        req.met ? "text-gray-800 font-medium dark:text-[#E6E6E6] " : "text-gray-500 dark:text-[#ADADAD] "
                       }`}
                     >
                       {req.label}
@@ -456,14 +458,14 @@ export default function ChangePassword() {
             onPress={handleSubmit}
             disabled={isSubmitting}
             activeOpacity={0.8}
-            className="w-full bg-[#72AF5B] py-4 rounded-2xl items-center justify-center shadow-sm flex-row gap-2 active:bg-[#5f974b] mb-4"
+            className="w-full bg-[#72AF5B] py-4 rounded-2xl items-center justify-center shadow-sm flex-row gap-2 active:bg-[#5f974b] mb-4 dark:bg-[#E6E6E6] dark:active:bg-[#E6E6E6] "
           >
             {isSubmitting ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
+              <ActivityIndicator color={themeColor("#FFFFFF", "#181818")} size="small" />
             ) : (
               <>
-                <Ionicons name="lock-closed" size={18} color="#FFFFFF" />
-                <Text className="text-base font-bold text-white">
+                <Ionicons name="lock-closed" size={18} color={themeColor("#FFFFFF", "#181818")} />
+                <Text className="text-base font-bold text-white dark:text-[#181818] ">
                   Update Password
                 </Text>
               </>
@@ -475,10 +477,10 @@ export default function ChangePassword() {
             <Ionicons
               name="information-circle-outline"
               size={16}
-              color="#9CA3AF"
+              color={themeColor("#9CA3AF", "#ADADAD")}
               style={{ marginTop: 1 }}
             />
-            <Text className="text-xs text-gray-500 leading-4.5 flex-1">
+            <Text className="text-xs text-gray-500 leading-4.5 flex-1 dark:text-[#ADADAD] ">
               For your safety, avoid reusing passwords from other apps. You will
               remain logged in on this device.
             </Text>

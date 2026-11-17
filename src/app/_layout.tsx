@@ -1,4 +1,6 @@
+import { AppThemeProvider, useAppTheme } from "@/context/theme-context";
 import "../global.css";
+import { StatusBar } from "expo-status-bar";
 import "react-native-gesture-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
@@ -11,7 +13,7 @@ import {
 } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
-import { LogBox, useColorScheme, View } from "react-native";
+import { LogBox, Platform, View } from "react-native";
 
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -30,7 +32,33 @@ LogBox.ignoreLogs([
   "Authentication required",
   "connect ECONNREFUSED",
   "Failed to connect to",
+  "The action 'GO_BACK' was not handled by any navigator",
+  "Is there any screen to go back to?",
+  '"shadow*" style props are deprecated',
+  'style props are deprecated. Use "boxShadow"',
+  "Blocked aria-hidden on an element",
+  "props.pointerEvents is deprecated",
+  "Animated: `useNativeDriver` is not supported",
+  "TouchableWithoutFeedback is deprecated",
 ]);
+
+if (Platform.OS === "web" && typeof console !== "undefined") {
+  const originalWarn = console.warn;
+  console.warn = (...args: any[]) => {
+    const firstArg = typeof args[0] === "string" ? args[0] : "";
+    if (
+      firstArg.includes('"shadow*" style props are deprecated') ||
+      firstArg.includes('style props are deprecated. Use "boxShadow"') ||
+      firstArg.includes("props.pointerEvents is deprecated") ||
+      firstArg.includes("Blocked aria-hidden on an element") ||
+      firstArg.includes("Animated: `useNativeDriver` is not supported") ||
+      firstArg.includes("TouchableWithoutFeedback is deprecated")
+    ) {
+      return;
+    }
+    originalWarn.apply(console, args);
+  };
+}
 
 import { useToast } from "@/context/toast-context";
 
@@ -38,11 +66,12 @@ import { useToast } from "@/context/toast-context";
 let hasCompletedStartup = false;
 
 function RootNavigation() {
+  const { themeColor } = useAppTheme();
   const { user, isLoading } = useAuth();
   const { showToast } = useToast();
   const segments = useSegments();
   const router = useRouter();
-  const colorScheme = useColorScheme();
+  const { isDark, colors } = useAppTheme();
 
   // Startup phase states: 'splash' -> 'loading' -> 'ready'
   // On hot reload, skip straight to 'ready' if initial startup was already completed
@@ -80,6 +109,15 @@ function RootNavigation() {
   }, [appPhase, isLoading]);
 
   useEffect(() => {
+    // Web: release focus from buttons on screen transition to prevent aria-hidden descendant focus errors
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      if (document.activeElement && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    }
+  }, [segments]);
+
+  useEffect(() => {
     // 3. Security guards after splash/loading phase
     if (appPhase !== "ready") return;
     if (isLoading) return;
@@ -114,11 +152,12 @@ function RootNavigation() {
   const inAuthGroup = firstSegment === "auth";
 
   if (!user && !inAuthGroup) {
-    return <View style={{ flex: 1, backgroundColor: "#FFFFFF" }} />;
+    return <View style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }} />;
   }
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={{ ...(isDark ? DarkTheme : DefaultTheme), colors: { ...(isDark ? DarkTheme.colors : DefaultTheme.colors), background: colors.background, card: colors.backgroundElement, text: colors.text, primary: isDark ? "#E6E6E6" : "#34594A", border: isDark ? "#414141" : "#E5ECE6" } }}>
+      <StatusBar style={isDark ? "light" : "dark"} />
       <Slot />
     </ThemeProvider>
   );
@@ -129,6 +168,7 @@ import { ToastProvider } from "@/context/toast-context";
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppThemeProvider>
       <SafeAreaProvider>
         <ToastProvider>
           <AuthProvider>
@@ -136,6 +176,7 @@ export default function RootLayout() {
           </AuthProvider>
         </ToastProvider>
       </SafeAreaProvider>
+      </AppThemeProvider>
     </GestureHandlerRootView>
   );
 }

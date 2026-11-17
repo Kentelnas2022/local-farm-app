@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { PostItem } from "@/services/post-service";
@@ -10,6 +11,8 @@ type Props = {
 
 /** Compact harvest offer shown within a newsfeed post. */
 export default function HarvestReservationCard({ post, onReserve, onViewBookings }: Props) {
+  const { themeColor } = useAppTheme();
+  const styles = createStyles(themeColor);
   const unit = post.unit || "kg";
   const capacity = Number(post.availableQuantity);
   const booked = Math.max(0, Number(post.reservedQuantity) || 0);
@@ -25,7 +28,7 @@ export default function HarvestReservationCard({ post, onReserve, onViewBookings
   return (
     <View style={styles.card}>
       <View style={styles.heading}>
-        <View style={styles.icon}><Ionicons name="leaf-outline" size={20} color="#617D68" /></View>
+        <View style={styles.icon}><Ionicons name="leaf-outline" size={20} color={themeColor("#617D68", "#E6E6E6")} /></View>
         <View style={styles.product}>
           <Text style={styles.eyebrow}>UPCOMING HARVEST</Text>
           <Text style={styles.title}>{post.cropName || "Fresh harvest batch"}</Text>
@@ -33,7 +36,7 @@ export default function HarvestReservationCard({ post, onReserve, onViewBookings
       </View>
 
       <View style={styles.harvest}>
-        <Ionicons name="calendar-outline" size={13} color="#819086" />
+        <Ionicons name="calendar-outline" size={13} color={themeColor("#819086", "#E6E6E6")} />
         <Text style={styles.harvestText}>Expected {harvestLabel}</Text>
       </View>
 
@@ -53,7 +56,7 @@ export default function HarvestReservationCard({ post, onReserve, onViewBookings
           style={styles.reserveButton}
         >
           <Text style={styles.reserveText}>Reserve</Text>
-          <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
+          <Ionicons name="arrow-forward" size={15} color={themeColor("#FFFFFF", "#181818")} />
         </TouchableOpacity>
       </View>
 
@@ -61,40 +64,40 @@ export default function HarvestReservationCard({ post, onReserve, onViewBookings
         <TouchableOpacity onPress={onViewBookings} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`View reservations: ${booked} of ${capacity} ${unit} reserved`} style={styles.availability}>
           <View style={styles.availabilityRow}>
             <Text style={styles.availabilityText}><Text style={styles.booked}>{booked} {unit}</Text> reserved</Text>
-            <View style={styles.capacity}><Text style={styles.capacityText}>of {capacity} {unit}</Text><Ionicons name="chevron-forward" size={12} color="#8A988D" /></View>
+            <View style={styles.capacity}><Text style={styles.capacityText}>of {capacity} {unit}</Text><Ionicons name="chevron-forward" size={12} color={themeColor("#8A988D", "#E6E6E6")} /></View>
           </View>
           <View style={styles.track}><View style={[styles.fill, { width: `${progress}%` }]} /></View>
         </TouchableOpacity>
       ) : post.pickupHub ? (
-        <View style={styles.pickup}><Ionicons name="location-outline" size={13} color="#819086" /><Text style={styles.harvestText}>{post.pickupHub}</Text></View>
+        <View style={styles.pickup}><Ionicons name="location-outline" size={13} color={themeColor("#819086", "#E6E6E6")} /><Text style={styles.harvestText}>{post.pickupHub}</Text></View>
       ) : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  card: { marginBottom: 14, padding: 16, borderRadius: 20, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E3EAE2" },
+const createStyles = (themeColor: (light: string, dark: string) => string) => StyleSheet.create({
+  card: { marginBottom: 14, padding: 16, borderRadius: 20, backgroundColor: themeColor("#FFFFFF", "#242424"), borderWidth: 1, borderColor: themeColor("#E3EAE2", "#414141") },
   heading: { flexDirection: "row", alignItems: "center", gap: 11 },
-  icon: { width: 40, height: 40, borderRadius: 13, backgroundColor: "#F0F4ED", alignItems: "center", justifyContent: "center" },
+  icon: { width: 40, height: 40, borderRadius: 13, backgroundColor: themeColor("#F0F4ED", "#181818"), alignItems: "center", justifyContent: "center" },
   product: { flex: 1, minWidth: 0 },
-  eyebrow: { fontSize: 8, fontWeight: "600", letterSpacing: 1.4, color: "#7D8B7E", marginBottom: 5 },
-  title: { fontSize: 14, lineHeight: 20, fontWeight: "600", letterSpacing: -0.2, color: "#2C4033" },
+  eyebrow: { fontSize: 8, fontWeight: "600", letterSpacing: 1.4, color: themeColor("#7D8B7E", "#E6E6E6"), marginBottom: 5 },
+  title: { fontSize: 14, lineHeight: 20, fontWeight: "600", letterSpacing: -0.2, color: themeColor("#2C4033", "#E6E6E6") },
   harvest: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12 },
-  harvestText: { flexShrink: 1, fontSize: 11, lineHeight: 17, color: "#748377" },
-  purchaseRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: "#EDF1EB" },
+  harvestText: { flexShrink: 1, fontSize: 11, lineHeight: 17, color: themeColor("#748377", "#E6E6E6") },
+  purchaseRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: themeColor("#EDF1EB", "#414141") },
   priceBlock: { flexGrow: 1 },
-  priceLabel: { fontSize: 10, color: "#7C8B80", marginBottom: 3 },
-  price: { fontSize: 22, lineHeight: 28, fontWeight: "600", letterSpacing: -0.7, color: "#345440" },
-  unit: { fontSize: 11, fontWeight: "400", letterSpacing: 0, color: "#7A897D" },
-  reserveButton: { minHeight: 44, paddingHorizontal: 17, paddingVertical: 12, borderRadius: 13, backgroundColor: "#345944", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12 },
-  reserveText: { fontSize: 12, fontWeight: "600", color: "#FFFFFF" },
+  priceLabel: { fontSize: 10, color: themeColor("#7C8B80", "#E6E6E6"), marginBottom: 3 },
+  price: { fontSize: 22, lineHeight: 28, fontWeight: "600", letterSpacing: -0.7, color: themeColor("#345440", "#E6E6E6") },
+  unit: { fontSize: 11, fontWeight: "400", letterSpacing: 0, color: themeColor("#7A897D", "#E6E6E6") },
+  reserveButton: { minHeight: 44, paddingHorizontal: 17, paddingVertical: 12, borderRadius: 13, backgroundColor: themeColor("#345944", "#E6E6E6"), flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12 },
+  reserveText: { fontSize: 12, fontWeight: "600", color: themeColor("#FFFFFF", "#E6E6E6") },
   availability: { paddingTop: 16, paddingBottom: 2, minHeight: 44 },
   availabilityRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 },
-  availabilityText: { flexShrink: 1, fontSize: 10, color: "#819084" },
-  booked: { fontWeight: "500", color: "#5E7664" },
+  availabilityText: { flexShrink: 1, fontSize: 10, color: themeColor("#819084", "#E6E6E6") },
+  booked: { fontWeight: "500", color: themeColor("#5E7664", "#E6E6E6") },
   capacity: { flexDirection: "row", alignItems: "center", gap: 3 },
-  capacityText: { fontSize: 10, color: "#819084" },
-  track: { height: 4, borderRadius: 4, overflow: "hidden", backgroundColor: "#EEF2EB" },
-  fill: { height: "100%", borderRadius: 4, backgroundColor: "#A3B69A" },
+  capacityText: { fontSize: 10, color: themeColor("#819084", "#E6E6E6") },
+  track: { height: 4, borderRadius: 4, overflow: "hidden", backgroundColor: themeColor("#EEF2EB", "#181818") },
+  fill: { height: "100%", borderRadius: 4, backgroundColor: themeColor("#A3B69A", "#E6E6E6") },
   pickup: { flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 14 },
 });

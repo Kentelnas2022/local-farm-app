@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
@@ -18,6 +19,7 @@ import Navigation from "../../components/Navigation";
 const DEFAULT_AVATAR = "";
 
 export default function ChangePicture() {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
   const [avatarUri, setAvatarUri] = useState<string>(DEFAULT_AVATAR);
   const [sliderProgress, setSliderProgress] = useState<number>(0.15);
@@ -114,16 +116,16 @@ export default function ChangePicture() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white relative"
-      style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+      className="flex-1 bg-white relative dark:bg-[#181818] "
+      style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }}
     >
       <ScrollView
-        className="flex-1 bg-white"
+        className="flex-1 bg-white dark:bg-[#181818] "
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 110 }}
       >
         {/* Top Header Row */}
-        <View className="flex-row items-center justify-center px-4 pt-4 pb-3 relative bg-white">
+        <View className="flex-row items-center justify-center px-4 pt-4 pb-3 relative bg-white dark:bg-[#242424] ">
           <TouchableOpacity
             onPress={handleBack}
             className="absolute left-4 top-4 p-1 active:opacity-70"
@@ -131,10 +133,10 @@ export default function ChangePicture() {
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Ionicons name="arrow-undo" size={28} color="#000000" />
+            <Ionicons name="arrow-undo" size={28} color={themeColor("#000000", "#E6E6E6")} />
           </TouchableOpacity>
 
-          <Text className="text-xl font-bold text-gray-900">
+          <Text className="text-xl font-bold text-gray-900 dark:text-[#E6E6E6] ">
             Change picture
           </Text>
         </View>
@@ -148,7 +150,7 @@ export default function ChangePicture() {
             accessibilityRole="button"
             accessibilityLabel="Choose photo from gallery"
           >
-            <View className="w-64 h-64 sm:w-72 sm:h-72 rounded-full overflow-hidden bg-[#E5E7EB] items-center justify-center shadow-lg border border-gray-100">
+            <View className="w-64 h-64 sm:w-72 sm:h-72 rounded-full overflow-hidden bg-[#E5E7EB] items-center justify-center shadow-lg border border-gray-100 dark:bg-[#181818] dark:border-[#414141] ">
               {avatarUri ? (
                 <Image
                   source={{ uri: avatarUri }}
@@ -160,15 +162,15 @@ export default function ChangePicture() {
                   resizeMode="cover"
                 />
               ) : (
-                <View className="w-full h-full bg-[#E5E7EB] items-center justify-center">
-                  <Ionicons name="person" size={130} color="#9CA3AF" />
+                <View className="w-full h-full bg-[#E5E7EB] items-center justify-center dark:bg-[#181818] ">
+                  <Ionicons name="person" size={130} color={themeColor("#9CA3AF", "#ADADAD")} />
                 </View>
               )}
             </View>
 
             {/* Gallery Icon Badge */}
-            <View className="absolute bottom-2 right-4 bg-[#72AF5B] p-2.5 rounded-full border-2 border-white shadow-md">
-              <Ionicons name="images" size={18} color="#FFFFFF" />
+            <View className="absolute bottom-2 right-4 bg-[#72AF5B] p-2.5 rounded-full border-2 border-white shadow-md dark:bg-[#E6E6E6] dark:border-[#414141] ">
+              <Ionicons name="images" size={18} color={themeColor("#FFFFFF", "#181818")} />
             </View>
           </TouchableOpacity>
 
@@ -176,8 +178,8 @@ export default function ChangePicture() {
             onPress={pickImageFromGallery}
             className="mt-3 flex-row items-center gap-1.5 active:opacity-70"
           >
-            <Ionicons name="image-outline" size={18} color="#72AF5B" />
-            <Text className="text-sm font-semibold text-[#72AF5B]">
+            <Ionicons name="image-outline" size={18} color={themeColor("#72AF5B", "#E6E6E6")} />
+            <Text className="text-sm font-semibold text-[#72AF5B] dark:text-[#E6E6E6] ">
               Choose from gallery
             </Text>
           </TouchableOpacity>
@@ -199,7 +201,7 @@ export default function ChangePicture() {
             className="h-8 justify-center relative"
           >
             {/* Gray Bar */}
-            <View className="h-2 bg-[#D1D5DB] rounded-full w-full" />
+            <View className="h-2 bg-[#D1D5DB] rounded-full w-full dark:bg-[#303030] " />
 
             {/* Slider Thumb Handle */}
             <View
@@ -209,7 +211,7 @@ export default function ChangePicture() {
                 width: 24,
                 height: 24,
                 borderRadius: 12,
-                backgroundColor: "#CBD5E1",
+                backgroundColor: themeColor("#CBD5E1", "#303030"),
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: 0.25,
@@ -223,23 +225,23 @@ export default function ChangePicture() {
           <View className="flex-row justify-end gap-3 mt-4">
             <TouchableOpacity
               onPress={handleBack}
-              className="bg-[#A0A8B0] px-6 py-2.5 rounded-lg active:bg-[#8e969e] shadow-xs"
+              className="bg-[#A0A8B0] px-6 py-2.5 rounded-lg active:bg-[#8e969e] shadow-xs dark:bg-[#303030] "
               activeOpacity={0.8}
               accessibilityRole="button"
               accessibilityLabel="Cancel"
             >
-              <Text className="text-white text-base font-bold">Cancel</Text>
+              <Text className="text-white text-base font-bold dark:text-[#E6E6E6] ">Cancel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={handleSave}
-              className="bg-[#72AF5B] px-7 py-2.5 rounded-lg active:bg-[#60964c] shadow-xs"
-              style={{ backgroundColor: "#72AF5B" }}
+              className="bg-[#72AF5B] px-7 py-2.5 rounded-lg active:bg-[#60964c] shadow-xs dark:bg-[#E6E6E6] dark:active:bg-[#E6E6E6] "
+              style={{ backgroundColor: themeColor("#72AF5B", "#E6E6E6") }}
               activeOpacity={0.8}
               accessibilityRole="button"
               accessibilityLabel="Save"
             >
-              <Text className="text-white text-base font-bold">Save</Text>
+              <Text className="text-white text-base font-bold dark:text-[#181818] ">Save</Text>
             </TouchableOpacity>
           </View>
         </View>

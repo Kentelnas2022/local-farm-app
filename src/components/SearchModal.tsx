@@ -1,18 +1,20 @@
-import { useAuth } from "@/hooks/use-auth";
-import { searchUsersToConnectApi, SearchedUserItem } from "@/services/connection-service";
+import { useAppTheme } from "@/context/theme-context";
+import { SearchedUserItem, searchUsersToConnectApi } from "@/services/connection-service";
 import { getPostsApi, PostItem } from "@/services/post-service";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
   ActivityIndicator,
+  Animated,
   FlatList,
   Image,
   Keyboard,
   Modal,
   Platform,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -25,168 +27,126 @@ interface SearchModalProps {
   onClose: () => void;
 }
 
-const RECENT_SEARCHES_KEY = "localfarm_recent_searches_v1";
-
-const POPULAR_SUGGESTIONS = [
-  "Sweet Corn",
-  "Avocado",
-  "Tomatoes",
-  "Wholesaler",
-  "Fresh Herbs",
-  "Pala-o",
-  "Tipanoy",
-  "Field",
-];
+type TabType = "people" | "posts";
 
 export const SearchModal: React.FC<SearchModalProps> = ({ visible, onClose }) => {
+  const { themeColor } = useAppTheme();
+  const styles = createStyles(themeColor);
   const router = useRouter();
-  const { user } = useAuth();
   const inputRef = useRef<TextInput>(null);
+  const requestId = useRef(0);
+  const [reveal] = useState(() => new Animated.Value(0));
 
+  const [activeTab, setActiveTab] = useState<TabType>("people");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "users" | "posts">("all");
-  const [isSearching, setIsSearching] = useState(false);
-  const [userResults, setUserResults] = useState<SearchedUserItem[]>([]);
-  const [postResults, setPostResults] = useState<PostItem[]>([]);
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [people, setPeople] = useState<SearchedUserItem[]>([]);
+  const [posts, setPosts] = useState<PostItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<PostItem | null>(null);
 
-  // Load recent searches
-  const loadRecentSearches = useCallback(async () => {
-    try {
-      const raw = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
-      if (raw) {
-        setRecentSearches(JSON.parse(raw));
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  const saveRecentSearch = async (term: string) => {
-    const trimmed = term.trim();
-    if (!trimmed) return;
-    try {
-      const filtered = [trimmed, ...recentSearches.filter((s) => s.toLowerCase() !== trimmed.toLowerCase())].slice(0, 8);
-      setRecentSearches(filtered);
-      await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(filtered));
-    } catch {
-      // ignore
-    }
-  };
-
-  const removeRecentSearch = async (term: string) => {
-    try {
-      const filtered = recentSearches.filter((s) => s !== term);
-      setRecentSearches(filtered);
-      await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(filtered));
-    } catch {
-      // ignore
-    }
-  };
-
-  const clearAllRecentSearches = async () => {
-    try {
-      setRecentSearches([]);
-      await AsyncStorage.removeItem(RECENT_SEARCHES_KEY);
-    } catch {
-      // ignore
-    }
-  };
+  const query = searchQuery.trim();
 
   useEffect(() => {
-    if (visible) {
-      loadRecentSearches();
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 150);
-    } else {
-      setSearchQuery("");
-      setUserResults([]);
-      setPostResults([]);
-      setHasSearched(false);
+    let mounted = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((value) => {
+        if (mounted) setReduceMotion(value);
+      })
+      .catch(() => {});
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+    reveal.setValue(reduceMotion ? 1 : 0);
+    const animation = Animated.timing(reveal, {
+      toValue: 1,
+      duration: reduceMotion ? 0 : 220,
+      useNativeDriver: Platform.OS !== "web",
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [visible, reveal, reduceMotion]);
+
+  // Search effect: only executes when query is not empty
+  // When query is empty, do NOT load suggestions — hide everything.
+  useEffect(() => {
+    if (!visible) return;
+
+    if (!query) {
+      setPeople([]);
+      setPosts([]);
+      setLoading(false);
+      setError(false);
+      return;
     }
-  }, [visible, loadRecentSearches]);
 
-  // Execute Search
-  const executeSearch = useCallback(
-    async (text: string) => {
-      const query = text.trim();
-      if (!query) {
-        setUserResults([]);
-        setPostResults([]);
-        setHasSearched(false);
-        setIsSearching(false);
-        return;
-      }
+    const id = ++requestId.current;
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
 
-      setIsSearching(true);
-      setHasSearched(true);
-
+    const timer = setTimeout(async () => {
       try {
-        const [users, posts] = await Promise.all([
+        const [peopleResults, postsResults] = await Promise.all([
           searchUsersToConnectApi(query).catch(() => []),
           getPostsApi(undefined, undefined, query).catch(() => []),
         ]);
 
-        setUserResults(users || []);
-        setPostResults(posts || []);
-      } catch (err) {
-        console.warn("[SearchModal] Search error:", err);
+        if (!cancelled && requestId.current === id) {
+          setPeople(peopleResults);
+          setPosts(postsResults);
+        }
+      } catch {
+        if (!cancelled && requestId.current === id) {
+          setError(true);
+        }
       } finally {
-        setIsSearching(false);
+        if (!cancelled && requestId.current === id) {
+          setLoading(false);
+        }
       }
-    },
-    []
-  );
+    }, 300);
 
-  // Debounced search on text change
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setUserResults([]);
-      setPostResults([]);
-      setHasSearched(false);
-      return;
-    }
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query, visible, retry]);
 
-    const timer = setTimeout(() => {
-      executeSearch(searchQuery);
-    }, 350);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, executeSearch]);
-
-  const handleSubmitSearch = () => {
+  const close = () => {
+    requestId.current++;
     Keyboard.dismiss();
-    if (searchQuery.trim()) {
-      saveRecentSearch(searchQuery.trim());
-      executeSearch(searchQuery);
-    }
-  };
-
-  const handleSelectSuggestion = (term: string) => {
-    setSearchQuery(term);
-    saveRecentSearch(term);
-    executeSearch(term);
-  };
-
-  const handleUserPress = (u: SearchedUserItem) => {
-    saveRecentSearch(u.name);
+    setSearchQuery("");
+    setPeople([]);
+    setPosts([]);
+    setLoading(false);
+    setSelectedPost(null);
     onClose();
+  };
+
+  const openPerson = (person: { id: string; name: string; avatarUrl?: string; role?: string }) => {
+    close();
     router.push({
       pathname: "/user/UserProfile",
       params: {
-        userId: u.id,
-        userName: u.name,
-        userAvatar: u.avatarUrl,
-        userRole: u.role,
+        userId: person.id,
+        userName: person.name,
+        userAvatar: person.avatarUrl,
+        userRole: person.role,
       },
-    } as any);
+    });
   };
 
-  const handlePostPress = (post: PostItem) => {
-    saveRecentSearch(post.cropName || post.authorName);
-    onClose();
+  const openPersonFromPost = (post: PostItem) => {
+    close();
     router.push({
       pathname: "/user/UserProfile",
       params: {
@@ -195,370 +155,996 @@ export const SearchModal: React.FC<SearchModalProps> = ({ visible, onClose }) =>
         userAvatar: post.avatarUri,
         userRole: post.authorRole,
       },
-    } as any);
+    });
   };
 
-  const totalResultsCount = userResults.length + postResults.length;
+  const getPostMedia = (post: PostItem): string | undefined => {
+    if (Array.isArray(post.images) && post.images.length > 0 && post.images[0]) {
+      return post.images[0];
+    }
+    if (post.imageUrl) return post.imageUrl;
+    if (post.originalPost?.imageUrl) return post.originalPost.imageUrl;
+    return undefined;
+  };
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView className="flex-1 bg-white" style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
-        {/* Top Search Header */}
-        <View className="px-3 py-2.5 border-b border-gray-100 flex-row items-center gap-2">
-          {/* Back button */}
+    <Modal
+      visible={visible}
+      animationType={reduceMotion ? "none" : "fade"}
+      onRequestClose={close}
+      onShow={() => inputRef.current?.focus()}
+    >
+      <SafeAreaView style={styles.screen}>
+        {/* Top Header */}
+        <View style={styles.header}>
           <TouchableOpacity
-            onPress={onClose}
-            className="p-2 rounded-full active:bg-gray-100"
+            onPress={close}
             accessibilityRole="button"
             accessibilityLabel="Close search"
+            style={styles.iconButton}
           >
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            <Ionicons name="arrow-back" size={22} color={themeColor("#283C33", "#E6E6E6")} />
           </TouchableOpacity>
 
-          {/* Search Input Bar */}
-          <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-3.5 py-1.5 border border-gray-200">
-            <Ionicons name="search" size={19} color="#72AF5B" />
+          <View style={styles.searchField}>
+            <Ionicons name="search-outline" size={19} color={themeColor("#657C6C", "#E6E6E6")} />
             <TextInput
               ref={inputRef}
               value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSubmitEditing={handleSubmitSearch}
-              placeholder="Search produce, farmers, posts..."
-              placeholderTextColor="#9CA3AF"
+              onChangeText={(text) => {
+                setSearchQuery(text);
+                if (text.trim()) setLoading(true);
+              }}
+              placeholder={activeTab === "people" ? "Search people..." : "Search posts..."}
+              placeholderTextColor={themeColor("#88938D", "#E6E6E6")}
+              accessibilityLabel="Search people or posts"
+              autoCapitalize="none"
+              autoCorrect={false}
               returnKeyType="search"
-              clearButtonMode="never"
-              className="flex-1 ml-2 text-sm text-gray-900 py-1"
-              style={{ paddingVertical: Platform.OS === "ios" ? 4 : 2 }}
+              onSubmitEditing={() => Keyboard.dismiss()}
+              style={styles.input}
             />
-            {searchQuery.length > 0 && (
+            {query.length > 0 && (
               <TouchableOpacity
                 onPress={() => {
                   setSearchQuery("");
-                  setUserResults([]);
-                  setPostResults([]);
-                  setHasSearched(false);
+                  setPeople([]);
+      setPosts([]);
+                  setPosts([]);
+                  setLoading(false);
+                  inputRef.current?.focus();
                 }}
-                className="p-1"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+                style={styles.clearButton}
               >
-                <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+                <Ionicons name="close" size={18} color={themeColor("#77857D", "#E6E6E6")} />
               </TouchableOpacity>
             )}
           </View>
         </View>
 
-        {/* Filter Pills (Tabs) */}
-        {hasSearched && (
-          <View className="flex-row items-center px-4 py-2 border-b border-gray-100 bg-gray-50/70 gap-2">
-            <TouchableOpacity
-              onPress={() => setActiveTab("all")}
-              className={`px-3 py-1.5 rounded-full ${
-                activeTab === "all" ? "bg-[#72AF5B]" : "bg-white border border-gray-200"
-              }`}
-            >
-              <Text
-                className={`text-xs font-semibold ${
-                  activeTab === "all" ? "text-white" : "text-gray-700"
-                }`}
+        {/* Tab Selector (People | Posts) */}
+        <View style={styles.tabsContainer}>
+          <TouchableOpacity
+            onPress={() => setActiveTab("people")}
+            activeOpacity={0.7}
+            style={[styles.tabButton, activeTab === "people" && styles.tabButtonActive]}
+          >
+            <Ionicons
+              name={activeTab === "people" ? "people" : "people-outline"}
+              size={17}
+              color={activeTab === "people" ? "#FFFFFF" : "#556B5D"}
+            />
+            <Text style={[styles.tabText, activeTab === "people" && styles.tabTextActive]}>
+              People
+            </Text>
+            {query.length > 0 && !loading && (
+              <View
+                style={[
+                  styles.tabBadge,
+                  activeTab === "people" ? styles.tabBadgeActive : styles.tabBadgeInactive,
+                ]}
               >
-                All ({totalResultsCount})
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setActiveTab("users")}
-              className={`px-3 py-1.5 rounded-full ${
-                activeTab === "users" ? "bg-[#72AF5B]" : "bg-white border border-gray-200"
-              }`}
-            >
-              <Text
-                className={`text-xs font-semibold ${
-                  activeTab === "users" ? "text-white" : "text-gray-700"
-                }`}
-              >
-                People ({userResults.length})
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setActiveTab("posts")}
-              className={`px-3 py-1.5 rounded-full ${
-                activeTab === "posts" ? "bg-[#72AF5B]" : "bg-white border border-gray-200"
-              }`}
-            >
-              <Text
-                className={`text-xs font-semibold ${
-                  activeTab === "posts" ? "text-white" : "text-gray-700"
-                }`}
-              >
-                Produce & Posts ({postResults.length})
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Loading Spinner */}
-        {isSearching && (
-          <View className="py-8 items-center justify-center">
-            <ActivityIndicator size="small" color="#72AF5B" />
-            <Text className="text-xs text-gray-500 mt-2">Searching LocalFarm...</Text>
-          </View>
-        )}
-
-        {/* Main Content Area */}
-        <ScrollView
-          className="flex-1"
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 40 }}
-        >
-          {/* Initial State: Suggestions & Recent Searches */}
-          {!hasSearched && (
-            <View className="p-4">
-              {/* Popular / Quick Suggestions */}
-              <View className="mb-6">
-                <View className="flex-row items-center gap-1.5 mb-3">
-                  <Ionicons name="trending-up" size={18} color="#72AF5B" />
-                  <Text className="text-sm font-bold text-gray-900">Popular Searches</Text>
-                </View>
-                <View className="flex-row flex-wrap gap-2">
-                  {POPULAR_SUGGESTIONS.map((tag) => (
-                    <TouchableOpacity
-                      key={tag}
-                      onPress={() => handleSelectSuggestion(tag)}
-                      className="px-3.5 py-2 bg-emerald-50/70 border border-emerald-200 rounded-full active:bg-emerald-100 flex-row items-center gap-1.5"
-                    >
-                      <Ionicons name="leaf-outline" size={13} color="#237227" />
-                      <Text className="text-xs font-semibold text-emerald-800">{tag}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                <Text
+                  style={[
+                    styles.tabBadgeText,
+                    activeTab === "people"
+                      ? styles.tabBadgeTextActive
+                      : styles.tabBadgeTextInactive,
+                  ]}
+                >
+                  {people.length}
+                </Text>
               </View>
+            )}
+          </TouchableOpacity>
 
-              {/* Recent Searches */}
-              {recentSearches.length > 0 && (
-                <View>
-                  <View className="flex-row items-center justify-between mb-2">
-                    <View className="flex-row items-center gap-1.5">
-                      <Ionicons name="time-outline" size={18} color="#6B7280" />
-                      <Text className="text-sm font-bold text-gray-900">Recent Searches</Text>
-                    </View>
-                    <TouchableOpacity onPress={clearAllRecentSearches} className="p-1">
-                      <Text className="text-xs font-semibold text-rose-600">Clear all</Text>
-                    </TouchableOpacity>
-                  </View>
+          <TouchableOpacity
+            onPress={() => setActiveTab("posts")}
+            activeOpacity={0.7}
+            style={[styles.tabButton, activeTab === "posts" && styles.tabButtonActive]}
+          >
+            <Ionicons
+              name={activeTab === "posts" ? "newspaper" : "newspaper-outline"}
+              size={17}
+              color={activeTab === "posts" ? "#FFFFFF" : "#556B5D"}
+            />
+            <Text style={[styles.tabText, activeTab === "posts" && styles.tabTextActive]}>
+              Posts
+            </Text>
+            {query.length > 0 && !loading && (
+              <View
+                style={[
+                  styles.tabBadge,
+                  activeTab === "posts" ? styles.tabBadgeActive : styles.tabBadgeInactive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.tabBadgeText,
+                    activeTab === "posts"
+                      ? styles.tabBadgeTextActive
+                      : styles.tabBadgeTextInactive,
+                  ]}
+                >
+                  {posts.length}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
 
-                  <View className="divide-y divide-gray-100">
-                    {recentSearches.map((term) => (
-                      <View
-                        key={term}
-                        className="flex-row items-center justify-between py-2.5 active:bg-gray-50"
-                      >
-                        <TouchableOpacity
-                          onPress={() => handleSelectSuggestion(term)}
-                          className="flex-row items-center gap-2.5 flex-1"
-                        >
-                          <Ionicons name="search-outline" size={16} color="#9CA3AF" />
-                          <Text className="text-sm text-gray-700">{term}</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          onPress={() => removeRecentSearch(term)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          className="p-1"
-                        >
-                          <Ionicons name="close" size={16} color="#9CA3AF" />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
+        {/* Search Results Area */}
+        <Animated.View
+          style={[
+            styles.content,
+            {
+              opacity: reveal,
+              transform: [
+                {
+                  translateY: reveal.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [8, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          {/* Header count when query exists */}
+          {query.length > 0 && (
+          <View style={styles.heading}>
+              <Text style={styles.title}>
+                {activeTab === "people" ? "People" : "Posts"}
+                {!loading && !error && (
+                  <Text style={styles.count}>
+                    {" "}
+                    ({activeTab === "people" ? people.length : posts.length})
+                  </Text>
+                )}
+              </Text>
             </View>
           )}
 
-          {/* Search Results */}
-          {hasSearched && !isSearching && (
-            <View className="p-4">
-              {/* No results */}
-              {totalResultsCount === 0 ? (
-                <View className="py-16 items-center justify-center px-4">
-                  <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-                    <Ionicons name="search-outline" size={32} color="#9CA3AF" />
+          {activeTab === "people" ? (
+            <FlatList
+              data={loading || !query ? [] : people}
+              keyExtractor={(person) => String(person.id)}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              contentContainerStyle={styles.list}
+              ItemSeparatorComponent={() => <View style={styles.divider} />}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => openPerson(item)}
+                  activeOpacity={0.65}
+                  accessibilityRole="button"
+                  accessibilityLabel={`View ${item.name}'s profile`}
+                  style={styles.personRow}
+                >
+                  <View style={styles.avatar}>
+                    {item.avatarUrl ? (
+                      <Image source={{ uri: item.avatarUrl }} style={styles.avatarImage} />
+                    ) : (
+                      <Ionicons name="person" size={24} color={themeColor("#34594A", "#E6E6E6")} />
+                    )}
                   </View>
-                  <Text className="text-base font-bold text-gray-800 text-center">
-                    No results found for "{searchQuery}"
-                  </Text>
-                  <Text className="text-xs text-gray-500 text-center mt-1.5 leading-relaxed max-w-xs">
-                    Try searching for crop names (e.g. Avocado, Corn), farmer names, or locations in Iligan City.
-                  </Text>
+                  <View style={styles.personInfo}>
+                    <Text numberOfLines={2} style={styles.name}>
+                      {item.name}
+                    </Text>
+                    <Text numberOfLines={1} style={styles.subtitle}>
+                      {item.username ? `@${item.username}` : item.role || "LocalFarm member"}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={themeColor("#A0ACA4", "#E6E6E6")} />
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={styles.empty} accessibilityLiveRegion="polite">
+                  {loading ? (
+                    <>
+                      <ActivityIndicator color={themeColor("#52735E", "#E6E6E6")} size="small" />
+                      <Text style={styles.emptyTitle}>Searching people…</Text>
+                    </>
+                  ) : error ? (
+                    <>
+                      <View style={styles.emptyIcon}>
+                        <Ionicons name="cloud-offline-outline" size={28} color={themeColor("#708776", "#E6E6E6")} />
+                      </View>
+                      <Text style={styles.emptyTitle}>Search is unavailable</Text>
+                      <Text style={styles.emptyDescription}>Please try again in a moment.</Text>
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        onPress={() => setRetry((v) => v + 1)}
+                        style={styles.retry}
+                      >
+                        <Text style={styles.retryText}>Try again</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : query ? (
+                    <>
+                      <View style={styles.emptyIcon}>
+                        <Ionicons name="people-outline" size={28} color={themeColor("#708776", "#E6E6E6")} />
+                      </View>
+                      <Text style={styles.emptyTitle}>No results found</Text>
+                      <Text style={styles.emptyDescription}>
+                        Try searching with another name or username.
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <View style={styles.emptyIcon}>
+                        <Ionicons name="search-outline" size={28} color={themeColor("#708776", "#E6E6E6")} />
+                      </View>
+                      <Text style={styles.emptyTitle}>Find people</Text>
+                      <Text style={styles.emptyDescription}>
+                        Type a name or username above to search members and farmers.
+                      </Text>
+                    </>
+                  )}
                 </View>
-              ) : (
-                <>
-                  {/* People / Farmers Section */}
-                  {(activeTab === "all" || activeTab === "users") && userResults.length > 0 && (
-                    <View className="mb-6">
-                      <View className="flex-row items-center justify-between mb-3">
-                        <View className="flex-row items-center gap-1.5">
-                          <Ionicons name="people" size={18} color="#72AF5B" />
-                          <Text className="text-sm font-bold text-gray-900">
-                            People & Farmers ({userResults.length})
+              }
+            />
+          ) : (
+            <FlatList
+              data={loading || !query ? [] : posts}
+              keyExtractor={(post) => String(post.id)}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              contentContainerStyle={styles.postList}
+              ItemSeparatorComponent={() => <View style={styles.postSeparator} />}
+              renderItem={({ item }) => {
+                const mediaUrl = getPostMedia(item);
+                return (
+                  <TouchableOpacity
+                    onPress={() => setSelectedPost(item)}
+                    activeOpacity={0.8}
+                    style={styles.postCard}
+                  >
+                    {/* Post Author Info */}
+                    <View style={styles.postCardHeader}>
+                      <TouchableOpacity
+                        onPress={() => openPersonFromPost(item)}
+                        style={styles.postAuthorButton}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.postAvatar}>
+                          {item.avatarUri ? (
+                            <Image source={{ uri: item.avatarUri }} style={styles.avatarImage} />
+                          ) : (
+                            <Ionicons name="person" size={18} color={themeColor("#34594A", "#E6E6E6")} />
+                          )}
+                        </View>
+                        <View style={styles.postAuthorInfo}>
+                          <View style={styles.authorNameRow}>
+                            <Text numberOfLines={1} style={styles.postAuthorName}>
+                              {item.authorName}
+                            </Text>
+                            {item.isVerified && (
+                              <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                            )}
+                          </View>
+                          <Text numberOfLines={1} style={styles.postMeta}>
+                            {item.timeAgo || "Recently"}
+                            {item.location ? ` • ${item.location}` : ""}
                           </Text>
                         </View>
-                      </View>
+                      </TouchableOpacity>
 
-                      <View className="space-y-2">
-                        {userResults.map((u) => (
-                          <TouchableOpacity
-                            key={u.id}
-                            onPress={() => handleUserPress(u)}
-                            className="flex-row items-center justify-between p-3 bg-white rounded-xl border border-gray-100 shadow-2xs active:bg-gray-50 mb-2"
-                          >
-                            <View className="flex-row items-center gap-3 flex-1 pr-2">
-                              {/* Avatar */}
-                              <View className="w-11 h-11 rounded-full bg-gray-100 overflow-hidden border border-gray-200 items-center justify-center">
-                                {u.avatarUrl ? (
-                                  <Image
-                                    source={{ uri: u.avatarUrl }}
-                                    style={{ width: "100%", height: "100%" }}
-                                    resizeMode="cover"
-                                  />
-                                ) : (
-                                  <Ionicons name="person" size={20} color="#9CA3AF" />
-                                )}
-                              </View>
-
-                              {/* Details */}
-                              <View className="flex-1">
-                                <View className="flex-row items-center gap-1.5">
-                                  <Text className="text-sm font-bold text-gray-900" numberOfLines={1}>
-                                    {u.name}
-                                  </Text>
-                                  <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-                                </View>
-                                <View className="flex-row items-center gap-2 mt-0.5">
-                                  {u.username ? (
-                                    <Text className="text-xs text-gray-500" numberOfLines={1}>
-                                      @{u.username}
-                                    </Text>
-                                  ) : null}
-                                  <Text className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                                    {u.role === "admin" ? "Wholesaler" : u.role || "Farmer"}
-                                  </Text>
-                                </View>
-                              </View>
-                            </View>
-
-                            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
-                          </TouchableOpacity>
-                        ))}
-                      </View>
+                      {item.cropName ? (
+                        <View style={styles.cropBadge}>
+                          <Text style={styles.cropBadgeText}>{item.cropName}</Text>
+                        </View>
+                      ) : null}
                     </View>
-                  )}
 
-                  {/* Produce & Posts Section */}
-                  {(activeTab === "all" || activeTab === "posts") && postResults.length > 0 && (
-                    <View>
-                      <View className="flex-row items-center gap-1.5 mb-3">
-                        <Ionicons name="newspaper" size={18} color="#72AF5B" />
-                        <Text className="text-sm font-bold text-gray-900">
-                          Produce & Newsfeed Posts ({postResults.length})
-                        </Text>
+                    {/* Post Text */}
+                    {Boolean(item.content) && (
+                      <Text numberOfLines={3} style={styles.postContentText}>
+                        {item.content}
+                      </Text>
+                    )}
+
+                    {/* Post Image Thumbnail */}
+                    {Boolean(mediaUrl) && (
+                      <View style={styles.postImageWrapper}>
+                        <Image
+                          source={{ uri: mediaUrl }}
+                          style={styles.postThumbnail}
+                          resizeMode="cover"
+                        />
                       </View>
+                    )}
 
-                      <View className="space-y-3">
-                        {postResults.map((post) => {
-                          const thumb = post.imageUrl || (post.images && post.images.length > 0 ? post.images[0] : null);
-
-                          return (
-                            <TouchableOpacity
-                              key={post.id}
-                              onPress={() => handlePostPress(post)}
-                              className="p-3.5 bg-white rounded-xl border border-gray-100 shadow-2xs active:bg-gray-50 mb-2.5"
-                            >
-                              {/* Author Row */}
-                              <View className="flex-row items-center justify-between mb-2">
-                                <View className="flex-row items-center gap-2">
-                                  <View className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden border border-gray-200 items-center justify-center">
-                                    {post.avatarUri ? (
-                                      <Image
-                                        source={{ uri: post.avatarUri }}
-                                        style={{ width: "100%", height: "100%" }}
-                                        resizeMode="cover"
-                                      />
-                                    ) : (
-                                      <Ionicons name="person" size={15} color="#9CA3AF" />
-                                    )}
-                                  </View>
-                                  <View>
-                                    <Text className="text-xs font-bold text-gray-900">
-                                      {post.authorName}
-                                    </Text>
-                                    <Text className="text-[10px] text-gray-400">
-                                      {post.timeAgo || "Recently"}
-                                    </Text>
-                                  </View>
-                                </View>
-
-                                {post.category && (
-                                  <Text className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                    {post.category}
-                                  </Text>
-                                )}
-                              </View>
-
-                              {/* Content & Thumbnail */}
-                              <View className="flex-row gap-3 items-start">
-                                <View className="flex-1">
-                                  {post.cropName ? (
-                                    <View className="flex-row items-center gap-1 mb-1">
-                                      <Ionicons name="basket" size={14} color="#72AF5B" />
-                                      <Text className="text-xs font-bold text-gray-900">
-                                        {post.cropName}
-                                        {post.pricePerUnit != null ? ` • ₱${post.pricePerUnit}/${post.unit || "kg"}` : ""}
-                                      </Text>
-                                    </View>
-                                  ) : null}
-
-                                  <Text
-                                    className="text-xs text-gray-700 leading-relaxed"
-                                    numberOfLines={2}
-                                  >
-                                    {post.content}
-                                  </Text>
-
-                                  {post.location ? (
-                                    <View className="flex-row items-center gap-1 mt-2">
-                                      <Ionicons name="location-sharp" size={11} color="#6B7280" />
-                                      <Text className="text-[11px] text-gray-500" numberOfLines={1}>
-                                        {post.location}
-                                      </Text>
-                                    </View>
-                                  ) : null}
-                                </View>
-
-                                {thumb ? (
-                                  <Image
-                                    source={{ uri: thumb }}
-                                    className="w-16 h-16 rounded-lg bg-gray-100"
-                                    style={{ width: 64, height: 64, borderRadius: 8 }}
-                                    resizeMode="cover"
-                                  />
-                                ) : null}
-                              </View>
-                            </TouchableOpacity>
-                          );
-                        })}
+                    {/* Post Footer Stats */}
+                    <View style={styles.postFooter}>
+                      <View style={styles.postStat}>
+                        <Ionicons name="heart-outline" size={15} color={themeColor("#697A70", "#E6E6E6")} />
+                        <Text style={styles.postStatText}>{item.likes || 0}</Text>
                       </View>
+                      <View style={styles.postStat}>
+                        <Ionicons name="chatbubble-outline" size={14} color={themeColor("#697A70", "#E6E6E6")} />
+                        <Text style={styles.postStatText}>{item.comments || 0}</Text>
+                      </View>
+                      {Boolean(item.category) && (
+                        <View style={styles.categoryBadge}>
+                          <Text style={styles.categoryBadgeText}>{item.category}</Text>
+                        </View>
+                      )}
                     </View>
+                  </TouchableOpacity>
+                );
+              }}
+              ListEmptyComponent={
+                <View style={styles.empty} accessibilityLiveRegion="polite">
+                  {loading ? (
+                    <>
+                      <ActivityIndicator color={themeColor("#52735E", "#E6E6E6")} size="small" />
+                      <Text style={styles.emptyTitle}>Searching posts…</Text>
+                    </>
+                  ) : error ? (
+                    <>
+                      <View style={styles.emptyIcon}>
+                        <Ionicons name="cloud-offline-outline" size={28} color={themeColor("#708776", "#E6E6E6")} />
+                      </View>
+                      <Text style={styles.emptyTitle}>Search is unavailable</Text>
+                      <Text style={styles.emptyDescription}>Please try again in a moment.</Text>
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        onPress={() => setRetry((v) => v + 1)}
+                        style={styles.retry}
+                      >
+                        <Text style={styles.retryText}>Try again</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : query ? (
+                    <>
+                      <View style={styles.emptyIcon}>
+                        <Ionicons name="newspaper-outline" size={28} color={themeColor("#708776", "#E6E6E6")} />
+                      </View>
+                      <Text style={styles.emptyTitle}>No posts found</Text>
+                      <Text style={styles.emptyDescription}>
+                        Try searching with different keywords, crop names, or topics.
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <View style={styles.emptyIcon}>
+                        <Ionicons name="newspaper-outline" size={28} color={themeColor("#708776", "#E6E6E6")} />
+                      </View>
+                      <Text style={styles.emptyTitle}>Find posts</Text>
+                      <Text style={styles.emptyDescription}>
+                        Type keywords above to search discussions, harvest updates, and farm posts.
+                      </Text>
+                    </>
                   )}
-                </>
-              )}
-            </View>
+                </View>
+              }
+            />
           )}
-        </ScrollView>
+        </Animated.View>
+
+        {/* Selected Post Detail Modal */}
+        <Modal
+          visible={!!selectedPost}
+          animationType="slide"
+          onRequestClose={() => setSelectedPost(null)}
+        >
+          <SafeAreaView style={styles.screen}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                onPress={() => setSelectedPost(null)}
+                accessibilityRole="button"
+                accessibilityLabel="Close post"
+                style={styles.iconButton}
+              >
+                <Ionicons name="arrow-back" size={22} color={themeColor("#283C33", "#E6E6E6")} />
+              </TouchableOpacity>
+              <Text style={styles.modalHeaderTitle}>Post Details</Text>
+              <View style={{ width: 40 }} />
+            </View>
+
+            {selectedPost && (
+              <ScrollView
+                style={styles.modalScroll}
+                contentContainerStyle={styles.modalScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {/* Author row */}
+                <TouchableOpacity
+                  onPress={() => {
+                    const post = selectedPost;
+                    setSelectedPost(null);
+                    openPersonFromPost(post);
+                  }}
+                  activeOpacity={0.7}
+                  style={styles.modalAuthorRow}
+                >
+                  <View style={styles.modalAvatar}>
+                    {selectedPost.avatarUri ? (
+                      <Image
+                        source={{ uri: selectedPost.avatarUri }}
+                        style={styles.avatarImage}
+                      />
+                    ) : (
+                      <Ionicons name="person" size={22} color={themeColor("#34594A", "#E6E6E6")} />
+                    )}
+                  </View>
+                  <View style={styles.modalAuthorInfo}>
+                    <View style={styles.authorNameRow}>
+                      <Text style={styles.modalAuthorName}>{selectedPost.authorName}</Text>
+                      {selectedPost.isVerified && (
+                        <Ionicons name="checkmark-circle" size={15} color="#10B981" />
+                      )}
+                    </View>
+                    <Text style={styles.modalAuthorSubtext}>
+                      {selectedPost.authorRole || "Member"} • {selectedPost.timeAgo || "Recently"}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={themeColor("#A0ACA4", "#E6E6E6")} />
+                </TouchableOpacity>
+
+                {/* Badges */}
+                <View style={styles.modalBadgesRow}>
+                  {Boolean(selectedPost.cropName) && (
+                    <View style={styles.modalCropBadge}>
+                      <Text style={styles.modalCropBadgeText}>🌾 {selectedPost.cropName}</Text>
+                    </View>
+                  )}
+                  {Boolean(selectedPost.category) && (
+                    <View style={styles.modalCategoryBadge}>
+                      <Text style={styles.modalCategoryBadgeText}>
+                        {selectedPost.category}
+                      </Text>
+                    </View>
+                  )}
+                  {Boolean(selectedPost.location) && (
+                    <View style={styles.modalLocationBadge}>
+                      <Ionicons name="location-outline" size={13} color={themeColor("#556B5D", "#E6E6E6")} />
+                      <Text style={styles.modalLocationText}>{selectedPost.location}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Post Content */}
+                {Boolean(selectedPost.content) && (
+                  <Text style={styles.modalContentText}>{selectedPost.content}</Text>
+                )}
+
+                {/* Post Media */}
+                {Boolean(getPostMedia(selectedPost)) && (
+                  <View style={styles.modalImageContainer}>
+                    <Image
+                      source={{ uri: getPostMedia(selectedPost) }}
+                      style={styles.modalImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+                )}
+
+                {/* Stats */}
+                <View style={styles.modalStatsRow}>
+                  <View style={styles.modalStatItem}>
+                    <Ionicons name="heart" size={18} color="#D9534F" />
+                    <Text style={styles.modalStatValue}>{selectedPost.likes || 0} likes</Text>
+                  </View>
+                  <View style={styles.modalStatItem}>
+                    <Ionicons name="chatbubble" size={17} color={themeColor("#52735E", "#E6E6E6")} />
+                    <Text style={styles.modalStatValue}>
+                      {selectedPost.comments || 0} comments
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Action button */}
+                <TouchableOpacity
+                  onPress={() => {
+                    const post = selectedPost;
+                    setSelectedPost(null);
+                    openPersonFromPost(post);
+                  }}
+                  activeOpacity={0.8}
+                  style={styles.viewProfileBtn}
+                >
+                  <Ionicons name="person-circle-outline" size={19} color={themeColor("#FFFFFF", "#181818")} />
+                  <Text style={styles.viewProfileBtnText}>
+                    View {selectedPost.authorName}'s Profile
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </SafeAreaView>
+        </Modal>
       </SafeAreaView>
     </Modal>
   );
 };
 
-export default SearchModal;
+const createStyles = (themeColor: (light: string, dark: string) => string) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: themeColor("#EDF0EB", "#414141"),
+  },
+  iconButton: {
+    width: 40,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchField: {
+    flex: 1,
+    height: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingLeft: 14,
+    borderRadius: 12,
+    backgroundColor: themeColor("#F1F4EF", "#181818"),
+    borderWidth: 1,
+    borderColor: themeColor("#E5EAE2", "#414141"),
+  },
+  input: {
+    flex: 1,
+    minWidth: 0,
+    height: 44,
+    marginLeft: 9,
+    paddingVertical: 0,
+    fontSize: 14,
+    color: themeColor("#273B30", "#E6E6E6"),
+  },
+  clearButton: {
+    width: 38,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabsContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 10,
+    backgroundColor: themeColor("#FAFBF9", "#242424"),
+    borderBottomWidth: 1,
+    borderBottomColor: themeColor("#EEF2EC", "#414141"),
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: themeColor("#EDF1EB", "#181818"),
+    gap: 6,
+  },
+  tabButtonActive: {
+    backgroundColor: themeColor("#2E523E", "#E6E6E6"),
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: themeColor("#465B4E", "#E6E6E6"),
+  },
+  tabTextActive: {
+    color: themeColor("#FFFFFF", "#E6E6E6"),
+  },
+  tabBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  tabBadgeActive: {
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+  },
+  tabBadgeInactive: {
+    backgroundColor: themeColor("#D9E2D8", "#303030"),
+  },
+  tabBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  tabBadgeTextActive: {
+    color: themeColor("#FFFFFF", "#E6E6E6"),
+  },
+  tabBadgeTextInactive: {
+    color: themeColor("#3F5647", "#E6E6E6"),
+  },
+  content: { flex: 1 },
+  heading: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: themeColor("#293647", "#E6E6E6"),
+  },
+  count: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: themeColor("#34594A", "#E6E6E6"),
+  },
+  list: {
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+  },
+  personRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 14,
+  },
+  avatar: {
+    height: 46,
+    width: 46,
+    borderRadius: 23,
+    backgroundColor: themeColor("#E5E7EB", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImage: {
+    height: "100%",
+    width: "100%",
+  },
+  personInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  name: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: themeColor("#2C3D32", "#E6E6E6"),
+  },
+  subtitle: {
+    fontSize: 12,
+    color: themeColor("#859087", "#E6E6E6"),
+  },
+  divider: {
+    height: 1,
+    backgroundColor: themeColor("#EEF1EB", "#181818"),
+    marginLeft: 60,
+  },
+  empty: {
+    alignItems: "center",
+    paddingHorizontal: 28,
+    paddingVertical: 56,
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 24,
+    backgroundColor: themeColor("#F0F4EC", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: themeColor("#394E3F", "#E6E6E6"),
+    marginTop: 18,
+    textAlign: "center",
+  },
+  emptyDescription: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: themeColor("#7E8C82", "#E6E6E6"),
+    marginTop: 6,
+    textAlign: "center",
+  },
+  retry: {
+    paddingHorizontal: 20,
+    paddingVertical: 11,
+    marginTop: 16,
+    borderRadius: 10,
+    backgroundColor: themeColor("#EAF0E6", "#181818"),
+  },
+  retryText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: themeColor("#52735E", "#E6E6E6"),
+  },
+
+  // Post List & Card Styles
+  postList: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 32,
+  },
+  postSeparator: {
+    height: 12,
+  },
+  postCard: {
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: themeColor("#E6ECE4", "#414141"),
+    padding: 14,
+    ...Platform.select({
+      web: {
+        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
+      },
+      default: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 3,
+        elevation: 1,
+      },
+    }),
+  },
+  postCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  postAuthorButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  postAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: themeColor("#EAF0E7", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  postAuthorInfo: {
+    flex: 1,
+  },
+  authorNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  postAuthorName: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: themeColor("#273A2E", "#E6E6E6"),
+  },
+  postMeta: {
+    fontSize: 11,
+    color: themeColor("#849288", "#E6E6E6"),
+    marginTop: 1,
+  },
+  cropBadge: {
+    backgroundColor: themeColor("#EBF3E8", "#181818"),
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  cropBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: themeColor("#355E40", "#E6E6E6"),
+  },
+  postContentText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: themeColor("#34453A", "#E6E6E6"),
+    marginBottom: 10,
+  },
+  postImageWrapper: {
+    width: "100%",
+    height: 160,
+    borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: themeColor("#F2F5F0", "#181818"),
+    marginBottom: 10,
+  },
+  postThumbnail: {
+    width: "100%",
+    height: "100%",
+  },
+  postFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: themeColor("#F2F5F0", "#414141"),
+  },
+  postStat: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  postStatText: {
+    fontSize: 12,
+    color: themeColor("#6D7E73", "#E6E6E6"),
+    fontWeight: "500",
+  },
+  categoryBadge: {
+    marginLeft: "auto",
+    backgroundColor: themeColor("#F0F4EF", "#181818"),
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  categoryBadgeText: {
+    fontSize: 10,
+    color: themeColor("#5B7062", "#E6E6E6"),
+    fontWeight: "500",
+  },
+
+  // Modal Detail Styles
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: themeColor("#EDF0EB", "#414141"),
+  },
+  modalHeaderTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: themeColor("#283C33", "#E6E6E6"),
+  },
+  modalScroll: {
+    flex: 1,
+  },
+  modalScrollContent: {
+    padding: 18,
+    paddingBottom: 40,
+  },
+  modalAuthorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: themeColor("#EDF1EB", "#414141"),
+  },
+  modalAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: themeColor("#EBF0E8", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  modalAuthorInfo: {
+    flex: 1,
+  },
+  modalAuthorName: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: themeColor("#24372B", "#E6E6E6"),
+  },
+  modalAuthorSubtext: {
+    fontSize: 12,
+    color: themeColor("#7E8C82", "#E6E6E6"),
+    marginTop: 2,
+  },
+  modalBadgesRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 14,
+    marginBottom: 12,
+  },
+  modalCropBadge: {
+    backgroundColor: themeColor("#E8F2E4", "#181818"),
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  modalCropBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: themeColor("#2F5938", "#E6E6E6"),
+  },
+  modalCategoryBadge: {
+    backgroundColor: themeColor("#EDF2EC", "#181818"),
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  modalCategoryBadgeText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: themeColor("#4A6152", "#E6E6E6"),
+  },
+  modalLocationBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: themeColor("#F4F7F2", "#181818"),
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  modalLocationText: {
+    fontSize: 12,
+    color: themeColor("#556B5D", "#E6E6E6"),
+  },
+  modalContentText: {
+    fontSize: 15,
+    lineHeight: 23,
+    color: themeColor("#2C3E33", "#E6E6E6"),
+    marginBottom: 16,
+  },
+  modalImageContainer: {
+    width: "100%",
+    height: 260,
+    borderRadius: 14,
+    overflow: "hidden",
+    backgroundColor: themeColor("#F1F5EF", "#181818"),
+    marginBottom: 16,
+  },
+  modalImage: {
+    width: "100%",
+    height: "100%",
+  },
+  modalStatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 20,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: themeColor("#EEF2EC", "#414141"),
+    marginBottom: 20,
+  },
+  modalStatItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  modalStatValue: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: themeColor("#3F5647", "#E6E6E6"),
+  },
+  viewProfileBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: themeColor("#2E523E", "#E6E6E6"),
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  viewProfileBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
+  },
+});

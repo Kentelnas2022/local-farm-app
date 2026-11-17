@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { FriendItem, getFriendsApi } from "@/services/connection-service";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -23,6 +24,7 @@ import SidebarMenu from "../../components/SidebarMenu";
 const SORT_OPTIONS = ["Newest first", "Oldest first", "A to Z", "Z to A"];
 
 export default function Friends() {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
   const [isSidebarVisible, setSidebarVisible] = useState(false);
   const [isSortDropdownVisible, setSortDropdownVisible] = useState(false);
@@ -113,7 +115,7 @@ export default function Friends() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white relative h-full"
+      className="flex-1 bg-white relative h-full dark:bg-[#181818] "
       style={{
         flex: 1,
         position: "relative",
@@ -123,7 +125,7 @@ export default function Friends() {
     >
       {/* 1. Header Section */}
       <View className="px-5 pt-4 pb-2">
-        <Text className="text-3xl font-bold text-gray-900">Connection</Text>
+        <Text className="text-3xl font-bold text-gray-900 dark:text-[#E6E6E6] ">Connection</Text>
       </View>
 
       {/* 2. Search Bar */}
@@ -134,16 +136,16 @@ export default function Friends() {
           accessibilityRole="button"
           accessibilityLabel="Open sidebar menu"
         >
-          <Ionicons name="person-add-outline" size={26} color="#34594A" />
+          <Ionicons name="person-add-outline" size={26} color={themeColor("#34594A", "#E6E6E6")} />
         </TouchableOpacity>
 
-        <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 h-11 border border-gray-100">
+        <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 h-11 border border-gray-100 dark:bg-[#181818] dark:border-[#414141] ">
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search friends..."
-            placeholderTextColor="#9CA3AF"
-            className="flex-1 text-base text-gray-800 pr-2 h-full"
+            placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+            className="flex-1 text-base text-gray-800 pr-2 h-full dark:text-[#E6E6E6] "
             autoCapitalize="none"
           />
           {searchQuery ? (
@@ -152,10 +154,10 @@ export default function Friends() {
               className="p-1 mr-1"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="close-circle" size={18} color="#34594A" />
+              <Ionicons name="close-circle" size={18} color={themeColor("#34594A", "#E6E6E6")} />
             </TouchableOpacity>
           ) : null}
-          <Ionicons name="search-outline" size={20} color="#34594A" />
+          <Ionicons name="search-outline" size={20} color={themeColor("#34594A", "#E6E6E6")} />
         </View>
       </View>
 
@@ -179,9 +181,9 @@ export default function Friends() {
               shadowRadius: 10,
               elevation: 10,
             }}
-            className="bg-white p-4 rounded-2xl border border-gray-200 w-56"
+            className="bg-white p-4 rounded-2xl border border-gray-200 w-56 dark:bg-[#242424] dark:border-[#414141] "
           >
-            <Text className="text-gray-500 font-bold text-sm tracking-wider mb-2.5">
+            <Text className="text-gray-500 font-bold text-sm tracking-wider mb-2.5 dark:text-[#ADADAD] ">
               SORT BY
             </Text>
 
@@ -206,8 +208,8 @@ export default function Friends() {
                     <Text
                       className={`text-sm ${
                         isSelected
-                          ? "font-bold text-gray-900"
-                          : "font-normal text-gray-600"
+                          ? "font-bold text-gray-900 dark:text-[#E6E6E6] "
+                          : "font-normal text-gray-600 dark:text-[#ADADAD] "
                       }`}
                     >
                       {option}
@@ -217,14 +219,14 @@ export default function Friends() {
               })}
             </View>
 
-            <View className="border-b border-gray-200 my-3" />
+            <View className="border-b border-gray-200 my-3 dark:border-[#414141] " />
 
-            <Text className="text-gray-500 font-bold text-xs tracking-wider mb-2">
+            <Text className="text-gray-500 font-bold text-xs tracking-wider mb-2 dark:text-[#ADADAD] ">
               FILTER
             </Text>
 
             <View className="flex-row items-center justify-between py-1">
-              <Text className="text-gray-700 text-sm">No mutual friend</Text>
+              <Text className="text-gray-700 text-sm dark:text-[#E6E6E6] ">No mutual friend</Text>
               <Switch
                 value={noMutualFilter}
                 onValueChange={setNoMutualFilter}
@@ -238,7 +240,7 @@ export default function Friends() {
 
       {/* Content */}
       <ScrollView
-        className="flex-1 bg-white z-0"
+        className="flex-1 bg-white z-0 dark:bg-[#181818] "
         showsVerticalScrollIndicator={false}
         bounces={false}
         overScrollMode="never"
@@ -257,8 +259,8 @@ export default function Friends() {
       >
         {isLoading ? (
           <View className="py-12 items-center justify-center">
-            <ActivityIndicator size="large" color="#34594A" />
-            <Text className="text-sm text-gray-500 mt-2 font-medium">
+            <ActivityIndicator size="large" color={themeColor("#34594A", "#E6E6E6")} />
+            <Text className="text-sm text-gray-500 mt-2 font-medium dark:text-[#ADADAD] ">
               Loading friends...
             </Text>
           </View>
@@ -266,18 +268,18 @@ export default function Friends() {
           <>
             {/* ── FRIENDS HEADER ── */}
             <View className="flex-row justify-between items-center px-5 py-2 mb-1">
-              <Text className="text-lg font-semibold text-gray-900">
+              <Text className="text-lg font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                 Friends{" "}
-                <Text className="text-[#34594A] font-bold">
+                <Text className="text-[#34594A] font-bold dark:text-[#E6E6E6] ">
                   {filteredFriends.length}
                 </Text>
               </Text>
 
               <TouchableOpacity
                 onPress={() => setSortDropdownVisible(!isSortDropdownVisible)}
-                className="flex-row items-center py-1 px-2 rounded-lg active:bg-gray-100"
+                className="flex-row items-center py-1 px-2 rounded-lg active:bg-gray-100 dark:active:bg-[#181818] "
               >
-                <Text className="text-sm font-medium text-gray-700 mr-1">
+                <Text className="text-sm font-medium text-gray-700 mr-1 dark:text-[#E6E6E6] ">
                   Sort
                 </Text>
                 <Ionicons
@@ -287,20 +289,20 @@ export default function Friends() {
                       : "chevron-down-outline"
                   }
                   size={16}
-                  color="#34594A"
+                  color={themeColor("#34594A", "#E6E6E6")}
                 />
               </TouchableOpacity>
             </View>
 
             {filteredFriends.length === 0 ? (
               <View className="py-14 items-center justify-center px-6">
-                <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3">
-                  <Ionicons name="people-outline" size={32} color="#34594A" />
+                <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3 dark:bg-[#181818] ">
+                  <Ionicons name="people-outline" size={32} color={themeColor("#34594A", "#E6E6E6")} />
                 </View>
-                <Text className="text-base font-bold text-gray-800 mb-1">
+                <Text className="text-base font-bold text-gray-800 mb-1 dark:text-[#E6E6E6] ">
                   No Friends Found
                 </Text>
-                <Text className="text-xs text-gray-500 text-center leading-5">
+                <Text className="text-xs text-gray-500 text-center leading-5 dark:text-[#ADADAD] ">
                   Confirm connection requests or add friends to see them here.
                 </Text>
               </View>
@@ -311,9 +313,9 @@ export default function Friends() {
                     key={friend.id}
                     onPress={() => handleOpenUserProfile(friend)}
                     activeOpacity={0.7}
-                    className="flex-row items-center py-3.5 border-b border-gray-100 active:bg-gray-50"
+                    className="flex-row items-center py-3.5 border-b border-gray-100 active:bg-gray-50 dark:border-[#414141] dark:active:bg-[#242424] "
                   >
-                    <View className="h-12 w-12 rounded-full bg-gray-200 items-center justify-center mr-4 overflow-hidden border border-gray-200">
+                    <View className="h-12 w-12 rounded-full bg-gray-200 items-center justify-center mr-4 overflow-hidden border border-gray-200 dark:bg-[#181818] dark:border-[#414141] ">
                       {friend.avatarUrl ? (
                         <Image
                           source={{ uri: friend.avatarUrl }}
@@ -321,16 +323,16 @@ export default function Friends() {
                           resizeMode="cover"
                         />
                       ) : (
-                        <Ionicons name="person" size={26} color="#34594A" />
+                        <Ionicons name="person" size={26} color={themeColor("#34594A", "#E6E6E6")} />
                       )}
                     </View>
 
                     <View className="flex-1 pr-2">
-                      <Text className="text-base font-semibold text-gray-800">
+                      <Text className="text-base font-semibold text-gray-800 dark:text-[#E6E6E6] ">
                         {friend.name}
                       </Text>
                       {friend.username ? (
-                        <Text className="text-xs text-gray-400">
+                        <Text className="text-xs text-gray-400 dark:text-[#ADADAD] ">
                           @{friend.username}
                         </Text>
                       ) : null}
@@ -341,7 +343,7 @@ export default function Friends() {
                         e.stopPropagation?.();
                         setSelectedFriendForOptions(friend);
                       }}
-                      className="w-9 h-9 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200"
+                      className="w-9 h-9 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200 dark:bg-[#181818] dark:active:bg-[#181818] "
                       accessibilityRole="button"
                       accessibilityLabel="Friend options"
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -349,7 +351,7 @@ export default function Friends() {
                       <Ionicons
                         name="ellipsis-horizontal"
                         size={18}
-                        color="#34594A"
+                        color={themeColor("#34594A", "#E6E6E6")}
                       />
                     </TouchableOpacity>
                   </TouchableOpacity>
@@ -383,15 +385,15 @@ export default function Friends() {
               shadowRadius: 10,
               elevation: 20,
             }}
-            className="bg-white rounded-t-3xl pt-4 pb-8 px-6 border-t border-gray-100"
+            className="bg-white rounded-t-3xl pt-4 pb-8 px-6 border-t border-gray-100 dark:bg-[#242424] dark:border-[#414141] "
           >
             {/* Grabber indicator */}
-            <View className="w-12 h-1.5 bg-gray-300 rounded-full self-center mb-4" />
+            <View className="w-12 h-1.5 bg-gray-300 rounded-full self-center mb-4 dark:bg-[#303030] " />
 
             {/* Friend info header */}
             {selectedFriendForOptions && (
-              <View className="flex-row items-center mb-4 pb-4 border-b border-gray-100">
-                <View className="h-12 w-12 rounded-full bg-gray-200 items-center justify-center mr-3.5 overflow-hidden border border-gray-200">
+              <View className="flex-row items-center mb-4 pb-4 border-b border-gray-100 dark:border-[#414141] ">
+                <View className="h-12 w-12 rounded-full bg-gray-200 items-center justify-center mr-3.5 overflow-hidden border border-gray-200 dark:bg-[#181818] dark:border-[#414141] ">
                   {selectedFriendForOptions.avatarUrl ? (
                     <Image
                       source={{ uri: selectedFriendForOptions.avatarUrl }}
@@ -399,14 +401,14 @@ export default function Friends() {
                       resizeMode="cover"
                     />
                   ) : (
-                    <Ionicons name="person" size={24} color="#34594A" />
+                    <Ionicons name="person" size={24} color={themeColor("#34594A", "#E6E6E6")} />
                   )}
                 </View>
                 <View className="flex-1">
-                  <Text className="text-base font-bold text-gray-900">
+                  <Text className="text-base font-bold text-gray-900 dark:text-[#E6E6E6] ">
                     {selectedFriendForOptions.name}
                   </Text>
-                  <Text className="text-xs text-gray-400 mt-0.5">
+                  <Text className="text-xs text-gray-400 mt-0.5 dark:text-[#ADADAD] ">
                     {selectedFriendForOptions.username
                       ? `@${selectedFriendForOptions.username}`
                       : "Connected Friend"}
@@ -423,20 +425,20 @@ export default function Friends() {
                   setSelectedFriendForOptions(null);
                   if (target) handleOpenUserProfile(target);
                 }}
-                className="flex-row items-center py-3 px-3 rounded-2xl active:bg-gray-50"
+                className="flex-row items-center py-3 px-3 rounded-2xl active:bg-gray-50 dark:active:bg-[#242424] "
               >
-                <View className="w-10 h-10 rounded-full bg-[#EDF3EE] items-center justify-center mr-3.5 border border-[#E4EDE6]">
-                  <Ionicons name="person-outline" size={20} color="#34594A" />
+                <View className="w-10 h-10 rounded-full bg-[#EDF3EE] items-center justify-center mr-3.5 border border-[#E4EDE6] dark:bg-[#181818] dark:border-[#414141] ">
+                  <Ionicons name="person-outline" size={20} color={themeColor("#34594A", "#E6E6E6")} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-base font-semibold text-gray-900">
+                  <Text className="text-base font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                     View Profile
                   </Text>
-                  <Text className="text-xs text-gray-500">
+                  <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">
                     See posts, photos, and info
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#34594A" />
+                <Ionicons name="chevron-forward" size={18} color={themeColor("#34594A", "#E6E6E6")} />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -445,9 +447,9 @@ export default function Friends() {
                   setSelectedFriendForOptions(null);
                   if (target) handleOpenChatWithFriend(target);
                 }}
-                className="flex-row items-center py-3 px-3 rounded-2xl active:bg-gray-50"
+                className="flex-row items-center py-3 px-3 rounded-2xl active:bg-gray-50 dark:active:bg-[#242424] "
               >
-                <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mr-3.5 border border-blue-100">
+                <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mr-3.5 border border-blue-100 dark:bg-[#181818] dark:border-[#414141] ">
                   <Ionicons
                     name="chatbubble-ellipses-outline"
                     size={20}
@@ -455,23 +457,23 @@ export default function Friends() {
                   />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-base font-semibold text-gray-900">
+                  <Text className="text-base font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                     Message
                   </Text>
-                  <Text className="text-xs text-gray-500">
+                  <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">
                     Send a direct message
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#34594A" />
+                <Ionicons name="chevron-forward" size={18} color={themeColor("#34594A", "#E6E6E6")} />
               </TouchableOpacity>
             </View>
 
             {/* Cancel Button */}
             <TouchableOpacity
               onPress={() => setSelectedFriendForOptions(null)}
-              className="mt-4 py-3.5 rounded-2xl bg-gray-100 items-center justify-center active:bg-gray-200"
+              className="mt-4 py-3.5 rounded-2xl bg-gray-100 items-center justify-center active:bg-gray-200 dark:bg-[#181818] dark:active:bg-[#181818] "
             >
-              <Text className="text-sm font-semibold text-gray-700">
+              <Text className="text-sm font-semibold text-gray-700 dark:text-[#E6E6E6] ">
                 Cancel
               </Text>
             </TouchableOpacity>

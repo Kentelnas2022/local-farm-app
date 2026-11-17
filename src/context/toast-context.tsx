@@ -42,12 +42,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 200,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== "web",
       }),
       Animated.timing(translateY, {
         toValue: -20,
         duration: 200,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== "web",
       }),
     ]).start(() => {
       setToast(null);
@@ -63,12 +63,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 250,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }),
         Animated.spring(translateY, {
           toValue: 0,
           friction: 6,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }),
       ]).start();
 

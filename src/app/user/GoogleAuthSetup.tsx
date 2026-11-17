@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useToast } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -26,6 +27,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { TWO_FACTOR_STORAGE_KEY } from "./TwoFactorOtp";
 
 export default function GoogleAuthSetupScreen() {
+  const { themeColor } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { user, updateUser } = useAuth();
   const { showToast } = useToast();
@@ -154,21 +156,33 @@ export default function GoogleAuthSetupScreen() {
     }
   };
 
+  const handleBack = () => {
+    try {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.push("/user/Security" as any);
+      }
+    } catch {
+      router.push("/user/Security" as any);
+    }
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-white" style={{ backgroundColor: "#FFFFFF" }}>
+    <SafeAreaView className="flex-1 bg-white dark:bg-[#181818] " style={{ backgroundColor: themeColor("#FFFFFF", "#242424") }}>
       {/* Top Header */}
-      <View className="relative items-center justify-center py-4 border-b border-gray-100">
+      <View className="relative items-center justify-center py-4 border-b border-gray-100 dark:border-[#414141] ">
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={handleBack}
           className="absolute left-4 p-1 active:opacity-70"
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-undo" size={26} color="#000000" />
+          <Ionicons name="arrow-undo" size={26} color={themeColor("#000000", "#E6E6E6")} />
         </TouchableOpacity>
 
-        <Text className="text-base font-bold text-gray-900">
+        <Text className="text-base font-bold text-gray-900 dark:text-[#E6E6E6] ">
           Google Authenticator Setup
         </Text>
       </View>
@@ -185,78 +199,78 @@ export default function GoogleAuthSetupScreen() {
         >
           {/* Hero Section */}
           <View className="items-center mt-6 mb-6">
-            <View className="w-16 h-16 rounded-full bg-[#E8F5E9] items-center justify-center mb-3 shadow-sm shadow-[#77af5c]/20">
-              <Ionicons name="shield-checkmark" size={32} color="#77af5c" />
+            <View className="w-16 h-16 rounded-full bg-[#E8F5E9] items-center justify-center mb-3 shadow-sm shadow-[#77af5c]/20 dark:bg-[#181818] ">
+              <Ionicons name="shield-checkmark" size={32} color={themeColor("#77af5c", "#E6E6E6")} />
             </View>
 
-            <Text className="text-xl font-black text-gray-900 text-center mb-1">
+            <Text className="text-xl font-black text-gray-900 text-center mb-1 dark:text-[#E6E6E6] ">
               Set Up Authenticator
             </Text>
 
-            <Text className="text-xs text-gray-500 text-center px-4 leading-relaxed">
+            <Text className="text-xs text-gray-500 text-center px-4 leading-relaxed dark:text-[#ADADAD] ">
               Pair your Local Farm account with Google Authenticator to generate time-based verification passcodes.
             </Text>
           </View>
 
           {/* Step 1: Open App */}
-          <View className="bg-[#F9FAFB] rounded-2xl p-4 mb-4 border border-gray-200/80">
+          <View className="bg-[#F9FAFB] rounded-2xl p-4 mb-4 border border-gray-200/80 dark:bg-[#242424] dark:border-[#414141]/80 ">
             <View className="flex-row items-center gap-2.5 mb-2">
-              <View className="w-6 h-6 rounded-full bg-[#77af5c] items-center justify-center">
-                <Text className="text-xs font-bold text-white">1</Text>
+              <View className="w-6 h-6 rounded-full bg-[#77af5c] items-center justify-center dark:bg-[#E6E6E6] ">
+                <Text className="text-xs font-bold text-white dark:text-[#181818] ">1</Text>
               </View>
-              <Text className="text-sm font-bold text-gray-900">
+              <Text className="text-sm font-bold text-gray-900 dark:text-[#E6E6E6] ">
                 Open Google Authenticator
               </Text>
             </View>
 
-            <Text className="text-xs text-gray-600 leading-relaxed pl-8 mb-3">
-              Download Google Authenticator on your phone if you haven't yet, open the app, and tap the <Text className="font-bold text-gray-800">"+"</Text> button.
+            <Text className="text-xs text-gray-600 leading-relaxed pl-8 mb-3 dark:text-[#ADADAD] ">
+              Download Google Authenticator on your phone if you haven't yet, open the app, and tap the <Text className="font-bold text-gray-800 dark:text-[#E6E6E6] ">"+"</Text> button.
             </Text>
 
-            <View className="ml-8 flex-row items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200 self-start">
+            <View className="ml-8 flex-row items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200 self-start dark:bg-[#242424] dark:border-[#414141] ">
               <Ionicons name="logo-google" size={14} color="#4285F4" />
-              <Text className="text-xs font-semibold text-gray-700">
+              <Text className="text-xs font-semibold text-gray-700 dark:text-[#E6E6E6] ">
                 Google Authenticator
               </Text>
             </View>
           </View>
 
           {/* Step 2: Enter Key */}
-          <View className="bg-[#F9FAFB] rounded-2xl p-4 mb-4 border border-gray-200/80">
+          <View className="bg-[#F9FAFB] rounded-2xl p-4 mb-4 border border-gray-200/80 dark:bg-[#242424] dark:border-[#414141]/80 ">
             <View className="flex-row items-center gap-2.5 mb-2">
-              <View className="w-6 h-6 rounded-full bg-[#77af5c] items-center justify-center">
-                <Text className="text-xs font-bold text-white">2</Text>
+              <View className="w-6 h-6 rounded-full bg-[#77af5c] items-center justify-center dark:bg-[#E6E6E6] ">
+                <Text className="text-xs font-bold text-white dark:text-[#181818] ">2</Text>
               </View>
-              <Text className="text-sm font-bold text-gray-900">
+              <Text className="text-sm font-bold text-gray-900 dark:text-[#E6E6E6] ">
                 Enter your Setup Key
               </Text>
             </View>
 
-            <Text className="text-xs text-gray-600 leading-relaxed pl-8 mb-3">
-              Choose <Text className="font-semibold text-gray-800">"Enter a setup key"</Text> in Google Authenticator and add this secret key:
+            <Text className="text-xs text-gray-600 leading-relaxed pl-8 mb-3 dark:text-[#ADADAD] ">
+              Choose <Text className="font-semibold text-gray-800 dark:text-[#E6E6E6] ">"Enter a setup key"</Text> in Google Authenticator and add this secret key:
             </Text>
 
             {/* Secret Key Display Box */}
-            <View className="ml-8 bg-white border border-gray-300 rounded-xl p-3 flex-row items-center justify-between mb-2 shadow-sm">
+            <View className="ml-8 bg-white border border-gray-300 rounded-xl p-3 flex-row items-center justify-between mb-2 shadow-sm dark:bg-[#242424] dark:border-[#414141] ">
               <View className="flex-1 pr-2">
-                <Text className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">
+                <Text className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5 dark:text-[#ADADAD] ">
                   Your Secret Key
                 </Text>
                 {isLoadingSetup ? (
                   <View className="flex-row items-center py-1">
-                    <ActivityIndicator size="small" color="#77af5c" />
-                    <Text className="text-xs text-gray-400 ml-2">Generating secure key...</Text>
+                    <ActivityIndicator size="small" color={themeColor("#77af5c", "#E6E6E6")} />
+                    <Text className="text-xs text-gray-400 ml-2 dark:text-[#ADADAD] ">Generating secure key...</Text>
                   </View>
                 ) : fetchError ? (
                   <View className="flex-row items-center py-1">
                     <Text className="text-xs text-red-500 mr-2">Failed to load key</Text>
                     <TouchableOpacity onPress={loadSetupDetails}>
-                      <Text className="text-xs font-bold text-[#77af5c]">Retry</Text>
+                      <Text className="text-xs font-bold text-[#77af5c] dark:text-[#E6E6E6] ">Retry</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
                   <Text
-                    className="text-sm font-mono font-bold text-gray-900 tracking-wider"
+                    className="text-sm font-mono font-bold text-gray-900 tracking-wider dark:text-[#E6E6E6] "
                     selectable
                   >
                     {secretKey.match(/.{1,4}/g)?.join(" ") || secretKey}
@@ -268,7 +282,7 @@ export default function GoogleAuthSetupScreen() {
                 onPress={handleCopyKey}
                 disabled={isLoadingSetup || !secretKey}
                 className={`px-3 py-2 rounded-lg flex-row items-center gap-1.5 active:opacity-75 ${
-                  copied ? "bg-[#77af5c]" : "bg-[#E8F5E9]"
+                  copied ? "bg-[#77af5c] dark:bg-[#E6E6E6] " : "bg-[#E8F5E9] dark:bg-[#181818] "
                 }`}
                 accessibilityRole="button"
                 accessibilityLabel="Copy setup key"
@@ -280,7 +294,7 @@ export default function GoogleAuthSetupScreen() {
                 />
                 <Text
                   className={`text-xs font-bold ${
-                    copied ? "text-white" : "text-[#77af5c]"
+                    copied ? "text-white dark:text-[#181818] " : "text-[#77af5c] dark:text-[#E6E6E6] "
                   }`}
                 >
                   {copied ? "Copied" : "Copy"}
@@ -288,37 +302,37 @@ export default function GoogleAuthSetupScreen() {
               </TouchableOpacity>
             </View>
 
-            <View className="ml-8 bg-gray-50 rounded-lg p-2 border border-gray-200">
-              <Text className="text-[11px] text-gray-500">
+            <View className="ml-8 bg-gray-50 rounded-lg p-2 border border-gray-200 dark:bg-[#242424] dark:border-[#414141] ">
+              <Text className="text-[11px] text-gray-500 dark:text-[#ADADAD] ">
                 Account name:{" "}
-                <Text className="font-semibold text-gray-700">
+                <Text className="font-semibold text-gray-700 dark:text-[#E6E6E6] ">
                   {accountName || `Local Farm (${user?.email || "Account"})`}
                 </Text>
               </Text>
-              <Text className="text-[11px] text-gray-500 mt-0.5">
-                Key type: <Text className="font-semibold text-gray-700">Time-based</Text>
+              <Text className="text-[11px] text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
+                Key type: <Text className="font-semibold text-gray-700 dark:text-[#E6E6E6] ">Time-based</Text>
               </Text>
             </View>
           </View>
 
           {/* Step 3: Verify 6-Digit Code */}
-          <View className="bg-[#F9FAFB] rounded-2xl p-4 mb-6 border border-gray-200/80">
+          <View className="bg-[#F9FAFB] rounded-2xl p-4 mb-6 border border-gray-200/80 dark:bg-[#242424] dark:border-[#414141]/80 ">
             <View className="flex-row items-center gap-2.5 mb-2">
-              <View className="w-6 h-6 rounded-full bg-[#77af5c] items-center justify-center">
-                <Text className="text-xs font-bold text-white">3</Text>
+              <View className="w-6 h-6 rounded-full bg-[#77af5c] items-center justify-center dark:bg-[#E6E6E6] ">
+                <Text className="text-xs font-bold text-white dark:text-[#181818] ">3</Text>
               </View>
-              <Text className="text-sm font-bold text-gray-900">
+              <Text className="text-sm font-bold text-gray-900 dark:text-[#E6E6E6] ">
                 Enter the 6-Digit Code
               </Text>
             </View>
 
-            <Text className="text-xs text-gray-600 leading-relaxed pl-8 mb-4">
+            <Text className="text-xs text-gray-600 leading-relaxed pl-8 mb-4 dark:text-[#ADADAD] ">
               Enter the 6-digit code currently displayed in Google Authenticator:
             </Text>
 
             {/* Error Message */}
             {errorMsg ? (
-              <View className="ml-8 bg-[#FFEBEA] p-2.5 rounded-xl mb-3 border border-[#FFCCCC]">
+              <View className="ml-8 bg-[#FFEBEA] p-2.5 rounded-xl mb-3 border border-[#FFCCCC] dark:bg-[#181818] ">
                 <Text className="text-[#FF3B30] text-xs text-center font-medium">
                   {errorMsg}
                 </Text>
@@ -333,13 +347,13 @@ export default function GoogleAuthSetupScreen() {
                   ref={(el) => {
                     inputRefs.current[index] = el;
                   }}
-                  className={`w-[42px] h-[50px] bg-white border ${
+                  className={`w-[42px] h-[50px] bg-white border  dark:bg-[#242424] ${
                     digit
-                      ? "border-[#77af5c]"
+                      ? "border-[#77af5c] dark:border-[#414141] "
                       : errorMsg
-                      ? "border-[#FF3B30] bg-[#FFF8F8]"
-                      : "border-gray-300"
-                  } rounded-xl text-center text-xl font-bold text-gray-900 shadow-sm`}
+                      ? "border-[#FF3B30] bg-[#FFF8F8] dark:bg-[#181818] "
+                      : "border-gray-300 dark:border-[#414141] "
+                  } rounded-xl text-center text-xl font-bold text-gray-900 shadow-sm dark:text-[#E6E6E6] `}
                   keyboardType="number-pad"
                   maxLength={6}
                   value={digit}
@@ -355,9 +369,9 @@ export default function GoogleAuthSetupScreen() {
           <TouchableOpacity
             onPress={handleVerify}
             disabled={isSubmitting}
-            className="w-full h-[52px] bg-[#77af5c] rounded-2xl items-center justify-center shadow-md active:opacity-90 mb-3"
+            className="w-full h-[52px] bg-[#77af5c] rounded-2xl items-center justify-center shadow-md active:opacity-90 mb-3 dark:bg-[#E6E6E6] "
             style={{
-              backgroundColor: "#77af5c",
+              backgroundColor: themeColor("#77af5c", "#E6E6E6"),
               shadowColor: "#77af5c",
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.25,
@@ -367,21 +381,21 @@ export default function GoogleAuthSetupScreen() {
             accessibilityLabel="Verify and Turn On Google Authenticator"
           >
             {isSubmitting ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={themeColor("#FFFFFF", "#181818")} />
             ) : (
-              <Text className="text-base font-bold text-white">
+              <Text className="text-base font-bold text-white dark:text-[#181818] ">
                 Verify & Turn On
               </Text>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={handleBack}
             className="w-full py-3 items-center justify-center active:opacity-70"
             accessibilityRole="button"
             accessibilityLabel="Cancel"
           >
-            <Text className="text-sm font-bold text-gray-400">Cancel</Text>
+            <Text className="text-sm font-bold text-gray-400 dark:text-[#ADADAD] ">Cancel</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useToast } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -77,6 +78,8 @@ function FloatingLabelField({
   lockedBadge?: string;
   children?: React.ReactNode;
 }) {
+  const { themeColor } = useAppTheme();
+  const styles = createStyles(themeColor);
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const hasValue = Boolean(value && value.trim().length > 0);
@@ -121,20 +124,12 @@ function FloatingLabelField({
 
   const labelColor = animatedFocus.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#7F9185", isFocused ? "#34594A" : "#6B7D72"],
+    outputRange: [themeColor("#7F9185", "#ADADAD"), themeColor(isFocused ? "#34594A" : "#6B7D72", isFocused ? "#E6E6E6" : "#ADADAD")],
   });
 
-  const borderColor = isFocused
-    ? "#34594A"
-    : isEditing
-    ? "#D8E3DB"
-    : "#EAF0EC";
+  const borderColor = themeColor(isFocused ? "#34594A" : isEditing ? "#D8E3DB" : "#EAF0EC", isFocused ? "#8A8A8A" : "#414141");
 
-  const backgroundColor = isFocused
-    ? "#FFFFFF"
-    : isEditing
-    ? "#FAFCFA"
-    : "#F8FAF8";
+  const backgroundColor = themeColor(isFocused ? "#FFFFFF" : isEditing ? "#FAFCFA" : "#F8FAF8", isFocused ? "#353535" : "#2C2C2C");
 
   return (
     <Pressable
@@ -161,7 +156,7 @@ function FloatingLabelField({
         <Ionicons
           name={iconName}
           size={16}
-          color={isFocused ? "#34594A" : "#5F7467"}
+          color={themeColor(isFocused ? "#34594A" : "#5F7467", isFocused ? "#E6E6E6" : "#ADADAD")}
         />
       </View>
 
@@ -222,7 +217,7 @@ function FloatingLabelField({
       {/* Locked Badge if applicable */}
       {lockedBadge && (
         <View style={styles.lockedPill}>
-          <Ionicons name="lock-closed" size={10} color="#34594A" />
+          <Ionicons name="lock-closed" size={10} color={themeColor("#34594A", "#E6E6E6")} />
           <Text style={styles.lockedPillText}>{lockedBadge}</Text>
         </View>
       )}
@@ -317,6 +312,8 @@ function TactileTouchable({
 }
 
 export default function PersonalInformation() {
+  const { themeColor } = useAppTheme();
+  const styles = createStyles(themeColor);
   const params = useLocalSearchParams<{ edit?: string; mode?: string }>();
   const { user, updateUser } = useAuth();
   const { showToast } = useToast();
@@ -662,7 +659,7 @@ export default function PersonalInformation() {
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Ionicons name="chevron-back" size={20} color="#293E33" />
+            <Ionicons name="chevron-back" size={20} color={themeColor("#293E33", "#E6E6E6")} />
           </TouchableOpacity>
 
           <View style={styles.headerTitleWrap}>
@@ -673,7 +670,7 @@ export default function PersonalInformation() {
         </View>
 
         <ScrollView
-          style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+          style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 110, paddingHorizontal: 20 }}
         >
@@ -692,11 +689,11 @@ export default function PersonalInformation() {
                   height: 240,
                   borderRadius: 120,
                   overflow: "hidden",
-                  backgroundColor: "#F0F4EF",
+                  backgroundColor: themeColor("#F0F4EF", "#181818"),
                   alignItems: "center",
                   justifyContent: "center",
                   borderWidth: 1,
-                  borderColor: "#E5ECE6",
+                  borderColor: themeColor("#E5ECE6", "#414141"),
                 }}
               >
                 {avatarUri ? (
@@ -710,8 +707,8 @@ export default function PersonalInformation() {
                     resizeMode="cover"
                   />
                 ) : (
-                  <View style={{ width: "100%", height: "100%", backgroundColor: "#34594A", alignItems: "center", justifyContent: "center" }}>
-                    <Ionicons name="person" size={110} color="#FFFFFF" />
+                  <View style={{ width: "100%", height: "100%", backgroundColor: themeColor("#34594A", "#303030"), alignItems: "center", justifyContent: "center" }}>
+                    <Ionicons name="person" size={110} color={themeColor("#FFFFFF", "#E6E6E6")} />
                   </View>
                 )}
               </View>
@@ -722,14 +719,14 @@ export default function PersonalInformation() {
                   position: "absolute",
                   bottom: 6,
                   right: 12,
-                  backgroundColor: "#34594A",
+                  backgroundColor: themeColor("#34594A", "#303030"),
                   padding: 10,
                   borderRadius: 20,
                   borderWidth: 2,
-                  borderColor: "#FFFFFF",
+                  borderColor: themeColor("#FFFFFF", "#414141"),
                 }}
               >
-                <Ionicons name="images" size={16} color="#FFFFFF" />
+                <Ionicons name="images" size={16} color={themeColor("#FFFFFF", "#E6E6E6")} />
               </View>
             </TouchableOpacity>
 
@@ -738,8 +735,8 @@ export default function PersonalInformation() {
               style={{ marginTop: 16, flexDirection: "row", alignItems: "center", gap: 6 }}
               activeOpacity={0.7}
             >
-              <Ionicons name="image-outline" size={18} color="#34594A" />
-              <Text style={{ fontSize: 13, fontWeight: "600", color: "#34594A" }}>
+              <Ionicons name="image-outline" size={18} color={themeColor("#34594A", "#E6E6E6")} />
+              <Text style={{ fontSize: 13, fontWeight: "600", color: themeColor("#34594A", "#E6E6E6") }}>
                 Choose from gallery
               </Text>
             </TouchableOpacity>
@@ -760,7 +757,7 @@ export default function PersonalInformation() {
               }
               style={{ height: 32, justifyContent: "center", position: "relative" }}
             >
-              <View style={{ height: 6, backgroundColor: "#EDF2EE", borderRadius: 3, width: "100%" }} />
+              <View style={{ height: 6, backgroundColor: themeColor("#EDF2EE", "#181818"), borderRadius: 3, width: "100%" }} />
 
               <View
                 style={{
@@ -769,9 +766,9 @@ export default function PersonalInformation() {
                   width: 24,
                   height: 24,
                   borderRadius: 12,
-                  backgroundColor: "#34594A",
+                  backgroundColor: themeColor("#34594A", "#303030"),
                   borderWidth: 2,
-                  borderColor: "#FFFFFF",
+                  borderColor: themeColor("#FFFFFF", "#414141"),
                 }}
               />
             </View>
@@ -785,15 +782,15 @@ export default function PersonalInformation() {
                   paddingHorizontal: 20,
                   paddingVertical: 12,
                   borderRadius: 13,
-                  backgroundColor: "#F3F5F2",
+                  backgroundColor: themeColor("#F3F5F2", "#181818"),
                   borderWidth: 1,
-                  borderColor: "#E2ECE4",
+                  borderColor: themeColor("#E2ECE4", "#414141"),
                 }}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Cancel"
               >
-                <Text style={{ fontSize: 13.5, fontWeight: "600", color: "#5E7265" }}>Cancel</Text>
+                <Text style={{ fontSize: 13.5, fontWeight: "600", color: themeColor("#5E7265", "#E6E6E6") }}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -803,7 +800,7 @@ export default function PersonalInformation() {
                   paddingHorizontal: 26,
                   paddingVertical: 12,
                   borderRadius: 13,
-                  backgroundColor: "#34594A",
+                  backgroundColor: themeColor("#34594A", "#303030"),
                   flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "center",
@@ -814,9 +811,9 @@ export default function PersonalInformation() {
                 accessibilityLabel="Save"
               >
                 {isSaving ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
+                  <ActivityIndicator color={themeColor("#FFFFFF", "#E6E6E6")} size="small" />
                 ) : (
-                  <Text style={{ fontSize: 13.5, fontWeight: "600", color: "#FFFFFF" }}>Save</Text>
+                  <Text style={{ fontSize: 13.5, fontWeight: "600", color: themeColor("#FFFFFF", "#E6E6E6") }}>Save</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -853,7 +850,7 @@ export default function PersonalInformation() {
               accessibilityRole="button"
               accessibilityLabel={isEditing ? "Cancel edit" : "Go back"}
             >
-              <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
+              <Ionicons name="chevron-back" size={20} color={themeColor("#FFFFFF", "#E6E6E6")} />
             </TouchableOpacity>
 
             <View style={styles.bannerTitleWrap}>
@@ -887,7 +884,7 @@ export default function PersonalInformation() {
                   />
                 ) : (
                   <View style={styles.avatarFallback}>
-                    <Ionicons name="person" size={58} color="#9CA3AF" />
+                    <Ionicons name="person" size={58} color={themeColor("#9CA3AF", "#ADADAD")} />
                   </View>
                 )}
               </View>
@@ -895,7 +892,7 @@ export default function PersonalInformation() {
               {/* Status Badge on Avatar */}
               {isRSBSAVerified ? (
                 <View style={styles.avatarBadgeVerified}>
-                  <Ionicons name="checkmark-circle" size={20} color="#2E7D5B" />
+                  <Ionicons name="checkmark-circle" size={20} color={themeColor("#2E7D5B", "#E6E6E6")} />
                 </View>
               ) : (
                 <View style={styles.avatarBadgeDot} />
@@ -909,7 +906,7 @@ export default function PersonalInformation() {
                   {displayName}
                 </Text>
                 {isRSBSAVerified && (
-                  <Ionicons name="checkmark-circle" size={18} color="#2E7D5B" />
+                  <Ionicons name="checkmark-circle" size={18} color={themeColor("#2E7D5B", "#E6E6E6")} />
                 )}
               </View>
 
@@ -921,7 +918,7 @@ export default function PersonalInformation() {
                   accessibilityRole="button"
                   accessibilityLabel="Change picture"
                 >
-                  <Ionicons name="camera" size={14} color="#FFFFFF" />
+                  <Ionicons name="camera" size={14} color={themeColor("#FFFFFF", "#E6E6E6")} />
                   <Text style={styles.actionPillText}>Change Photo</Text>
                 </TactileTouchable>
               ) : (
@@ -931,7 +928,7 @@ export default function PersonalInformation() {
                   accessibilityRole="button"
                   accessibilityLabel="Edit Information"
                 >
-                  <Ionicons name="create-outline" size={15} color="#FFFFFF" />
+                  <Ionicons name="create-outline" size={15} color={themeColor("#FFFFFF", "#E6E6E6")} />
                   <Text style={styles.actionPillText}>Edit Information</Text>
                 </TactileTouchable>
               )}
@@ -953,7 +950,7 @@ export default function PersonalInformation() {
                       <Ionicons
                         name="checkmark-circle"
                         size={22}
-                        color="#2E7D5B"
+                        color={themeColor("#2E7D5B", "#E6E6E6")}
                       />
                     </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
@@ -1027,7 +1024,7 @@ export default function PersonalInformation() {
                 >
                   <View style={styles.rsbsaCardRow}>
                     <View style={styles.rsbsaIconBoxUnverified}>
-                      <Ionicons name="ribbon" size={20} color="#34594A" />
+                      <Ionicons name="ribbon" size={20} color={themeColor("#34594A", "#E6E6E6")} />
                     </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -1049,7 +1046,7 @@ export default function PersonalInformation() {
                       <Ionicons
                         name="chevron-forward"
                         size={16}
-                        color="#34594A"
+                        color={themeColor("#34594A", "#E6E6E6")}
                       />
                     </View>
                   </View>
@@ -1066,7 +1063,7 @@ export default function PersonalInformation() {
               {/* SUBSECTION 1: Personal Identity */}
               <View style={styles.sectionHeaderRow}>
                 <View style={styles.sectionIconBox}>
-                  <Ionicons name="person" size={15} color="#34594A" />
+                  <Ionicons name="person" size={15} color={themeColor("#34594A", "#E6E6E6")} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.sectionTitle}>Personal Identity</Text>
@@ -1159,7 +1156,7 @@ export default function PersonalInformation() {
               {/* SUBSECTION 2: Farm & Agricultural Identity */}
               <View style={styles.sectionHeaderRow}>
                 <View style={styles.sectionIconBox}>
-                  <Ionicons name="leaf" size={15} color="#34594A" />
+                  <Ionicons name="leaf" size={15} color={themeColor("#34594A", "#E6E6E6")} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.sectionTitle}>
@@ -1209,7 +1206,7 @@ export default function PersonalInformation() {
               {/* SUBSECTION 3: Contact & Security */}
               <View style={styles.sectionHeaderRow}>
                 <View style={styles.sectionIconBox}>
-                  <Ionicons name="call" size={15} color="#34594A" />
+                  <Ionicons name="call" size={15} color={themeColor("#34594A", "#E6E6E6")} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.sectionTitle}>Contact & Security</Text>
@@ -1272,10 +1269,10 @@ export default function PersonalInformation() {
                   accessibilityLabel="Save Changes"
                 >
                   {isSaving ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
+                    <ActivityIndicator color={themeColor("#FFFFFF", "#E6E6E6")} size="small" />
                   ) : (
                     <>
-                      <Ionicons name="checkmark" size={17} color="#FFFFFF" />
+                      <Ionicons name="checkmark" size={17} color={themeColor("#FFFFFF", "#E6E6E6")} />
                       <Text style={styles.saveBtnText}>Save Changes</Text>
                     </>
                   )}
@@ -1318,7 +1315,7 @@ export default function PersonalInformation() {
               activeOpacity={0.7}
             >
               <View style={styles.modalOptionIconBox}>
-                <Ionicons name="images" size={18} color="#34594A" />
+                <Ionicons name="images" size={18} color={themeColor("#34594A", "#E6E6E6")} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalOptionTitle}>Choose from Gallery</Text>
@@ -1340,7 +1337,7 @@ export default function PersonalInformation() {
               activeOpacity={0.7}
             >
               <View style={styles.modalOptionIconBox}>
-                <Ionicons name="camera" size={18} color="#34594A" />
+                <Ionicons name="camera" size={18} color={themeColor("#34594A", "#E6E6E6")} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalOptionTitle}>Take Photo</Text>
@@ -1362,7 +1359,7 @@ export default function PersonalInformation() {
               activeOpacity={0.7}
             >
               <View style={styles.modalOptionIconBox}>
-                <Ionicons name="crop" size={18} color="#34594A" />
+                <Ionicons name="crop" size={18} color={themeColor("#34594A", "#E6E6E6")} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalOptionTitle}>Adjust Current Picture</Text>
@@ -1389,10 +1386,10 @@ export default function PersonalInformation() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColor: (light: string, dark: string) => string) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
   },
   header: {
     flexDirection: "row",
@@ -1400,15 +1397,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 10,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderBottomWidth: 1,
-    borderBottomColor: "#EDF1EB",
+    borderBottomColor: themeColor("#EDF1EB", "#414141"),
   },
   backButton: {
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: "#F5F7F5",
+    backgroundColor: themeColor("#F5F7F5", "#181818"),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1421,12 +1418,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     letterSpacing: -0.4,
-    color: "#293E33",
+    color: themeColor("#293E33", "#E6E6E6"),
     textAlign: "center",
   },
   scrollArea: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
   },
   scrollContent: {
     paddingBottom: 120,
@@ -1434,7 +1431,7 @@ const styles = StyleSheet.create({
 
   // Top Deep Forest Brand Banner (matching Reservations & Saved)
   topBanner: {
-    backgroundColor: "#34594A",
+    backgroundColor: themeColor("#34594A", "#202020"),
     paddingTop: 14,
     paddingBottom: 68,
     paddingHorizontal: 16,
@@ -1459,12 +1456,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     letterSpacing: -0.3,
-    color: "#FFFFFF",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
     textAlign: "center",
   },
   bannerSubtitle: {
     fontSize: 11.5,
-    color: "#D2E3D6",
+    color: themeColor("#D2E3D6", "#ADADAD"),
     textAlign: "center",
     marginTop: 2,
   },
@@ -1484,8 +1481,8 @@ const styles = StyleSheet.create({
     height: 112,
     borderRadius: 56,
     borderWidth: 4,
-    borderColor: "#FFFFFF",
-    backgroundColor: "#E9EFEA",
+    borderColor: themeColor("#FFFFFF", "#414141"),
+    backgroundColor: themeColor("#E9EFEA", "#181818"),
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -1497,7 +1494,7 @@ const styles = StyleSheet.create({
   avatarFallback: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#E9EFEA",
+    backgroundColor: themeColor("#E9EFEA", "#181818"),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1508,7 +1505,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1519,9 +1516,9 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "#34594A",
+    backgroundColor: themeColor("#34594A", "#303030"),
     borderWidth: 3,
-    borderColor: "#FFFFFF",
+    borderColor: themeColor("#FFFFFF", "#414141"),
   },
   nameBlock: {
     alignItems: "center",
@@ -1536,7 +1533,7 @@ const styles = StyleSheet.create({
     fontSize: 19,
     fontWeight: "700",
     letterSpacing: -0.4,
-    color: "#23382D",
+    color: themeColor("#23382D", "#E6E6E6"),
     textAlign: "center",
   },
   actionPillBtn: {
@@ -1544,7 +1541,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#34594A",
+    backgroundColor: themeColor("#34594A", "#303030"),
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 12,
@@ -1552,7 +1549,7 @@ const styles = StyleSheet.create({
   actionPillText: {
     fontSize: 12.5,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
   },
 
   // Content Container
@@ -1563,23 +1560,23 @@ const styles = StyleSheet.create({
 
   // RSBSA Status Cards (Crisp borders, zero harsh shadows)
   rsbsaCardUnverified: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderRadius: 20,
     padding: 16,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "#E5ECE6",
+    borderColor: themeColor("#E5ECE6", "#414141"),
   },
   rsbsaCardVerified: {
-    backgroundColor: "#F2F8F4",
+    backgroundColor: themeColor("#F2F8F4", "#181818"),
     borderRadius: 20,
     padding: 16,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "#D5E8DC",
+    borderColor: themeColor("#D5E8DC", "#414141"),
   },
   rsbsaCardPending: {
-    backgroundColor: "#FEF9EC",
+    backgroundColor: themeColor("#FEF9EC", "#181818"),
     borderRadius: 20,
     padding: 16,
     marginBottom: 14,
@@ -1595,7 +1592,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 13,
-    backgroundColor: "#EDF3EE",
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1603,7 +1600,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 13,
-    backgroundColor: "#E1EFE6",
+    backgroundColor: themeColor("#E1EFE6", "#303030"),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1618,10 +1615,10 @@ const styles = StyleSheet.create({
   rsbsaTitleUnverified: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#293E33",
+    color: themeColor("#293E33", "#E6E6E6"),
   },
   rsbsaPillUnverified: {
-    backgroundColor: "#EDF3EE",
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 6,
@@ -1629,29 +1626,29 @@ const styles = StyleSheet.create({
   rsbsaPillTextUnverified: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#34594A",
+    color: themeColor("#34594A", "#E6E6E6"),
   },
   rsbsaDescUnverified: {
     fontSize: 11.5,
     lineHeight: 16,
-    color: "#718376",
+    color: themeColor("#718376", "#ADADAD"),
     marginTop: 2,
   },
   rsbsaChevronWrap: {
     width: 28,
     height: 28,
     borderRadius: 9,
-    backgroundColor: "#F4F7F3",
+    backgroundColor: themeColor("#F4F7F3", "#181818"),
     alignItems: "center",
     justifyContent: "center",
   },
   rsbsaTitleVerified: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#184530",
+    color: themeColor("#184530", "#E6E6E6"),
   },
   rsbsaPillVerified: {
-    backgroundColor: "#34594A",
+    backgroundColor: themeColor("#34594A", "#303030"),
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 6,
@@ -1659,26 +1656,26 @@ const styles = StyleSheet.create({
   rsbsaPillTextVerified: {
     fontSize: 9.5,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
     textTransform: "uppercase",
   },
   rsbsaDescVerified: {
     fontSize: 11.5,
-    color: "#2B5E43",
+    color: themeColor("#2B5E43", "#E6E6E6"),
     marginTop: 2,
   },
   rsbsaActionBtnVerified: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: "#CDE3D5",
+    borderColor: themeColor("#CDE3D5", "#414141"),
   },
   rsbsaActionTextVerified: {
     fontSize: 11.5,
     fontWeight: "700",
-    color: "#2E7D5B",
+    color: themeColor("#2E7D5B", "#E6E6E6"),
   },
   rsbsaTitlePending: {
     fontSize: 14,
@@ -1694,7 +1691,7 @@ const styles = StyleSheet.create({
   rsbsaPillTextPending: {
     fontSize: 9.5,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
     textTransform: "uppercase",
   },
   rsbsaDescPending: {
@@ -1703,7 +1700,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   rsbsaActionBtnPending: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 11,
@@ -1718,12 +1715,12 @@ const styles = StyleSheet.create({
 
   // Single Unified Container (for both View and Edit modes)
   unifiedCardContainer: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderRadius: 20,
     padding: 16,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "#E5ECE6",
+    borderColor: themeColor("#E5ECE6", "#414141"),
   },
   sectionHeaderRow: {
     flexDirection: "row",
@@ -1735,7 +1732,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: "#EDF3EE",
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1743,17 +1740,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     letterSpacing: -0.2,
-    color: "#293E33",
+    color: themeColor("#293E33", "#E6E6E6"),
   },
   sectionSubtitle: {
     fontSize: 11.5,
     lineHeight: 16,
-    color: "#7A887F",
+    color: themeColor("#7A887F", "#ADADAD"),
     marginTop: 2,
   },
   sectionDivider: {
     height: 1,
-    backgroundColor: "#EDF2EE",
+    backgroundColor: themeColor("#EDF2EE", "#181818"),
     marginVertical: 14,
   },
 
@@ -1768,13 +1765,13 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 9,
-    backgroundColor: "#F2F6F3",
+    backgroundColor: themeColor("#F2F6F3", "#181818"),
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
   },
   floatingFieldIconBoxFocused: {
-    backgroundColor: "#EBF3EE",
+    backgroundColor: themeColor("#EBF3EE", "#181818"),
   },
   floatingFieldContent: {
     flex: 1,
@@ -1791,7 +1788,7 @@ const styles = StyleSheet.create({
   floatingTextInput: {
     fontSize: 13.5,
     fontWeight: "500",
-    color: "#22382B",
+    color: themeColor("#22382B", "#E6E6E6"),
     paddingTop: 18,
     paddingBottom: 2,
     paddingHorizontal: 0,
@@ -1801,13 +1798,13 @@ const styles = StyleSheet.create({
   floatingValueText: {
     fontSize: 13.5,
     fontWeight: "600",
-    color: "#1F3327",
+    color: themeColor("#1F3327", "#E6E6E6"),
     letterSpacing: -0.1,
     marginTop: 18,
     paddingBottom: 2,
   },
   floatingValueEmptyText: {
-    color: "#8E9E94",
+    color: themeColor("#8E9E94", "#ADADAD"),
     fontWeight: "400",
   },
   floatingFieldCustomChild: {
@@ -1826,23 +1823,23 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E5ECE6",
-    backgroundColor: "#F7FAF7",
+    borderColor: themeColor("#E5ECE6", "#414141"),
+    backgroundColor: themeColor("#F7FAF7", "#181818"),
     alignItems: "center",
     justifyContent: "center",
   },
   genderPillSelected: {
-    backgroundColor: "#EDF3EE",
-    borderColor: "#34594A",
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
+    borderColor: themeColor("#34594A", "#414141"),
     borderWidth: 1.5,
   },
   genderPillText: {
     fontSize: 11.5,
     fontWeight: "600",
-    color: "#718376",
+    color: themeColor("#718376", "#ADADAD"),
   },
   genderPillTextSelected: {
-    color: "#34594A",
+    color: themeColor("#34594A", "#E6E6E6"),
     fontWeight: "700",
   },
 
@@ -1851,7 +1848,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#EDF3EE",
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 7,
@@ -1860,11 +1857,11 @@ const styles = StyleSheet.create({
   lockedPillText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#34594A",
+    color: themeColor("#34594A", "#E6E6E6"),
   },
   lockedNoteText: {
     fontSize: 11,
-    color: "#839287",
+    color: themeColor("#839287", "#ADADAD"),
     marginTop: 2,
     marginBottom: 4,
     marginLeft: 4,
@@ -1881,22 +1878,22 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 46,
     borderRadius: 14,
-    backgroundColor: "#F3F5F2",
+    backgroundColor: themeColor("#F3F5F2", "#181818"),
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#E2ECE4",
+    borderColor: themeColor("#E2ECE4", "#414141"),
   },
   cancelBtnText: {
     fontSize: 13.5,
     fontWeight: "600",
-    color: "#5E7265",
+    color: themeColor("#5E7265", "#E6E6E6"),
   },
   saveBtn: {
     flex: 2,
     minHeight: 46,
     borderRadius: 14,
-    backgroundColor: "#34594A",
+    backgroundColor: themeColor("#34594A", "#303030"),
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
@@ -1905,7 +1902,7 @@ const styles = StyleSheet.create({
   saveBtnText: {
     fontSize: 13.5,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
   },
 
   // Photo Options Modal
@@ -1920,22 +1917,22 @@ const styles = StyleSheet.create({
   modalCard: {
     width: "100%",
     maxWidth: 390,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#E5ECE6",
+    borderColor: themeColor("#E5ECE6", "#414141"),
     padding: 20,
   },
   modalTitle: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#293E33",
+    color: themeColor("#293E33", "#E6E6E6"),
     textAlign: "center",
     marginBottom: 3,
   },
   modalSubtitle: {
     fontSize: 12,
-    color: "#7A887F",
+    color: themeColor("#7A887F", "#ADADAD"),
     textAlign: "center",
     marginBottom: 16,
   },
@@ -1944,44 +1941,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     paddingHorizontal: 14,
-    backgroundColor: "#F7FAF7",
+    backgroundColor: themeColor("#F7FAF7", "#181818"),
     borderRadius: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "#E8EFE9",
+    borderColor: themeColor("#E8EFE9", "#414141"),
     gap: 12,
   },
   modalOptionIconBox: {
     width: 36,
     height: 36,
     borderRadius: 11,
-    backgroundColor: "#EDF3EE",
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
     alignItems: "center",
     justifyContent: "center",
   },
   modalOptionTitle: {
     fontSize: 13.5,
     fontWeight: "600",
-    color: "#293E33",
+    color: themeColor("#293E33", "#E6E6E6"),
   },
   modalOptionDesc: {
     fontSize: 11,
-    color: "#7A887F",
+    color: themeColor("#7A887F", "#ADADAD"),
     marginTop: 1,
   },
   modalCancelBtn: {
     marginTop: 6,
     minHeight: 44,
     borderRadius: 13,
-    backgroundColor: "#F3F5F2",
+    backgroundColor: themeColor("#F3F5F2", "#181818"),
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#E2ECE4",
+    borderColor: themeColor("#E2ECE4", "#414141"),
   },
   modalCancelBtnText: {
     fontSize: 13.5,
     fontWeight: "600",
-    color: "#5E7265",
+    color: themeColor("#5E7265", "#E6E6E6"),
   },
 });

@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import React, { useState } from 'react';
 import {
   Modal,
@@ -41,6 +42,8 @@ export default function PreHarvestReserveModal({
   post,
   onSuccess,
 }: PreHarvestReserveModalProps) {
+  const { themeColor } = useAppTheme();
+  const styles = createStyles(themeColor);
   const { showToast } = useToast();
   const [quantity, setQuantity] = useState<number>(5);
   const [customInput, setCustomInput] = useState<string>('5');
@@ -105,9 +108,9 @@ export default function PreHarvestReserveModal({
 
       if (res.success) {
         showToast(`Harvest Reserved! Advance booking for ${cropName} confirmed.`, 'success');
-        const fallbackReservation: HarvestReservation = {
-          id: res.reservation?.id || Date.now(),
-          reservation_code: res.reservation?.reservation_code || `LF-RES-${Math.floor(1000 + Math.random() * 9000)}`,
+        const fallbackReservation: HarvestReservation = res.reservation || {
+          id: Date.now(),
+          reservation_code: `LF-RES-${Math.floor(1000 + Math.random() * 9000)}`,
           post_id: Number(post.id),
           seller_id: 0,
           buyer_id: 0,
@@ -119,10 +122,9 @@ export default function PreHarvestReserveModal({
           harvest_date: post.expectedHarvestDate || new Date().toISOString(),
           pickup_location: pickupLocation,
           status: 'pending',
-          qr_token: res.reservation?.qr_token || `QR_${Date.now()}`,
+          qr_token: `QR_${Date.now()}`,
           buyer_notes: buyerNotes.trim() || null,
           created_at: new Date().toISOString(),
-          ...(res.reservation || {}),
         };
         onSuccess(fallbackReservation);
         onClose();
@@ -161,7 +163,7 @@ export default function PreHarvestReserveModal({
           <View style={styles.header}>
             <View style={{ flex: 1, paddingRight: 12 }}>
               <View style={styles.eyebrowRow}>
-                <Ionicons name="leaf" size={11} color="#3d6349" />
+                <Ionicons name="leaf" size={11} color={themeColor("#3d6349", "#E6E6E6")} />
                 <Text style={styles.eyebrowText}>PRE-HARVEST ALLOCATION</Text>
               </View>
               <Text style={styles.titleText}>Reserve Harvest Batch</Text>
@@ -177,7 +179,7 @@ export default function PreHarvestReserveModal({
               accessibilityRole="button"
               accessibilityLabel="Close"
             >
-              <Ionicons name="close" size={17} color="#516859" />
+              <Ionicons name="close" size={17} color={themeColor("#516859", "#E6E6E6")} />
             </TouchableOpacity>
           </View>
 
@@ -194,7 +196,7 @@ export default function PreHarvestReserveModal({
                   <View style={styles.growerRow}>
                     <Text style={styles.growerName}>{post.authorName || 'Local Producer'}</Text>
                     {post.isVerified && (
-                      <Ionicons name="checkmark-circle" size={13} color="#2b5037" />
+                      <Ionicons name="checkmark-circle" size={13} color={themeColor("#2b5037", "#E6E6E6")} />
                     )}
                     <Text style={styles.metaDot}>•</Text>
                     <Text style={styles.hubInlineText} numberOfLines={1}>
@@ -234,7 +236,7 @@ export default function PreHarvestReserveModal({
                   activeOpacity={0.65}
                   accessibilityLabel="Decrease quantity"
                 >
-                  <Ionicons name="remove" size={18} color="#2b4735" />
+                  <Ionicons name="remove" size={18} color={themeColor("#2b4735", "#E6E6E6")} />
                 </TouchableOpacity>
 
                 <View style={styles.stepperHeroDisplay}>
@@ -255,7 +257,7 @@ export default function PreHarvestReserveModal({
                   activeOpacity={0.8}
                   accessibilityLabel="Increase quantity"
                 >
-                  <Ionicons name="add" size={18} color="#ffffff" />
+                  <Ionicons name="add" size={18} color={themeColor("#ffffff", "#181818")} />
                 </TouchableOpacity>
               </View>
 
@@ -295,7 +297,7 @@ export default function PreHarvestReserveModal({
               <Text style={styles.sectionLabel}>NOTE TO GROWER (OPTIONAL)</Text>
               <TextInput
                 placeholder="e.g. Preferred morning pickup, will bring own crates..."
-                placeholderTextColor="#95a69a"
+                placeholderTextColor={themeColor("#95a69a", "#E6E6E6")}
                 multiline
                 numberOfLines={3}
                 value={buyerNotes}
@@ -325,10 +327,10 @@ export default function PreHarvestReserveModal({
                 activeOpacity={0.88}
               >
                 {isSubmitting ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
+                  <ActivityIndicator size="small" color={themeColor("#ffffff", "#181818")} />
                 ) : (
                   <View style={styles.btnInnerRow}>
-                    <Ionicons name="checkmark-sharp" size={17} color="#ffffff" />
+                    <Ionicons name="checkmark-sharp" size={17} color={themeColor("#ffffff", "#181818")} />
                     <Text style={styles.confirmBtnText}>
                       Confirm {quantity} {unit} • ₱{totalAmount}
                     </Text>
@@ -351,21 +353,21 @@ export default function PreHarvestReserveModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColor: (light: string, dark: string) => string) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
     backgroundColor: 'rgba(18, 27, 21, 0.55)',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...(StyleSheet.absoluteFill as any),
   },
   sheetContainer: {
-    backgroundColor: '#faf9f6',
+    backgroundColor: themeColor("#faf9f6", "#181818"),
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     borderTopWidth: 1,
-    borderColor: '#e7ece3',
+    borderColor: themeColor("#e7ece3", "#414141"),
     maxHeight: '90%',
     shadowColor: '#122017',
     shadowOffset: { width: 0, height: -6 },
@@ -377,7 +379,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#d8ded6',
+    backgroundColor: themeColor("#d8ded6", "#303030"),
     alignSelf: 'center',
     marginTop: 10,
     marginBottom: 4,
@@ -390,7 +392,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#edf1ea',
+    borderBottomColor: themeColor("#edf1ea", "#414141"),
   },
   eyebrowRow: {
     flexDirection: 'row',
@@ -402,24 +404,24 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     fontWeight: '700',
     letterSpacing: 1.6,
-    color: '#3d6349',
+    color: themeColor("#3d6349", "#E6E6E6"),
   },
   titleText: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1a271f',
+    color: themeColor("#1a271f", "#E6E6E6"),
     letterSpacing: -0.4,
   },
   subtitleText: {
     fontSize: 11.5,
-    color: '#6e8073',
+    color: themeColor("#6e8073", "#E6E6E6"),
     marginTop: 2,
   },
   closeBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#eef2eb',
+    backgroundColor: themeColor("#eef2eb", "#181818"),
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -430,10 +432,10 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   batchCard: {
-    backgroundColor: '#f4f7f1',
+    backgroundColor: themeColor("#f4f7f1", "#181818"),
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#dfe7dc',
+    borderColor: themeColor("#dfe7dc", "#414141"),
     padding: 14,
     marginBottom: 16,
   },
@@ -446,7 +448,7 @@ const styles = StyleSheet.create({
   cropNameText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1a271f',
+    color: themeColor("#1a271f", "#E6E6E6"),
     letterSpacing: -0.3,
   },
   growerRow: {
@@ -459,19 +461,19 @@ const styles = StyleSheet.create({
   growerName: {
     fontSize: 11.5,
     fontWeight: '600',
-    color: '#284131',
+    color: themeColor("#284131", "#E6E6E6"),
   },
   metaDot: {
     fontSize: 10,
-    color: '#9db0a3',
+    color: themeColor("#9db0a3", "#E6E6E6"),
   },
   hubInlineText: {
     fontSize: 11.5,
-    color: '#5f7567',
+    color: themeColor("#5f7567", "#E6E6E6"),
     maxWidth: 170,
   },
   daysPill: {
-    backgroundColor: '#274332',
+    backgroundColor: themeColor("#274332", "#E6E6E6"),
     paddingHorizontal: 9,
     paddingVertical: 4.5,
     borderRadius: 12,
@@ -483,12 +485,12 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: '#98e3b2',
+    backgroundColor: themeColor("#98e3b2", "#E6E6E6"),
   },
   daysPillText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#ffffff',
+    color: themeColor("#ffffff", "#E6E6E6"),
     letterSpacing: 0.2,
   },
   batchBottomRow: {
@@ -497,28 +499,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#e4ecdf',
+    borderTopColor: themeColor("#e4ecdf", "#414141"),
   },
   batchRateLabel: {
     fontSize: 11,
-    color: '#6f8375',
+    color: themeColor("#6f8375", "#E6E6E6"),
     fontWeight: '500',
   },
   unitPriceText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#223c2d',
+    color: themeColor("#223c2d", "#E6E6E6"),
   },
   unitSub: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#657e6f',
+    color: themeColor("#657e6f", "#E6E6E6"),
   },
   consoleCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: themeColor("#ffffff", "#242424"),
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#e2ebe0',
+    borderColor: themeColor("#e2ebe0", "#414141"),
     padding: 16,
     marginBottom: 16,
     shadowColor: '#122017',
@@ -537,12 +539,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 1.4,
-    color: '#5b7062',
+    color: themeColor("#5b7062", "#E6E6E6"),
     marginBottom: 6,
   },
   sectionSubtext: {
     fontSize: 10.5,
-    color: '#8a9b8f',
+    color: themeColor("#8a9b8f", "#E6E6E6"),
   },
   stepperRow: {
     flexDirection: 'row',
@@ -555,7 +557,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#f1f5ee',
+    backgroundColor: themeColor("#f1f5ee", "#181818"),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -567,7 +569,7 @@ const styles = StyleSheet.create({
   stepperHeroInput: {
     fontSize: 34,
     fontWeight: '800',
-    color: '#192b20',
+    color: themeColor("#192b20", "#E6E6E6"),
     textAlign: 'center',
     minWidth: 54,
     paddingVertical: 0,
@@ -584,14 +586,14 @@ const styles = StyleSheet.create({
   stepperHeroUnit: {
     fontSize: 13.5,
     fontWeight: '600',
-    color: '#6f8375',
+    color: themeColor("#6f8375", "#E6E6E6"),
     marginLeft: 3,
   },
   stepperPlusBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#274332',
+    backgroundColor: themeColor("#274332", "#E6E6E6"),
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#274332',
@@ -614,36 +616,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   presetChipActive: {
-    backgroundColor: '#274332',
-    borderColor: '#274332',
+    backgroundColor: themeColor("#274332", "#E6E6E6"),
+    borderColor: themeColor("#274332", "#414141"),
   },
   presetChipInactive: {
-    backgroundColor: '#f6f9f4',
-    borderColor: '#e2ebe0',
+    backgroundColor: themeColor("#f6f9f4", "#181818"),
+    borderColor: themeColor("#e2ebe0", "#414141"),
   },
   presetChipText: {
     fontSize: 11.5,
     fontWeight: '600',
   },
   presetChipTextActive: {
-    color: '#ffffff',
+    color: themeColor("#ffffff", "#E6E6E6"),
     fontWeight: '700',
   },
   presetChipTextInactive: {
-    color: '#3b5143',
+    color: themeColor("#3b5143", "#E6E6E6"),
   },
   notesSection: {
     marginBottom: 16,
   },
   notesInput: {
-    backgroundColor: '#ffffff',
+    backgroundColor: themeColor("#ffffff", "#242424"),
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#e1ebe0',
+    borderColor: themeColor("#e1ebe0", "#414141"),
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 12.5,
-    color: '#1a271f',
+    color: themeColor("#1a271f", "#E6E6E6"),
     textAlignVertical: 'top',
     minHeight: 68,
     ...Platform.select({
@@ -659,34 +661,34 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: '#e6ede3',
+    borderTopColor: themeColor("#e6ede3", "#414141"),
     borderBottomWidth: 1,
-    borderBottomColor: '#e6ede3',
+    borderBottomColor: themeColor("#e6ede3", "#414141"),
     marginBottom: 18,
   },
   receiptLabel: {
     fontSize: 9.5,
     fontWeight: '700',
     letterSpacing: 1.4,
-    color: '#46644f',
+    color: themeColor("#46644f", "#E6E6E6"),
   },
   receiptSubtext: {
     fontSize: 11,
-    color: '#657d6e',
+    color: themeColor("#657d6e", "#E6E6E6"),
     marginTop: 2,
     lineHeight: 15,
   },
   receiptTotalAmount: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#1d3626',
+    color: themeColor("#1d3626", "#E6E6E6"),
     letterSpacing: -0.6,
   },
   actionWrap: {
     gap: 8,
   },
   confirmBtn: {
-    backgroundColor: '#274332',
+    backgroundColor: themeColor("#274332", "#E6E6E6"),
     height: 52,
     borderRadius: 26,
     alignItems: 'center',
@@ -703,7 +705,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   confirmBtnText: {
-    color: '#ffffff',
+    color: themeColor("#ffffff", "#E6E6E6"),
     fontSize: 14.5,
     fontWeight: '700',
     letterSpacing: 0.2,
@@ -715,6 +717,6 @@ const styles = StyleSheet.create({
   cancelBtnText: {
     fontSize: 12.5,
     fontWeight: '600',
-    color: '#7a8e81',
+    color: themeColor("#7a8e81", "#E6E6E6"),
   },
 });

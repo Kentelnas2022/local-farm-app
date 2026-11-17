@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import {
   archiveConversationApi,
   ChatMessage,
@@ -21,6 +22,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SpamChatConversation() {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{
     conversationId?: string;
@@ -56,6 +58,17 @@ export default function SpamChatConversation() {
   useEffect(() => {
     fetchMessages();
   }, [conversationId, otherUserId]);
+
+  const handleVisitProfile = () => {
+    router.push({
+      pathname: "/user/UserProfile",
+      params: {
+        userId: otherUserId ? String(otherUserId) : undefined,
+        userName: otherUserName,
+        userAvatar: otherUserAvatar || "",
+      },
+    } as any);
+  };
 
   const handleBack = () => {
     try {
@@ -132,11 +145,11 @@ export default function SpamChatConversation() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white"
-      style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+      className="flex-1 bg-white dark:bg-[#181818] "
+      style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }}
     >
       {/* Top Header */}
-      <View className="flex-row items-center justify-between px-4 py-3 bg-white border-b border-gray-100 shadow-2xs z-10">
+      <View className="flex-row items-center justify-between px-4 py-3 bg-white border-b border-gray-100 shadow-2xs z-10 dark:bg-[#242424] dark:border-[#414141] ">
         <View className="flex-row items-center gap-3 flex-1 pr-2">
           <TouchableOpacity
             onPress={handleBack}
@@ -144,38 +157,46 @@ export default function SpamChatConversation() {
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Ionicons name="chevron-back" size={28} color="#000000" />
+            <Ionicons name="chevron-back" size={28} color={themeColor("#000000", "#E6E6E6")} />
           </TouchableOpacity>
 
-          <View className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center overflow-hidden border border-gray-200">
-            {otherUserAvatar ? (
-              <Image
-                source={{ uri: otherUserAvatar }}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
-            ) : (
-              <Ionicons name="person" size={22} color="#34594A" />
-            )}
-          </View>
+          <TouchableOpacity
+            onPress={handleVisitProfile}
+            activeOpacity={0.7}
+            className="flex-row items-center gap-3 flex-1"
+            accessibilityRole="button"
+            accessibilityLabel={`View ${otherUserName}'s profile`}
+          >
+            <View className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center overflow-hidden border border-gray-200 dark:bg-[#181818] dark:border-[#414141] ">
+              {otherUserAvatar ? (
+                <Image
+                  source={{ uri: otherUserAvatar }}
+                  className="w-full h-full"
+                  resizeMode="cover"
+                />
+              ) : (
+                <Ionicons name="person" size={22} color={themeColor("#34594A", "#E6E6E6")} />
+              )}
+            </View>
 
-          <View className="flex-1">
-            <Text
-              className="text-base font-bold text-gray-900 leading-tight"
-              numberOfLines={1}
-            >
-              {otherUserName}
-            </Text>
-            <Text className="text-xs text-amber-600 font-medium">
-              Spam Conversation
-            </Text>
-          </View>
+            <View className="flex-1">
+              <Text
+                className="text-base font-bold text-gray-900 leading-tight dark:text-[#E6E6E6] "
+                numberOfLines={1}
+              >
+                {otherUserName}
+              </Text>
+              <Text className="text-xs text-amber-600 font-medium">
+                Spam Conversation
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
 
       {/* Messages List */}
       <ScrollView
-        className="flex-1 bg-[#F9F9F9] px-4 pt-4"
+        className="flex-1 bg-[#F9F9F9] px-4 pt-4 dark:bg-[#181818] "
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           flexGrow: 1,
@@ -185,11 +206,11 @@ export default function SpamChatConversation() {
       >
         {isLoading ? (
           <View className="items-center justify-center py-12">
-            <ActivityIndicator size="small" color="#34594A" />
+            <ActivityIndicator size="small" color={themeColor("#34594A", "#E6E6E6")} />
           </View>
         ) : messages.length === 0 ? (
           <View className="items-center justify-center py-12">
-            <Text className="text-xs text-gray-400">No messages found.</Text>
+            <Text className="text-xs text-gray-400 dark:text-[#ADADAD] ">No messages found.</Text>
           </View>
         ) : (
           messages.map((m) => {
@@ -200,27 +221,36 @@ export default function SpamChatConversation() {
                 className={`flex-row items-end mb-2.5 ${isUser ? "justify-end" : "justify-start"}`}
               >
                 {!isUser && (
-                  <View className="w-7 h-7 rounded-full bg-gray-300 mr-2 items-center justify-center overflow-hidden border border-gray-200">
-                    {otherUserAvatar ? (
-                      <Image
-                        source={{ uri: otherUserAvatar }}
-                        className="w-full h-full"
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <Ionicons name="person" size={14} color="#FFFFFF" />
-                    )}
-                  </View>
+                  <TouchableOpacity
+                    onPress={handleVisitProfile}
+                    activeOpacity={0.7}
+                    className="mr-2 active:opacity-70"
+                    accessibilityRole="button"
+                    accessibilityLabel={`View ${otherUserName}'s profile`}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <View className="w-7 h-7 rounded-full bg-gray-300 items-center justify-center overflow-hidden border border-gray-200 dark:bg-[#303030] dark:border-[#414141] ">
+                      {otherUserAvatar ? (
+                        <Image
+                          source={{ uri: otherUserAvatar }}
+                          className="w-full h-full"
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Ionicons name="person" size={14} color={themeColor("#FFFFFF", "#E6E6E6")} />
+                      )}
+                    </View>
+                  </TouchableOpacity>
                 )}
                 <View
                   className={`px-4 py-2.5 max-w-[76%] rounded-2xl ${
                     isUser
-                      ? "bg-[#34594A] rounded-br-xs"
-                      : "bg-[#F0F0F0] rounded-bl-xs shadow-2xs"
+                      ? "bg-[#34594A] rounded-br-xs dark:bg-[#E6E6E6] "
+                      : "bg-[#F0F0F0] rounded-bl-xs shadow-2xs dark:bg-[#181818] "
                   }`}
                 >
                   <Text
-                    className={`text-sm leading-snug ${isUser ? "text-white" : "text-gray-900"}`}
+                    className={`text-sm leading-snug ${isUser ? "text-white dark:text-[#181818] " : "text-gray-900 dark:text-[#E6E6E6] "}`}
                   >
                     {m.text ||
                       (m.type === "image" ? "📷 [Photo]" : "Shared attachment")}
@@ -233,15 +263,15 @@ export default function SpamChatConversation() {
       </ScrollView>
 
       {/* Bottom Action Area */}
-      <View className="flex-row justify-between px-4 pt-3.5 pb-6 bg-white border-t border-gray-100 gap-3">
+      <View className="flex-row justify-between px-4 pt-3.5 pb-6 bg-white border-t border-gray-100 gap-3 dark:bg-[#242424] dark:border-[#414141] ">
         {/* Button 1: Archived */}
         <TouchableOpacity
           onPress={handleArchive}
           disabled={Boolean(isActionTaken)}
-          className="flex-1 bg-gray-50 border border-[#34594A] rounded-xl py-3 items-center justify-center shadow-2xs active:bg-gray-100"
+          className="flex-1 bg-gray-50 border border-[#34594A] rounded-xl py-3 items-center justify-center shadow-2xs active:bg-gray-100 dark:bg-[#181818] dark:border-[#414141] dark:active:bg-[#181818] "
           activeOpacity={0.8}
         >
-          <Text className="text-sm font-bold text-[#34594A] text-center">
+          <Text className="text-sm font-bold text-[#34594A] text-center dark:text-[#E6E6E6] ">
             {isActionTaken === "Archived" ? "Archived ✓" : "Archive"}
           </Text>
         </TouchableOpacity>
@@ -250,7 +280,7 @@ export default function SpamChatConversation() {
         <TouchableOpacity
           onPress={handleDelete}
           disabled={Boolean(isActionTaken)}
-          className="flex-1 bg-gray-50 border border-[#E63946] rounded-xl py-3 items-center justify-center shadow-2xs active:bg-red-50"
+          className="flex-1 bg-gray-50 border border-[#E63946] rounded-xl py-3 items-center justify-center shadow-2xs active:bg-red-50 dark:bg-[#181818] dark:active:bg-[#181818] "
           activeOpacity={0.8}
         >
           <Text className="text-sm font-bold text-[#E63946] text-center">
@@ -262,10 +292,10 @@ export default function SpamChatConversation() {
         <TouchableOpacity
           onPress={handleAccept}
           disabled={Boolean(isActionTaken)}
-          className="flex-1 bg-[#34594A] rounded-xl py-3 items-center justify-center active:opacity-85 shadow-2xs"
+          className="flex-1 bg-[#34594A] rounded-xl py-3 items-center justify-center active:opacity-85 shadow-2xs dark:bg-[#E6E6E6] "
           activeOpacity={0.8}
         >
-          <Text className="text-sm font-bold text-white text-center">
+          <Text className="text-sm font-bold text-white text-center dark:text-[#181818] ">
             {isActionTaken === "Accept" ? "Accepted ✓" : "Not Spam"}
           </Text>
         </TouchableOpacity>

@@ -1,14 +1,108 @@
+import { useAppTheme } from "@/context/theme-context";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
+  Easing,
+  Platform,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// Subtle entrance animation matching MenuProfile & HelpSupport
+function FadeEntrance({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const progress = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(8)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: 260,
+        delay,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: Platform.OS !== "web",
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 260,
+        delay,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: Platform.OS !== "web",
+      }),
+    ]).start();
+  }, [delay, progress, translateY]);
+
+  return (
+    <Animated.View style={{ opacity: progress, transform: [{ translateY }] }}>
+      {children}
+    </Animated.View>
+  );
+}
+
+// Tactile press button with spring feedback
+function TactileTouchable({
+  children,
+  onPress,
+  style,
+  disabled,
+  activeOpacity = 0.85,
+  scaleTo = 0.98,
+  ...rest
+}: any) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    if (disabled) return;
+    Animated.spring(scale, {
+      toValue: scaleTo,
+      useNativeDriver: Platform.OS !== "web",
+      speed: 35,
+      bounciness: 4,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    if (disabled) return;
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: Platform.OS !== "web",
+      speed: 35,
+      bounciness: 4,
+    }).start();
+  };
+
+  const flattened = StyleSheet.flatten(style) || {};
+  const hasFlex = flattened.flex !== undefined;
+
+  return (
+    <Animated.View
+      style={[
+        hasFlex && { flex: flattened.flex },
+        { transform: [{ scale }] },
+      ]}
+    >
+      <TouchableOpacity
+        activeOpacity={activeOpacity}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={onPress}
+        disabled={disabled}
+        style={style}
+        {...rest}
+      >
+        {children}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
 
 interface GuideArticle {
   id: string;
@@ -79,7 +173,7 @@ const GUIDE_ARTICLES: GuideArticle[] = [
       {
         heading: "How to Apply on Local Farm",
         content:
-          "Submit your RSBSA Certificate number or Barangay Farming Certification along with a clear photo of your ID or certificate in the Security & Verification tab.",
+          "Submit your RSBSA Certificate number or Barangay Farming Certification along with a clear photo of your ID or certificate in the RSBSA Verification tab.",
       },
     ],
     actionButton: {
@@ -205,7 +299,7 @@ const GUIDE_ARTICLES: GuideArticle[] = [
     ],
     actionButton: {
       text: "Report a Payment Dispute",
-      route: "/user/ReportIssue",
+      route: "/user/HelpSupport",
       icon: "warning-outline",
     },
   },
@@ -234,6 +328,8 @@ const GUIDE_ARTICLES: GuideArticle[] = [
 ];
 
 export default function GrowerGuides() {
+  const { themeColor } = useAppTheme();
+  const styles = createStyles(themeColor);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedGuideId, setExpandedGuideId] = useState<string | null>("g1");
@@ -270,122 +366,123 @@ export default function GrowerGuides() {
   };
 
   return (
-    <SafeAreaView
-      className="flex-1 bg-[#F8F9FA] relative h-full"
-      style={{ flex: 1, backgroundColor: "#F8F9FA" }}
-    >
-      {/* Header */}
-      <View className="relative items-center justify-center pt-3 pb-4 px-4 bg-white border-b border-gray-100">
+    <SafeAreaView style={styles.screen}>
+      {/* 1. Uniform Navigation Header */}
+      <View style={styles.header}>
         <TouchableOpacity
           onPress={handleBack}
-          activeOpacity={0.7}
-          className="absolute left-4 top-3 p-1"
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={styles.backButton}
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-undo" size={28} color="#000000" />
+          <Ionicons name="chevron-back" size={22} color={themeColor("#34594A", "#E6E6E6")} />
         </TouchableOpacity>
-        <Text className="text-xl font-bold text-gray-900">Grower Guides</Text>
+
+        <Text style={styles.headerTitle}>Grower Guides</Text>
+
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
-        className="flex-1 px-4 pt-4"
+        style={{ flex: 1, backgroundColor: themeColor("#FAF9F5", "#181818") }}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 60 }}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Hero Agricultural Handbook Card */}
-        <View className="bg-[#2D4F28] rounded-2xl p-5 mb-5 shadow-xs overflow-hidden relative">
-          <View className="absolute -right-4 -bottom-4 opacity-10">
-            <Ionicons name="leaf" size={130} color="#FFFFFF" />
-          </View>
-          <View className="flex-row items-center gap-2 mb-1.5">
-            <View className="w-6 h-6 rounded-full bg-emerald-500/30 items-center justify-center">
-              <Ionicons name="book-outline" size={14} color="#A7F3D0" />
-            </View>
-            <Text className="text-xs font-bold text-emerald-200 uppercase tracking-wider">
-              Grower Success & Standards Handbook
-            </Text>
-          </View>
-          <Text className="text-lg font-bold text-white mb-1">
-            Grow, Sell & Prosper Locally
-          </Text>
-          <Text className="text-xs text-gray-200 leading-5 pr-6">
-            Essential knowledge for smallholder growers: from securing your RSBSA Green Badge to farm-gate pricing ethics, harvest logistics, and scam prevention.
-          </Text>
-        </View>
-
-        {/* Search Bar */}
-        <View className="bg-white rounded-2xl p-2.5 px-3.5 mb-4 border border-gray-200 flex-row items-center shadow-2xs">
-          <Ionicons name="search-outline" size={18} color="#9CA3AF" />
-          <TextInput
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Search guides (e.g. RSBSA, pricing, fake slips)..."
-            placeholderTextColor="#9CA3AF"
-            className="flex-1 ml-2 text-xs text-gray-900"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <Ionicons name="close-circle" size={16} color="#9CA3AF" />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Category Horizontal Pill Filters */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="mb-5"
-          contentContainerStyle={{ gap: 8, paddingHorizontal: 2 }}
-        >
-          {[
-            { id: "all", label: "All Guides", icon: "grid-outline" },
-            { id: "rsbsa", label: "RSBSA & Badges", icon: "ribbon-outline" },
-            { id: "pricing", label: "Pricing & Tiers", icon: "pricetags-outline" },
-            { id: "harvest", label: "Harvest & Pre-orders", icon: "calendar-outline" },
-            { id: "safety", label: "Farm-gate Safety", icon: "shield-outline" },
-            { id: "payments", label: "Scam Prevention", icon: "cash-outline" },
-            { id: "packaging", label: "Packaging & Quality", icon: "cube-outline" },
-          ].map((cat) => {
-            const isSelected = selectedCategory === cat.id;
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                onPress={() => setSelectedCategory(cat.id)}
-                className={`flex-row items-center px-3 py-2 rounded-xl border ${
-                  isSelected
-                    ? "bg-[#77af5c] border-[#77af5c]"
-                    : "bg-white border-gray-200"
-                }`}
-              >
-                <Ionicons
-                  name={cat.icon as any}
-                  size={14}
-                  color={isSelected ? "#FFFFFF" : "#4B5563"}
-                />
-                <Text
-                  className={`text-xs font-semibold ml-1.5 ${
-                    isSelected ? "text-white" : "text-gray-700"
-                  }`}
-                >
-                  {cat.label}
+        {/* 2. Uniform LinearGradient Hero Banner */}
+        <FadeEntrance delay={20}>
+          <LinearGradient
+            colors={["#29483B", "#38604F"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroBanner}
+          >
+            <View style={styles.heroHeader}>
+              <View style={styles.heroIconBox}>
+                <Ionicons name="book-outline" size={22} color={themeColor("#FFFFFF", "#E6E6E6")} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.heroSuperTitle}>
+                  GROWER SUCCESS & STANDARDS
                 </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+                <Text style={styles.heroTitle}>Grow, Sell & Prosper Locally</Text>
+              </View>
+            </View>
+            <Text style={styles.heroDescription}>
+              Essential knowledge for smallholder growers: from securing your RSBSA Green Badge to farm-gate pricing ethics, harvest logistics, and scam prevention.
+            </Text>
 
-        {/* Guides List */}
-        <View className="gap-3.5">
+            {/* In-hero Search Bar */}
+            <View style={styles.heroSearchContainer}>
+              <Ionicons name="search-outline" size={17} color={themeColor("#687C71", "#E6E6E6")} />
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search guides (e.g. RSBSA, pricing, fake slips)..."
+                placeholderTextColor={themeColor("#85968C", "#E6E6E6")}
+                style={styles.heroSearchInput}
+                autoCapitalize="none"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery("")} style={{ padding: 4 }}>
+                  <Ionicons name="close-circle" size={16} color={themeColor("#7F9186", "#E6E6E6")} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </LinearGradient>
+        </FadeEntrance>
+
+        {/* 3. Category Horizontal Filter Chips */}
+        <FadeEntrance delay={60}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipsScroll}
+          >
+            {[
+              { id: "all", label: "All Guides", icon: "grid-outline" },
+              { id: "rsbsa", label: "RSBSA & Badges", icon: "ribbon-outline" },
+              { id: "pricing", label: "Pricing & Tiers", icon: "pricetags-outline" },
+              { id: "harvest", label: "Harvest & Pre-orders", icon: "calendar-outline" },
+              { id: "safety", label: "Farm-gate Safety", icon: "shield-checkmark-outline" },
+              { id: "payments", label: "Scam Prevention", icon: "cash-outline" },
+              { id: "packaging", label: "Packaging & Quality", icon: "cube-outline" },
+            ].map((cat) => {
+              const isSelected = selectedCategory === cat.id;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  onPress={() => setSelectedCategory(cat.id)}
+                  style={[styles.filterChip, isSelected && styles.filterChipActive]}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={cat.icon as any}
+                    size={14}
+                    color={themeColor(isSelected ? "#FFFFFF" : "#54685C", isSelected ? "#E6E6E6" : "#ADADAD")}
+                  />
+                  <Text style={[styles.filterChipText, isSelected && styles.filterChipTextActive]}>
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </FadeEntrance>
+
+        {/* 4. Articles Section */}
+        <FadeEntrance delay={100}>
+          <View style={styles.sectionHeadingRow}>
+            <Text style={styles.sectionHeading}>Agricultural Guides</Text>
+            <Text style={styles.countText}>({filteredArticles.length})</Text>
+          </View>
+
           {filteredArticles.length === 0 ? (
-            <View className="bg-white rounded-2xl p-8 items-center justify-center border border-gray-100 shadow-xs">
-              <Ionicons name="book-outline" size={36} color="#9CA3AF" />
-              <Text className="text-sm font-bold text-gray-800 mt-2">
-                No guides match your search
-              </Text>
-              <Text className="text-xs text-gray-500 text-center mt-1">
-                Try searching for &quot;RSBSA&quot;, &quot;pricing&quot;, or browse all topics.
+            <View style={styles.emptyCard}>
+              <Ionicons name="book-outline" size={32} color={themeColor("#85978C", "#E6E6E6")} />
+              <Text style={styles.emptyTitle}>No guides match your search</Text>
+              <Text style={styles.emptySubtitle}>
+                Try searching for &quot;RSBSA&quot;, &quot;pricing&quot;, or select another topic filter.
               </Text>
             </View>
           ) : (
@@ -393,86 +490,86 @@ export default function GrowerGuides() {
               const isExpanded = expandedGuideId === article.id;
 
               return (
-                <View
-                  key={article.id}
-                  className="bg-white rounded-2xl border border-gray-100 shadow-2xs overflow-hidden"
-                >
+                <View key={article.id} style={styles.guideCard}>
                   {/* Article Card Header */}
                   <TouchableOpacity
                     onPress={() => toggleExpand(article.id)}
-                    activeOpacity={0.7}
-                    className="p-4"
+                    activeOpacity={0.75}
+                    style={styles.guideHeader}
                   >
-                    <View className="flex-row items-center justify-between mb-2">
-                      <View className="flex-row items-center gap-2">
-                        <View className="w-8 h-8 rounded-xl bg-emerald-50 items-center justify-center border border-emerald-100">
-                          <Ionicons
-                            name={article.icon}
-                            size={18}
-                            color="#059669"
-                          />
+                    <View style={styles.metaRow}>
+                      <View style={styles.metaLeft}>
+                        <View style={styles.guideIconBox}>
+                          <Ionicons name={article.icon} size={18} color={themeColor("#34594A", "#E6E6E6")} />
                         </View>
-                        <View className="bg-gray-100 px-2 py-0.5 rounded-md">
-                          <Text className="text-[10px] font-bold text-gray-700">
+                        <View style={styles.categoryBadge}>
+                          <Text style={styles.categoryBadgeText}>
                             {article.categoryLabel}
                           </Text>
                         </View>
                         {article.badge && (
-                          <View className="bg-amber-100 px-2 py-0.5 rounded-md">
-                            <Text className="text-[10px] font-bold text-amber-800">
+                          <View
+                            style={[
+                              styles.specialBadge,
+                              article.badge === "Safety"
+                                ? styles.safetyBadge
+                                : article.badge === "Security"
+                                ? styles.securityBadge
+                                : styles.mostImportantBadge,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.specialBadgeText,
+                                article.badge === "Safety"
+                                  ? styles.safetyBadgeText
+                                  : article.badge === "Security"
+                                  ? styles.securityBadgeText
+                                  : styles.mostImportantBadgeText,
+                              ]}
+                            >
                               {article.badge}
                             </Text>
                           </View>
                         )}
                       </View>
 
-                      <Text className="text-[10px] text-gray-400 font-medium">
-                        {article.readTime}
-                      </Text>
+                      <Text style={styles.readTimeText}>{article.readTime}</Text>
                     </View>
 
-                    <Text className="text-base font-bold text-gray-900 leading-snug mb-1">
-                      {article.title}
-                    </Text>
-                    <Text className="text-xs text-gray-500 leading-4 mb-2">
-                      {article.subtitle}
-                    </Text>
+                    <Text style={styles.guideTitle}>{article.title}</Text>
+                    <Text style={styles.guideSubtitle}>{article.subtitle}</Text>
 
-                    <View className="flex-row items-center justify-between pt-1 border-t border-gray-50">
-                      <Text className="text-xs font-semibold text-[#77af5c]">
+                    <View style={styles.collapseRow}>
+                      <Text style={styles.collapseText}>
                         {isExpanded ? "Collapse Guide" : "Read Full Guide"}
                       </Text>
                       <Ionicons
                         name={isExpanded ? "chevron-up" : "chevron-down"}
                         size={16}
-                        color="#77af5c"
+                        color={themeColor("#28483B", "#E6E6E6")}
                       />
                     </View>
                   </TouchableOpacity>
 
                   {/* Expanded Guide Content */}
                   {isExpanded && (
-                    <View className="px-5 pb-5 pt-3 border-t border-gray-100 bg-gray-50/50">
+                    <View style={styles.expandedContent}>
                       {article.sections.map((section, sIdx) => (
-                        <View key={sIdx} className="mb-4">
-                          <Text className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-1">
+                        <View key={sIdx} style={styles.sectionBlock}>
+                          <Text style={styles.sectionBlockHeading}>
                             {section.heading}
                           </Text>
-                          <Text className="text-xs text-gray-600 leading-5">
+                          <Text style={styles.sectionBlockBody}>
                             {section.content}
                           </Text>
 
                           {section.points && (
-                            <View className="mt-2 space-y-1.5 pl-1">
+                            <View style={styles.pointsList}>
                               {section.points.map((pt, pIdx) => (
-                                <View
-                                  key={pIdx}
-                                  className="flex-row items-start gap-2 mb-1"
-                                >
-                                  <View className="w-1.5 h-1.5 rounded-full bg-[#77af5c] mt-1.5" />
-                                  <Text className="text-xs text-gray-700 leading-4.5 flex-1">
-                                    {pt}
-                                  </Text>
+                                <View key={pIdx} style={styles.pointRow}>
+                                  <View style={styles.pointDot} />
+                                  <Text style={styles.pointText}>{pt}</Text>
                                 </View>
                               ))}
                             </View>
@@ -480,24 +577,22 @@ export default function GrowerGuides() {
                         </View>
                       ))}
 
-                      {/* Optional Action Callout Button */}
+                      {/* Optional Action Button */}
                       {article.actionButton && (
-                        <TouchableOpacity
-                          onPress={() =>
-                            router.push(article.actionButton!.route as any)
-                          }
+                        <TactileTouchable
+                          onPress={() => router.push(article.actionButton!.route as any)}
+                          style={styles.actionCalloutBtn}
                           activeOpacity={0.8}
-                          className="mt-2 bg-[#77af5c] py-3 px-4 rounded-xl flex-row items-center justify-center gap-2 active:bg-[#689d50]"
                         >
                           <Ionicons
                             name={article.actionButton.icon}
                             size={16}
-                            color="#FFFFFF"
+                            color={themeColor("#FFFFFF", "#E6E6E6")}
                           />
-                          <Text className="text-xs font-bold text-white">
+                          <Text style={styles.actionCalloutBtnText}>
                             {article.actionButton.text}
                           </Text>
-                        </TouchableOpacity>
+                        </TactileTouchable>
                       )}
                     </View>
                   )}
@@ -505,28 +600,435 @@ export default function GrowerGuides() {
               );
             })
           )}
-        </View>
+        </FadeEntrance>
 
-        {/* Footer Support Desk Card */}
-        <View className="mt-6 p-4 rounded-2xl bg-white border border-gray-100 shadow-2xs items-center">
-          <Ionicons name="help-buoy-outline" size={30} color="#77af5c" />
-          <Text className="text-sm font-bold text-gray-900 mt-2">
-            Have a question not covered here?
-          </Text>
-          <Text className="text-xs text-gray-500 text-center mt-1 mb-3 leading-4">
-            Our agricultural team is available to assist with verification and dispute resolution.
-          </Text>
-          <TouchableOpacity
-            onPress={() => router.push("/user/ReportIssue" as any)}
-            className="bg-[#2D4F28] px-4 py-2 rounded-xl flex-row items-center gap-1.5 active:bg-[#233f20]"
-          >
-            <Ionicons name="chatbubble-ellipses-outline" size={14} color="#FFFFFF" />
-            <Text className="text-xs font-bold text-white">
-              Contact Support Desk
+        {/* 5. Uniform Footer Help Desk Card */}
+        <FadeEntrance delay={140}>
+          <Text style={styles.sectionHeading}>Still Have Questions?</Text>
+
+          <View style={styles.footerCard}>
+            <View style={styles.footerIconBox}>
+              <Ionicons name="help-buoy-outline" size={26} color={themeColor("#34594A", "#E6E6E6")} />
+            </View>
+            <Text style={styles.footerTitle}>Have a question not covered here?</Text>
+            <Text style={styles.footerDescription}>
+              Our municipal agricultural specialists and dispute moderators are available to assist with verification and questions.
             </Text>
-          </TouchableOpacity>
-        </View>
+            <TactileTouchable
+              onPress={() => router.push("/user/HelpSupport" as any)}
+              style={styles.footerBtn}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="chatbubble-ellipses-outline" size={16} color={themeColor("#FFFFFF", "#E6E6E6")} />
+              <Text style={styles.footerBtnText}>Contact Support Desk</Text>
+            </TactileTouchable>
+          </View>
+        </FadeEntrance>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const createStyles = (themeColor: (light: string, dark: string) => string) => StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: themeColor("#FAF9F5", "#181818"),
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: themeColor("#FAF9F5", "#181818"),
+    borderBottomWidth: 1,
+    borderBottomColor: themeColor("#EDF0EB", "#414141"),
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 18,
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: themeColor("#23382D", "#E6E6E6"),
+    letterSpacing: -0.3,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 40,
+  },
+
+  // Hero
+  heroBanner: {
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 18,
+    shadowColor: "#293E33",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  heroHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 6,
+  },
+  heroIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroSuperTitle: {
+    color: themeColor("#D4E7DC", "#E6E6E6"),
+    fontSize: 10.5,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  heroTitle: {
+    color: themeColor("#FFFFFF", "#E6E6E6"),
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  heroDescription: {
+    color: themeColor("#D4E4DA", "#E6E6E6"),
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4,
+    marginBottom: 14,
+  },
+  heroSearchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 40,
+    gap: 8,
+  },
+  heroSearchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: themeColor("#23382D", "#E6E6E6"),
+    paddingVertical: 0,
+  },
+
+  // Filter Chips
+  chipsScroll: {
+    gap: 8,
+    paddingBottom: 16,
+    paddingHorizontal: 2,
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 12,
+    backgroundColor: themeColor("#EBF0EB", "#181818"),
+  },
+  filterChipActive: {
+    backgroundColor: themeColor("#2E523E", "#303030"),
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: themeColor("#54685C", "#ADADAD"),
+  },
+  filterChipTextActive: {
+    color: themeColor("#FFFFFF", "#E6E6E6"),
+  },
+
+  // Section Heading
+  sectionHeadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  sectionHeading: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    color: themeColor("#738579", "#E6E6E6"),
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  countText: {
+    fontSize: 12.5,
+    fontWeight: "600",
+    color: themeColor("#738579", "#E6E6E6"),
+    marginBottom: 8,
+  },
+
+  // Guide Cards
+  guideCard: {
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: themeColor("#E5ECE6", "#414141"),
+    shadowColor: "#293E33",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.035,
+    shadowRadius: 6,
+    elevation: 1,
+    overflow: "hidden",
+    marginBottom: 14,
+  },
+  guideHeader: {
+    padding: 16,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  metaLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  guideIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  categoryBadge: {
+    backgroundColor: themeColor("#EDF2EC", "#181818"),
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  categoryBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: themeColor("#375040", "#E6E6E6"),
+  },
+  specialBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  specialBadgeText: {
+    fontSize: 10.5,
+    fontWeight: "700",
+  },
+  mostImportantBadge: {
+    backgroundColor: themeColor("#FEF4E6", "#181818"),
+  },
+  mostImportantBadgeText: {
+    color: "#B26B1E",
+  },
+  safetyBadge: {
+    backgroundColor: themeColor("#E8F3E6", "#181818"),
+  },
+  safetyBadgeText: {
+    color: themeColor("#276336", "#E6E6E6"),
+  },
+  securityBadge: {
+    backgroundColor: themeColor("#FDF0EE", "#181818"),
+  },
+  securityBadgeText: {
+    color: "#B23B2A",
+  },
+  readTimeText: {
+    fontSize: 11,
+    color: themeColor("#88978E", "#E6E6E6"),
+    fontWeight: "500",
+  },
+  guideTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: themeColor("#24372B", "#E6E6E6"),
+    lineHeight: 21,
+    marginBottom: 4,
+  },
+  guideSubtitle: {
+    fontSize: 12.5,
+    color: themeColor("#6D7E73", "#E6E6E6"),
+    lineHeight: 17,
+    marginBottom: 12,
+  },
+  collapseRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: themeColor("#EEF2ED", "#414141"),
+  },
+  collapseText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: themeColor("#28483B", "#E6E6E6"),
+  },
+
+  // Expanded Content
+  expandedContent: {
+    backgroundColor: themeColor("#F8FAF7", "#181818"),
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 18,
+    borderTopWidth: 1,
+    borderTopColor: themeColor("#EBF0EA", "#414141"),
+  },
+  sectionBlock: {
+    marginBottom: 14,
+  },
+  sectionBlockHeading: {
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    color: themeColor("#6D8074", "#E6E6E6"),
+    marginBottom: 4,
+  },
+  sectionBlockBody: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: themeColor("#3B4E42", "#E6E6E6"),
+  },
+  pointsList: {
+    marginTop: 6,
+    gap: 6,
+  },
+  pointRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  pointDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: themeColor("#2E523E", "#303030"),
+    marginTop: 7,
+  },
+  pointText: {
+    flex: 1,
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: themeColor("#3B4E42", "#E6E6E6"),
+  },
+  actionCalloutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: themeColor("#28483B", "#303030"),
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 6,
+    shadowColor: "#293E33",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  actionCalloutBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
+  },
+
+  // Empty state
+  emptyCard: {
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: themeColor("#E5ECE6", "#414141"),
+    padding: 32,
+    alignItems: "center",
+  },
+  emptyTitle: {
+    fontSize: 14.5,
+    fontWeight: "700",
+    color: themeColor("#384D3E", "#E6E6E6"),
+    marginTop: 10,
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    color: themeColor("#839589", "#E6E6E6"),
+    textAlign: "center",
+    marginTop: 4,
+    lineHeight: 17,
+  },
+
+  // Footer Card
+  footerCard: {
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: themeColor("#E5ECE6", "#414141"),
+    padding: 20,
+    alignItems: "center",
+    shadowColor: "#293E33",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.035,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  footerIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  footerTitle: {
+    fontSize: 14.5,
+    fontWeight: "700",
+    color: themeColor("#24372B", "#E6E6E6"),
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  footerDescription: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: themeColor("#6F8075", "#E6E6E6"),
+    textAlign: "center",
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  footerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: themeColor("#28483B", "#303030"),
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    shadowColor: "#293E33",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  footerBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
+  },
+});

@@ -36,11 +36,11 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
       <TouchableOpacity
         activeOpacity={0.9}
         onPress={() => handlePress(photoList[0], 0)}
-        className="w-full rounded-xl overflow-hidden mb-3.5 bg-gray-100 shadow-2xs"
+        className="w-full rounded-xl overflow-hidden mb-3.5 bg-gray-100 shadow-2xs dark:bg-[#181818] "
       >
         <Image
           source={{ uri: photoList[0] }}
-          className="w-full h-64 bg-gray-100"
+          className="w-full h-64 bg-gray-100 dark:bg-[#181818] "
           resizeMode="cover"
         />
       </TouchableOpacity>
@@ -54,7 +54,7 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={() => handlePress(photoList[0], 0)}
-          className="flex-1 h-56 bg-gray-100"
+          className="flex-1 h-56 bg-gray-100 dark:bg-[#181818] "
         >
           <Image
             source={{ uri: photoList[0] }}
@@ -65,7 +65,7 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={() => handlePress(photoList[1], 1)}
-          className="flex-1 h-56 bg-gray-100"
+          className="flex-1 h-56 bg-gray-100 dark:bg-[#181818] "
         >
           <Image
             source={{ uri: photoList[1] }}
@@ -84,7 +84,7 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={() => handlePress(photoList[0], 0)}
-          className="w-full h-44 bg-gray-100"
+          className="w-full h-44 bg-gray-100 dark:bg-[#181818] "
         >
           <Image
             source={{ uri: photoList[0] }}
@@ -96,7 +96,7 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => handlePress(photoList[1], 1)}
-            className="flex-1 h-36 bg-gray-100"
+            className="flex-1 h-36 bg-gray-100 dark:bg-[#181818] "
           >
             <Image
               source={{ uri: photoList[1] }}
@@ -107,7 +107,7 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => handlePress(photoList[2], 2)}
-            className="flex-1 h-36 bg-gray-100"
+            className="flex-1 h-36 bg-gray-100 dark:bg-[#181818] "
           >
             <Image
               source={{ uri: photoList[2] }}
@@ -128,7 +128,7 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => handlePress(photoList[0], 0)}
-            className="flex-1 h-36 bg-gray-100"
+            className="flex-1 h-36 bg-gray-100 dark:bg-[#181818] "
           >
             <Image
               source={{ uri: photoList[0] }}
@@ -139,7 +139,7 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => handlePress(photoList[1], 1)}
-            className="flex-1 h-36 bg-gray-100"
+            className="flex-1 h-36 bg-gray-100 dark:bg-[#181818] "
           >
             <Image
               source={{ uri: photoList[1] }}
@@ -152,7 +152,7 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => handlePress(photoList[2], 2)}
-            className="flex-1 h-36 bg-gray-100"
+            className="flex-1 h-36 bg-gray-100 dark:bg-[#181818] "
           >
             <Image
               source={{ uri: photoList[2] }}
@@ -163,7 +163,7 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => handlePress(photoList[3], 3)}
-            className="flex-1 h-36 bg-gray-100"
+            className="flex-1 h-36 bg-gray-100 dark:bg-[#181818] "
           >
             <Image
               source={{ uri: photoList[3] }}
@@ -185,7 +185,7 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={() => handlePress(photoList[0], 0)}
-          className="flex-1 h-40 bg-gray-100"
+          className="flex-1 h-40 bg-gray-100 dark:bg-[#181818] "
         >
           <Image
             source={{ uri: photoList[0] }}
@@ -196,7 +196,7 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={() => handlePress(photoList[1], 1)}
-          className="flex-1 h-40 bg-gray-100"
+          className="flex-1 h-40 bg-gray-100 dark:bg-[#181818] "
         >
           <Image
             source={{ uri: photoList[1] }}
@@ -211,7 +211,7 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={() => handlePress(photoList[2], 2)}
-          className="flex-1 h-28 bg-gray-100"
+          className="flex-1 h-28 bg-gray-100 dark:bg-[#181818] "
         >
           <Image
             source={{ uri: photoList[2] }}
@@ -222,7 +222,7 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={() => handlePress(photoList[3], 3)}
-          className="flex-1 h-28 bg-gray-100"
+          className="flex-1 h-28 bg-gray-100 dark:bg-[#181818] "
         >
           <Image
             source={{ uri: photoList[3] }}
@@ -233,7 +233,7 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={() => handlePress(photoList[4], 4)}
-          className="flex-1 h-28 bg-gray-100 relative"
+          className="flex-1 h-28 bg-gray-100 relative dark:bg-[#181818] "
         >
           <Image
             source={{ uri: photoList[4] }}
@@ -242,7 +242,7 @@ export const PostImageGrid: React.FC<PostImageGridProps> = ({
           />
           {remainingCount > 0 && (
             <View className="absolute inset-0 bg-black/60 items-center justify-center">
-              <Text className="text-white text-xl font-bold">
+              <Text className="text-white text-xl font-bold dark:text-[#E6E6E6] ">
                 +{remainingCount}
               </Text>
             </View>

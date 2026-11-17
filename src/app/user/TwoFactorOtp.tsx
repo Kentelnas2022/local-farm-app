@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useToast } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import { confirm2FASetupApi, resend2FAOtpApi } from "@/services/auth-service";
@@ -25,6 +26,7 @@ const BG_IMAGE = require("../../../assets/images/background-blur.png");
 export const TWO_FACTOR_STORAGE_KEY = "localfarm_2fa_settings_v1";
 
 export default function TwoFactorOtpScreen() {
+  const { themeColor } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { user, updateUser } = useAuth();
   const { showToast } = useToast();
@@ -157,6 +159,18 @@ export default function TwoFactorOtpScreen() {
     }
   };
 
+  const handleBack = () => {
+    try {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.push("/user/TwoFactorAuth" as any);
+      }
+    } catch {
+      router.push("/user/TwoFactorAuth" as any);
+    }
+  };
+
   return (
     <ImageBackground source={BG_IMAGE} className="flex-1" resizeMode="cover">
       {/* Top Header Bar */}
@@ -166,12 +180,12 @@ export default function TwoFactorOtpScreen() {
       >
         <TouchableOpacity
           className="p-2 self-start rounded-full active:opacity-70"
-          onPress={() => router.back()}
+          onPress={handleBack}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-back-outline" size={26} color="#4B5563" />
+          <Ionicons name="arrow-back-outline" size={26} color={themeColor("#4B5563", "#ADADAD")} />
         </TouchableOpacity>
       </View>
 
@@ -195,21 +209,21 @@ export default function TwoFactorOtpScreen() {
           <View className="w-full max-w-[380px] items-center">
             {/* Centered Header Block */}
             <View className="items-center mb-6 w-full">
-              <View className="w-16 h-16 rounded-full bg-[#E8F5E9] items-center justify-center mb-3">
-                <Ionicons name="shield-checkmark" size={34} color="#72AF5B" />
+              <View className="w-16 h-16 rounded-full bg-[#E8F5E9] items-center justify-center mb-3 dark:bg-[#181818] ">
+                <Ionicons name="shield-checkmark" size={34} color={themeColor("#72AF5B", "#E6E6E6")} />
               </View>
 
-              <Text className="text-3xl font-extrabold text-neutral-900 text-center mb-2 tracking-tight">
+              <Text className="text-3xl font-extrabold text-neutral-900 text-center mb-2 tracking-tight dark:text-[#E6E6E6] ">
                 Two-Factor PIN
               </Text>
-              <Text className="text-sm text-neutral-600 text-center leading-relaxed px-2">
+              <Text className="text-sm text-neutral-600 text-center leading-relaxed px-2 dark:text-[#ADADAD] ">
                 Enter the 6-digit verification code sent to{"\n"}
-                <Text className="font-bold text-neutral-800">{maskedTarget}</Text>
+                <Text className="font-bold text-neutral-800 dark:text-[#E6E6E6] ">{maskedTarget}</Text>
               </Text>
             </View>
 
             {errorMsg ? (
-              <View className="bg-[#FFEBEA] p-3.5 rounded-2xl mb-5 w-full border border-[#FFCCCC]">
+              <View className="bg-[#FFEBEA] p-3.5 rounded-2xl mb-5 w-full border border-[#FFCCCC] dark:bg-[#181818] ">
                 <Text className="text-[#FF3B30] text-sm text-center font-medium">
                   {errorMsg}
                 </Text>
@@ -217,8 +231,8 @@ export default function TwoFactorOtpScreen() {
             ) : null}
 
             {resendSent ? (
-              <View className="bg-[#E8F5E9] p-3.5 rounded-2xl mb-5 w-full border border-[#C8E6C9]">
-                <Text className="text-[#72AF5B] text-sm text-center font-medium">
+              <View className="bg-[#E8F5E9] p-3.5 rounded-2xl mb-5 w-full border border-[#C8E6C9] dark:bg-[#181818] dark:border-[#414141] ">
+                <Text className="text-[#72AF5B] text-sm text-center font-medium dark:text-[#E6E6E6] ">
                   A new verification code has been sent to your email!
                 </Text>
               </View>
@@ -232,13 +246,13 @@ export default function TwoFactorOtpScreen() {
                   ref={(el) => {
                     inputRefs.current[index] = el;
                   }}
-                  className={`w-[48px] h-[54px] bg-white border ${
+                  className={`w-[48px] h-[54px] bg-white border  dark:bg-[#242424] ${
                     digit
-                      ? "border-[#72AF5B]"
+                      ? "border-[#72AF5B] dark:border-[#414141] "
                       : errorMsg
-                        ? "border-[#FF3B30] bg-[#FFF8F8]"
-                        : "border-gray-200"
-                  } rounded-2xl text-center text-2xl font-bold text-gray-900 shadow-sm`}
+                        ? "border-[#FF3B30] bg-[#FFF8F8] dark:bg-[#181818] "
+                        : "border-gray-200 dark:border-[#414141] "
+                  } rounded-2xl text-center text-2xl font-bold text-gray-900 shadow-sm dark:text-[#E6E6E6] `}
                   keyboardType="number-pad"
                   maxLength={6}
                   value={digit}
@@ -251,7 +265,7 @@ export default function TwoFactorOtpScreen() {
 
             {/* Verify Button (Clean "Verify Code" text that never wraps or cuts off) */}
             <TouchableOpacity
-              className="w-full h-[52px] bg-[#72AF5B] rounded-2xl items-center justify-center shadow-md active:opacity-90 mb-5"
+              className="w-full h-[52px] bg-[#72AF5B] rounded-2xl items-center justify-center shadow-md active:opacity-90 mb-5 dark:bg-[#E6E6E6] "
               style={{
                 shadowColor: "#72AF5B",
                 shadowOffset: { width: 0, height: 4 },
@@ -265,9 +279,9 @@ export default function TwoFactorOtpScreen() {
               accessibilityLabel="Verify Code"
             >
               {isSubmitting ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
+                <ActivityIndicator color={themeColor("#FFFFFF", "#181818")} size="small" />
               ) : (
-                <Text className="text-white text-base font-bold tracking-wide">
+                <Text className="text-white text-base font-bold tracking-wide dark:text-[#181818] ">
                   Verify Code
                 </Text>
               )}
@@ -275,11 +289,11 @@ export default function TwoFactorOtpScreen() {
 
             {/* Resend Code Link */}
             <View className="flex-row justify-center items-center py-2">
-              <Text className="text-sm text-neutral-600">
+              <Text className="text-sm text-neutral-600 dark:text-[#ADADAD] ">
                 Didn't receive the code?{" "}
               </Text>
               <TouchableOpacity onPress={handleResendCode} activeOpacity={0.7}>
-                <Text className="text-sm font-bold text-[#72AF5B]">
+                <Text className="text-sm font-bold text-[#72AF5B] dark:text-[#E6E6E6] ">
                   Resend Code
                 </Text>
               </TouchableOpacity>
@@ -299,19 +313,19 @@ export default function TwoFactorOtpScreen() {
           className="flex-1 items-center justify-center px-6"
           style={{ backgroundColor: "rgba(0, 0, 0, 0.6)" }}
         >
-          <View className="w-full max-w-[340px] bg-white rounded-3xl p-6 items-center shadow-xl">
+          <View className="w-full max-w-[340px] bg-white rounded-3xl p-6 items-center shadow-xl dark:bg-[#242424] ">
             {/* Green Badge Icon */}
-            <View className="w-16 h-16 rounded-full bg-[#E8F5E9] items-center justify-center mb-4">
-              <Ionicons name="shield-checkmark" size={44} color="#72AF5B" />
+            <View className="w-16 h-16 rounded-full bg-[#E8F5E9] items-center justify-center mb-4 dark:bg-[#181818] ">
+              <Ionicons name="shield-checkmark" size={44} color={themeColor("#72AF5B", "#E6E6E6")} />
             </View>
 
             {/* Title */}
-            <Text className="text-2xl font-bold text-gray-900 text-center mb-2">
+            <Text className="text-2xl font-bold text-gray-900 text-center mb-2 dark:text-[#E6E6E6] ">
               2FA Activated!
             </Text>
 
             {/* Description Message */}
-            <Text className="text-sm text-gray-600 text-center mb-6 leading-5">
+            <Text className="text-sm text-gray-600 text-center mb-6 leading-5 dark:text-[#ADADAD] ">
               Two-factor authentication via email has been verified and enabled
               for your LocalFarm account.
             </Text>
@@ -319,12 +333,12 @@ export default function TwoFactorOtpScreen() {
             {/* Continue Button */}
             <TouchableOpacity
               onPress={handleSuccessContinue}
-              className="w-full h-[50px] bg-[#72AF5B] rounded-2xl items-center justify-center active:opacity-90 shadow-sm"
+              className="w-full h-[50px] bg-[#72AF5B] rounded-2xl items-center justify-center active:opacity-90 shadow-sm dark:bg-[#E6E6E6] "
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel="Continue to Settings"
             >
-              <Text className="text-white text-base font-bold">Continue</Text>
+              <Text className="text-white text-base font-bold dark:text-[#181818] ">Continue</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -18,7 +18,7 @@ export default function UserLayout() {
 
   // Block rendering protected user screens until user is confirmed authenticated on cold boot
   if (isLoading && !user) {
-    return <View className="flex-1 bg-white" />;
+    return <View className="flex-1 bg-white dark:bg-[#181818] " />;
   }
 
   return (

@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useAuth } from "@/hooks/use-auth";
 import { sendMessageApi } from "@/services/chat-service";
 import { FriendItem, getFriendsApi } from "@/services/connection-service";
@@ -67,6 +68,7 @@ export default function SharePostModal({
   onShareSuccess,
   onShowToast,
 }: SharePostModalProps) {
+  const { themeColor } = useAppTheme();
   const { user } = useAuth();
 
   const [viewMode, setViewMode] = useState<ShareViewMode>("menu");
@@ -236,7 +238,7 @@ export default function SharePostModal({
         />
 
         <View
-          className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl z-10 max-h-[90vh] flex-col"
+          className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl z-10 max-h-[90vh] flex-col dark:bg-[#242424] "
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 10 },
@@ -251,21 +253,21 @@ export default function SharePostModal({
           {viewMode === "menu" && (
             <View className="flex-col">
               {/* Menu Header */}
-              <View className="flex-row items-center justify-between px-5 py-4 border-b border-gray-100">
-                <Text className="text-lg font-bold text-gray-900">Share Post</Text>
+              <View className="flex-row items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#414141] ">
+                <Text className="text-lg font-bold text-gray-900 dark:text-[#E6E6E6] ">Share Post</Text>
                 <TouchableOpacity
                   onPress={onClose}
-                  className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200"
+                  className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200 dark:bg-[#181818] dark:active:bg-[#181818] "
                   accessibilityRole="button"
                   accessibilityLabel="Close share menu"
                 >
-                  <Ionicons name="close" size={20} color="#4B5563" />
+                  <Ionicons name="close" size={20} color={themeColor("#4B5563", "#ADADAD")} />
                 </TouchableOpacity>
               </View>
 
               {/* Target Post Quick Snippet Preview */}
-              <View className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex-row items-center">
-                <View className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden mr-2.5 items-center justify-center">
+              <View className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex-row items-center dark:bg-[#242424] dark:border-[#414141] ">
+                <View className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden mr-2.5 items-center justify-center dark:bg-[#181818] ">
                   {originalAuthorAvatar ? (
                     <Image
                       source={{ uri: originalAuthorAvatar }}
@@ -273,14 +275,14 @@ export default function SharePostModal({
                       resizeMode="cover"
                     />
                   ) : (
-                    <Ionicons name="person" size={16} color="#9CA3AF" />
+                    <Ionicons name="person" size={16} color={themeColor("#9CA3AF", "#ADADAD")} />
                   )}
                 </View>
                 <View className="flex-1">
-                  <Text className="text-xs font-bold text-gray-800" numberOfLines={1}>
+                  <Text className="text-xs font-bold text-gray-800 dark:text-[#E6E6E6] " numberOfLines={1}>
                     {originalAuthorName}
                   </Text>
-                  <Text className="text-[11px] text-gray-500" numberOfLines={1}>
+                  <Text className="text-[11px] text-gray-500 dark:text-[#ADADAD] " numberOfLines={1}>
                     {originalContent || "Photo post"}
                   </Text>
                 </View>
@@ -291,55 +293,55 @@ export default function SharePostModal({
                 {/* 1. Share to Feed with Thoughts */}
                 <TouchableOpacity
                   onPress={() => setViewMode("feed")}
-                  className="flex-row items-center px-5 py-3.5 active:bg-gray-50 border-b border-gray-50"
+                  className="flex-row items-center px-5 py-3.5 active:bg-gray-50 border-b border-gray-50 dark:active:bg-[#242424] dark:border-[#414141] "
                   activeOpacity={0.7}
                 >
-                  <View className="w-10 h-10 rounded-full bg-green-50 items-center justify-center mr-3.5 border border-green-100">
-                    <Ionicons name="create-outline" size={22} color="#166534" />
+                  <View className="w-10 h-10 rounded-full bg-green-50 items-center justify-center mr-3.5 border border-green-100 dark:bg-[#181818] dark:border-[#414141] ">
+                    <Ionicons name="create-outline" size={22} color={themeColor("#166534", "#E6E6E6")} />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-sm font-bold text-gray-900">
+                    <Text className="text-sm font-bold text-gray-900 dark:text-[#E6E6E6] ">
                       Share to Feed
                     </Text>
-                    <Text className="text-xs text-gray-500">
+                    <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">
                       Write your own thoughts before sharing
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                  <Ionicons name="chevron-forward" size={18} color={themeColor("#9CA3AF", "#ADADAD")} />
                 </TouchableOpacity>
                 {/* 2. Send in Message */}
                 <TouchableOpacity
                   onPress={() => setViewMode("message")}
-                  className="flex-row items-center px-5 py-3.5 active:bg-gray-50 border-b border-gray-50"
+                  className="flex-row items-center px-5 py-3.5 active:bg-gray-50 border-b border-gray-50 dark:active:bg-[#242424] dark:border-[#414141] "
                   activeOpacity={0.7}
                 >
-                  <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mr-3.5 border border-blue-100">
+                  <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mr-3.5 border border-blue-100 dark:bg-[#181818] dark:border-[#414141] ">
                     <Ionicons name="chatbubble-ellipses-outline" size={22} color="#1D4ED8" />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-sm font-bold text-gray-900">
+                    <Text className="text-sm font-bold text-gray-900 dark:text-[#E6E6E6] ">
                       Send in Message
                     </Text>
-                    <Text className="text-xs text-gray-500">
+                    <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">
                       Send to a friend or chat conversation
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                  <Ionicons name="chevron-forward" size={18} color={themeColor("#9CA3AF", "#ADADAD")} />
                 </TouchableOpacity>
                 {/* 3. Copy Link */}
                 <TouchableOpacity
                   onPress={handleCopyLink}
-                  className="flex-row items-center px-5 py-3.5 active:bg-gray-50 border-b border-gray-50"
+                  className="flex-row items-center px-5 py-3.5 active:bg-gray-50 border-b border-gray-50 dark:active:bg-[#242424] dark:border-[#414141] "
                   activeOpacity={0.7}
                 >
-                  <View className="w-10 h-10 rounded-full bg-amber-50 items-center justify-center mr-3.5 border border-amber-100">
+                  <View className="w-10 h-10 rounded-full bg-amber-50 items-center justify-center mr-3.5 border border-amber-100 dark:bg-[#181818] ">
                     <Ionicons name="link-outline" size={22} color="#B45309" />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-sm font-bold text-gray-900">
+                    <Text className="text-sm font-bold text-gray-900 dark:text-[#E6E6E6] ">
                       Copy Link
                     </Text>
-                    <Text className="text-xs text-gray-500">
+                    <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">
                       Copy post link to share anywhere
                     </Text>
                   </View>
@@ -348,17 +350,17 @@ export default function SharePostModal({
                 {/* 6. More Options (System Share) */}
                 <TouchableOpacity
                   onPress={handleNativeShare}
-                  className="flex-row items-center px-5 py-3.5 active:bg-gray-50 mb-2"
+                  className="flex-row items-center px-5 py-3.5 active:bg-gray-50 mb-2 dark:active:bg-[#242424] "
                   activeOpacity={0.7}
                 >
-                  <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3.5">
-                    <Ionicons name="share-outline" size={22} color="#374151" />
+                  <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mr-3.5 dark:bg-[#181818] ">
+                    <Ionicons name="share-outline" size={22} color={themeColor("#374151", "#E6E6E6")} />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-sm font-bold text-gray-900">
+                    <Text className="text-sm font-bold text-gray-900 dark:text-[#E6E6E6] ">
                       More Options...
                     </Text>
-                    <Text className="text-xs text-gray-500">
+                    <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">
                       Share via apps on your device
                     </Text>
                   </View>
@@ -373,25 +375,25 @@ export default function SharePostModal({
           {viewMode === "feed" && (
             <View className="flex-col max-h-[85vh]">
               {/* Header */}
-              <View className="flex-row items-center justify-between px-5 py-4 border-b border-gray-100">
+              <View className="flex-row items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#414141] ">
                 <View className="flex-row items-center">
                   <TouchableOpacity
                     onPress={() => setViewMode("menu")}
                     disabled={isSubmitting}
-                    className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center mr-3"
+                    className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center mr-3 dark:bg-[#181818] "
                   >
-                    <Ionicons name="arrow-back" size={18} color="#374151" />
+                    <Ionicons name="arrow-back" size={18} color={themeColor("#374151", "#E6E6E6")} />
                   </TouchableOpacity>
-                  <Text className="text-lg font-bold text-gray-900">
+                  <Text className="text-lg font-bold text-gray-900 dark:text-[#E6E6E6] ">
                     Share to Feed
                   </Text>
                 </View>
                 <TouchableOpacity
                   onPress={onClose}
                   disabled={isSubmitting}
-                  className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center"
+                  className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center dark:bg-[#181818] "
                 >
-                  <Ionicons name="close" size={20} color="#4B5563" />
+                  <Ionicons name="close" size={20} color={themeColor("#4B5563", "#ADADAD")} />
                 </TouchableOpacity>
               </View>
 
@@ -402,7 +404,7 @@ export default function SharePostModal({
               >
                 {/* Author Info Row */}
                 <View className="flex-row items-center mb-3">
-                  <View className="w-11 h-11 rounded-full border border-green-500 items-center justify-center bg-gray-100 mr-3 overflow-hidden">
+                  <View className="w-11 h-11 rounded-full border border-green-500 items-center justify-center bg-gray-100 mr-3 overflow-hidden dark:bg-[#181818] ">
                     {user?.avatarUrl ? (
                       <Image
                         source={{ uri: user.avatarUrl }}
@@ -410,18 +412,18 @@ export default function SharePostModal({
                         resizeMode="cover"
                       />
                     ) : (
-                      <Ionicons name="person" size={22} color="#9CA3AF" />
+                      <Ionicons name="person" size={22} color={themeColor("#9CA3AF", "#ADADAD")} />
                     )}
                   </View>
                   <View className="flex-1">
-                    <Text className="font-bold text-gray-900 text-base">
+                    <Text className="font-bold text-gray-900 text-base dark:text-[#E6E6E6] ">
                       {user?.name || user?.username || "You"}
                     </Text>
                     {/* Privacy Dropdown Selector */}
                     <View className="relative z-30 self-start">
                       <TouchableOpacity
                         onPress={() => setShowPrivacyDropdown((prev) => !prev)}
-                        className="flex-row items-center mt-1 bg-green-50 px-2.5 py-1 rounded-full border border-green-200/80 active:bg-green-100"
+                        className="flex-row items-center mt-1 bg-green-50 px-2.5 py-1 rounded-full border border-green-200/80 active:bg-green-100 dark:bg-[#181818] dark:border-[#414141]/80 dark:active:bg-[#303030] "
                         activeOpacity={0.7}
                       >
                         <Ionicons
@@ -433,22 +435,22 @@ export default function SharePostModal({
                               : "lock-closed-outline"
                           }
                           size={12}
-                          color="#166534"
+                          color={themeColor("#166534", "#E6E6E6")}
                         />
-                        <Text className="text-xs font-semibold text-green-800 ml-1 mr-1">
+                        <Text className="text-xs font-semibold text-green-800 ml-1 mr-1 dark:text-[#E6E6E6] ">
                           {privacy}
                         </Text>
                         <Ionicons
                           name={showPrivacyDropdown ? "chevron-up" : "chevron-down"}
                           size={12}
-                          color="#166534"
+                          color={themeColor("#166534", "#E6E6E6")}
                         />
                       </TouchableOpacity>
 
                       {/* Dropdown Menu Popup */}
                       {showPrivacyDropdown && (
                         <View
-                          className="absolute top-8 left-0 z-50 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-1"
+                          className="absolute top-8 left-0 z-50 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-1 dark:bg-[#242424] dark:border-[#414141] "
                           style={{
                             elevation: 8,
                             shadowColor: "#000",
@@ -467,13 +469,13 @@ export default function SharePostModal({
                                   setShowPrivacyDropdown(false);
                                 }}
                                 className={`flex-row items-center px-3 py-2.5 ${
-                                  isSelected ? "bg-green-50/70" : "active:bg-gray-50"
+                                  isSelected ? "bg-green-50/70 dark:bg-[#181818]/70 " : "active:bg-gray-50 dark:active:bg-[#242424] "
                                 }`}
                                 activeOpacity={0.7}
                               >
                                 <View
                                   className={`w-7 h-7 rounded-full items-center justify-center mr-2.5 ${
-                                    isSelected ? "bg-green-100" : "bg-gray-100"
+                                    isSelected ? "bg-green-100 dark:bg-[#303030] " : "bg-gray-100 dark:bg-[#181818] "
                                   }`}
                                 >
                                   <Ionicons
@@ -485,17 +487,17 @@ export default function SharePostModal({
                                 <View className="flex-1">
                                   <Text
                                     className={`text-xs font-bold ${
-                                      isSelected ? "text-green-800" : "text-gray-800"
+                                      isSelected ? "text-green-800 dark:text-[#E6E6E6] " : "text-gray-800 dark:text-[#E6E6E6] "
                                     }`}
                                   >
                                     {opt.label}
                                   </Text>
-                                  <Text className="text-[10px] text-gray-500">
+                                  <Text className="text-[10px] text-gray-500 dark:text-[#ADADAD] ">
                                     {opt.description}
                                   </Text>
                                 </View>
                                 {isSelected && (
-                                  <Ionicons name="checkmark" size={15} color="#166534" />
+                                  <Ionicons name="checkmark" size={15} color={themeColor("#166534", "#E6E6E6")} />
                                 )}
                               </TouchableOpacity>
                             );
@@ -511,17 +513,17 @@ export default function SharePostModal({
                   value={caption}
                   onChangeText={setCaption}
                   placeholder="Say something about this post..."
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
                   multiline
-                  className="text-base text-gray-800 min-h-[90px] text-top mb-4"
+                  className="text-base text-gray-800 min-h-[90px] text-top mb-4 dark:text-[#E6E6E6] "
                   style={{ textAlignVertical: "top" }}
                   autoFocus={true}
                 />
 
                 {/* Embedded Original Post Preview */}
-                <View className="border border-gray-200 rounded-2xl p-3.5 bg-gray-50/80 mb-2">
+                <View className="border border-gray-200 rounded-2xl p-3.5 bg-gray-50/80 mb-2 dark:border-[#414141] dark:bg-[#242424]/80 ">
                   <View className="flex-row items-center mb-2.5">
-                    <View className="w-8 h-8 rounded-full border border-green-400 items-center justify-center bg-gray-200 mr-2.5 overflow-hidden">
+                    <View className="w-8 h-8 rounded-full border border-green-400 items-center justify-center bg-gray-200 mr-2.5 overflow-hidden dark:bg-[#181818] ">
                       {originalAuthorAvatar ? (
                         <Image
                           source={{ uri: originalAuthorAvatar }}
@@ -529,21 +531,21 @@ export default function SharePostModal({
                           resizeMode="cover"
                         />
                       ) : (
-                        <Ionicons name="person" size={16} color="#9CA3AF" />
+                        <Ionicons name="person" size={16} color={themeColor("#9CA3AF", "#ADADAD")} />
                       )}
                     </View>
                     <View className="flex-1">
-                      <Text className="font-bold text-gray-900 text-xs" numberOfLines={1}>
+                      <Text className="font-bold text-gray-900 text-xs dark:text-[#E6E6E6] " numberOfLines={1}>
                         {originalAuthorName}
                       </Text>
-                      <Text className="text-[11px] text-gray-500" numberOfLines={1}>
+                      <Text className="text-[11px] text-gray-500 dark:text-[#ADADAD] " numberOfLines={1}>
                         {originalAuthorRole} • {originalTimeAgo}
                       </Text>
                     </View>
                   </View>
 
                   {originalContent ? (
-                    <Text className="text-sm text-gray-700 mb-2 leading-relaxed" numberOfLines={4}>
+                    <Text className="text-sm text-gray-700 mb-2 leading-relaxed dark:text-[#E6E6E6] " numberOfLines={4}>
                       {originalContent}
                     </Text>
                   ) : null}
@@ -551,7 +553,7 @@ export default function SharePostModal({
                   {originalImageUrl ? (
                     <Image
                       source={{ uri: originalImageUrl }}
-                      className="w-full h-40 rounded-xl bg-gray-200"
+                      className="w-full h-40 rounded-xl bg-gray-200 dark:bg-[#181818] "
                       resizeMode="cover"
                     />
                   ) : null}
@@ -559,19 +561,19 @@ export default function SharePostModal({
               </ScrollView>
 
               {/* Bottom Confirm Button */}
-              <View className="px-5 py-3.5 border-t border-gray-100 bg-white">
+              <View className="px-5 py-3.5 border-t border-gray-100 bg-white dark:border-[#414141] dark:bg-[#242424] ">
                 <TouchableOpacity
                   onPress={handleConfirmFeedShare}
                   disabled={isSubmitting}
-                  className="w-full py-3.5 rounded-xl bg-[#72AF5B] items-center justify-center flex-row shadow-sm active:bg-[#5e944a]"
+                  className="w-full py-3.5 rounded-xl bg-[#72AF5B] items-center justify-center flex-row shadow-sm active:bg-[#5e944a] dark:bg-[#E6E6E6] dark:active:bg-[#E6E6E6] "
                   activeOpacity={0.85}
                 >
                   {isSubmitting ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
+                    <ActivityIndicator size="small" color={themeColor("#ffffff", "#181818")} />
                   ) : (
                     <>
-                      <Ionicons name="arrow-redo" size={18} color="#ffffff" />
-                      <Text className="text-white font-bold text-base ml-2">
+                      <Ionicons name="arrow-redo" size={18} color={themeColor("#ffffff", "#181818")} />
+                      <Text className="text-white font-bold text-base ml-2 dark:text-[#181818] ">
                         Share Now
                       </Text>
                     </>
@@ -587,69 +589,69 @@ export default function SharePostModal({
           {viewMode === "message" && (
             <View className="flex-col max-h-[85vh]">
               {/* Header */}
-              <View className="flex-row items-center justify-between px-5 py-4 border-b border-gray-100">
+              <View className="flex-row items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#414141] ">
                 <View className="flex-row items-center">
                   <TouchableOpacity
                     onPress={() => setViewMode("menu")}
-                    className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center mr-3"
+                    className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center mr-3 dark:bg-[#181818] "
                   >
-                    <Ionicons name="arrow-back" size={18} color="#374151" />
+                    <Ionicons name="arrow-back" size={18} color={themeColor("#374151", "#E6E6E6")} />
                   </TouchableOpacity>
-                  <Text className="text-lg font-bold text-gray-900">
+                  <Text className="text-lg font-bold text-gray-900 dark:text-[#E6E6E6] ">
                     Send in Message
                   </Text>
                 </View>
                 <TouchableOpacity
                   onPress={onClose}
-                  className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center"
+                  className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center dark:bg-[#181818] "
                 >
-                  <Ionicons name="close" size={20} color="#4B5563" />
+                  <Ionicons name="close" size={20} color={themeColor("#4B5563", "#ADADAD")} />
                 </TouchableOpacity>
               </View>
 
               {/* Friend Search Bar */}
-              <View className="px-5 py-2.5 border-b border-gray-100">
-                <View className="flex-row items-center bg-gray-100 px-3 py-2 rounded-xl">
-                  <Ionicons name="search" size={18} color="#9CA3AF" />
+              <View className="px-5 py-2.5 border-b border-gray-100 dark:border-[#414141] ">
+                <View className="flex-row items-center bg-gray-100 px-3 py-2 rounded-xl dark:bg-[#181818] ">
+                  <Ionicons name="search" size={18} color={themeColor("#9CA3AF", "#ADADAD")} />
                   <TextInput
                     value={friendSearchQuery}
                     onChangeText={setFriendSearchQuery}
                     placeholder="Search friends..."
-                    placeholderTextColor="#9CA3AF"
-                    className="flex-1 ml-2 text-sm text-gray-900 p-0"
+                    placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+                    className="flex-1 ml-2 text-sm text-gray-900 p-0 dark:text-[#E6E6E6] "
                   />
                   {friendSearchQuery.length > 0 && (
                     <TouchableOpacity onPress={() => setFriendSearchQuery("")}>
-                      <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+                      <Ionicons name="close-circle" size={16} color={themeColor("#9CA3AF", "#ADADAD")} />
                     </TouchableOpacity>
                   )}
                 </View>
               </View>
 
               {/* Quick Message Note Input */}
-              <View className="px-5 py-2 bg-gray-50 border-b border-gray-100">
+              <View className="px-5 py-2 bg-gray-50 border-b border-gray-100 dark:bg-[#242424] dark:border-[#414141] ">
                 <TextInput
                   value={messageNote}
                   onChangeText={setMessageNote}
                   placeholder="Write a note (optional)..."
-                  placeholderTextColor="#9CA3AF"
-                  className="text-xs text-gray-800 py-1"
+                  placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+                  className="text-xs text-gray-800 py-1 dark:text-[#E6E6E6] "
                 />
               </View>
 
               {/* Friends List */}
               {isLoadingFriends ? (
                 <View className="py-12 items-center justify-center">
-                  <ActivityIndicator size="small" color="#72AF5B" />
-                  <Text className="text-xs text-gray-500 mt-2">Loading friends...</Text>
+                  <ActivityIndicator size="small" color={themeColor("#72AF5B", "#E6E6E6")} />
+                  <Text className="text-xs text-gray-500 mt-2 dark:text-[#ADADAD] ">Loading friends...</Text>
                 </View>
               ) : filteredFriends.length === 0 ? (
                 <View className="py-12 items-center justify-center px-4">
-                  <Ionicons name="people-outline" size={36} color="#D1D5DB" />
-                  <Text className="text-sm font-semibold text-gray-600 mt-2">
+                  <Ionicons name="people-outline" size={36} color={themeColor("#D1D5DB", "#E6E6E6")} />
+                  <Text className="text-sm font-semibold text-gray-600 mt-2 dark:text-[#ADADAD] ">
                     {friendSearchQuery ? "No friends match your search" : "No friends connected yet"}
                   </Text>
-                  <Text className="text-xs text-gray-400 mt-1 text-center">
+                  <Text className="text-xs text-gray-400 mt-1 text-center dark:text-[#ADADAD] ">
                     {friendSearchQuery
                       ? "Try searching for a different name."
                       : "Connect with farmers and growers to send posts directly in chat."}
@@ -664,10 +666,10 @@ export default function SharePostModal({
                     return (
                       <View
                         key={friend.id}
-                        className="flex-row items-center justify-between py-3 border-b border-gray-50"
+                        className="flex-row items-center justify-between py-3 border-b border-gray-50 dark:border-[#414141] "
                       >
                         <View className="flex-row items-center flex-1 mr-3">
-                          <View className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden mr-3 items-center justify-center">
+                          <View className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden mr-3 items-center justify-center dark:bg-[#181818] ">
                             {friend.avatarUrl ? (
                               <Image
                                 source={{ uri: friend.avatarUrl }}
@@ -675,15 +677,15 @@ export default function SharePostModal({
                                 resizeMode="cover"
                               />
                             ) : (
-                              <Ionicons name="person" size={20} color="#9CA3AF" />
+                              <Ionicons name="person" size={20} color={themeColor("#9CA3AF", "#ADADAD")} />
                             )}
                           </View>
                           <View className="flex-1">
-                            <Text className="text-sm font-bold text-gray-900" numberOfLines={1}>
+                            <Text className="text-sm font-bold text-gray-900 dark:text-[#E6E6E6] " numberOfLines={1}>
                               {friend.name}
                             </Text>
                             {friend.username ? (
-                              <Text className="text-xs text-gray-500" numberOfLines={1}>
+                              <Text className="text-xs text-gray-500 dark:text-[#ADADAD] " numberOfLines={1}>
                                 {friend.username}
                               </Text>
                             ) : null}
@@ -696,21 +698,21 @@ export default function SharePostModal({
                           disabled={isSent || isSending}
                           className={`px-4 py-2 rounded-full flex-row items-center ${
                             isSent
-                              ? "bg-green-100 border border-green-300"
-                              : "bg-[#72AF5B] active:bg-[#5e944a]"
+                              ? "bg-green-100 border border-green-300 dark:bg-[#303030] dark:border-[#414141] "
+                              : "bg-[#72AF5B] active:bg-[#5e944a] dark:bg-[#E6E6E6] dark:active:bg-[#E6E6E6] "
                           }`}
                         >
                           {isSending ? (
-                            <ActivityIndicator size="small" color="#ffffff" />
+                            <ActivityIndicator size="small" color={themeColor("#ffffff", "#181818")} />
                           ) : isSent ? (
                             <>
-                              <Ionicons name="checkmark" size={14} color="#15803D" />
-                              <Text className="text-xs font-bold text-green-700 ml-1">
+                              <Ionicons name="checkmark" size={14} color={themeColor("#15803D", "#E6E6E6")} />
+                              <Text className="text-xs font-bold text-green-700 ml-1 dark:text-[#E6E6E6] ">
                                 Sent
                               </Text>
                             </>
                           ) : (
-                            <Text className="text-xs font-bold text-white">Send</Text>
+                            <Text className="text-xs font-bold text-white dark:text-[#181818] ">Send</Text>
                           )}
                         </TouchableOpacity>
                       </View>

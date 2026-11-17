@@ -1,7 +1,9 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useToast } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
 import { blockUser } from "@/services/blocked-users-service";
-import { sendFriendRequestApi } from "@/services/connection-service";
+import { getChatUserInfoApi, ChatFarmerInfo } from "@/services/chat-service";
+import { searchUsersToConnectApi, sendFriendRequestApi } from "@/services/connection-service";
 import {
   CommentItem,
   deletePostApi,
@@ -80,6 +82,7 @@ export interface GridPostItem {
 
 
 export default function UserProfile() {
+  const { themeColor } = useAppTheme();
   const { user, updateUser } = useAuth();
   const params = useLocalSearchParams<{
     userId?: string;
@@ -97,11 +100,53 @@ export default function UserProfile() {
 
   const isOwnProfile = params.userId
     ? Boolean(user?.id) && String(params.userId) === String(user?.id)
+    : params.userName
+    ? Boolean(user?.name && user.name.trim().toLowerCase() === params.userName.trim().toLowerCase())
     : true;
+
+  const [remoteProfile, setRemoteProfile] = useState<ChatFarmerInfo | null>(null);
+  const [resolvedUserId, setResolvedUserId] = useState<string | undefined>(params.userId);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (params.userId) {
+      setResolvedUserId(params.userId);
+      getChatUserInfoApi(params.userId)
+        .then((info) => {
+          if (isMounted && info) {
+            setRemoteProfile(info);
+          }
+        })
+        .catch(() => {});
+    } else if (params.userName && !isOwnProfile) {
+      searchUsersToConnectApi(params.userName)
+        .then((results) => {
+          if (!isMounted) return;
+          const match = results.find(
+            (u) =>
+              u.name.trim().toLowerCase() === params.userName!.trim().toLowerCase() ||
+              params.userName!.toLowerCase().includes(u.name.toLowerCase()) ||
+              u.name.toLowerCase().includes(params.userName!.toLowerCase())
+          );
+          if (match) {
+            setResolvedUserId(match.id);
+            getChatUserInfoApi(match.id).then((info) => {
+              if (isMounted && info) {
+                setRemoteProfile(info);
+              }
+            });
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [params.userId, params.userName, isOwnProfile]);
 
   const profileName = isOwnProfile
     ? user?.name || user?.username || rsbsaApp?.fullName || params.userName || "Juan Dela Cruz"
-    : params.userName || "Juan Dela Cruz";
+    : remoteProfile?.fullName || params.userName || "Juan Dela Cruz";
 
   const [farmDetails, setFarmDetails] = useState<{
     farmName?: string;
@@ -123,6 +168,12 @@ export default function UserProfile() {
           farmName: user.farmName,
           farmLocation: user.farmLocation,
           primaryCrops: user.primaryCrops,
+        });
+      } else if (!isOwnProfile && remoteProfile && (remoteProfile.farmName || remoteProfile.farmLocation || remoteProfile.primaryCrops)) {
+        setFarmDetails({
+          farmName: remoteProfile.farmName,
+          farmLocation: remoteProfile.farmLocation,
+          primaryCrops: remoteProfile.primaryCrops,
         });
       } else {
         AsyncStorage.getItem("localfarm_user_farm_details_v1")
@@ -147,6 +198,7 @@ export default function UserProfile() {
       : rsbsaApp?.location) || "";
 
   const profileBio =
+    remoteProfile?.bio ||
     params.userBio ||
     params.userAbout ||
     (isOwnProfile ? user?.about || user?.bio : undefined) ||
@@ -159,6 +211,7 @@ export default function UserProfile() {
   const isRSBSAVerified = rsbsaApp?.status === "verified";
 
   const isVerifiedProfile =
+    Boolean(remoteProfile?.isVerified) ||
     Boolean(
       isRSBSAVerified &&
         (isOwnProfile ||
@@ -174,9 +227,11 @@ export default function UserProfile() {
     (isOwnProfile && Boolean((user as any)?.isVerified));
   const profileAvatar = isOwnProfile
     ? user?.avatarUrl || params.userAvatar || undefined
-    : params.userAvatar || undefined;
+    : remoteProfile?.avatarUrl || params.userAvatar || undefined;
   const profileRole = isOwnProfile
     ? (user as any)?.role || params.userRole || "Field"
+    : remoteProfile?.isVerified
+    ? "Verified Farmer"
     : params.userRole || "Field";
   const profileHandle =
     isOwnProfile && user?.email
@@ -441,7 +496,7 @@ export default function UserProfile() {
           Animated.timing(standaloneCommentsTranslateY, {
             toValue: Dimensions.get("window").height,
             duration: 180,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== "web",
           }).start(() => {
             setActiveCommentsPostId(null);
             setReplyingTo(null);
@@ -451,14 +506,14 @@ export default function UserProfile() {
           Animated.spring(standaloneCommentsTranslateY, {
             toValue: 0,
             bounciness: 4,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== "web",
           }).start();
         }
       },
       onPanResponderTerminate: () => {
         Animated.spring(standaloneCommentsTranslateY, {
           toValue: 0,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }).start();
       },
     }),
@@ -563,7 +618,7 @@ export default function UserProfile() {
   const loadUserPosts = useCallback(async () => {
     setIsLoadingPosts(true);
     try {
-      const targetUserId = isOwnProfile ? user?.id : (params.userId || user?.id);
+      const targetUserId = isOwnProfile ? user?.id : (resolvedUserId || params.userId || user?.id);
       const targetName = profileName;
 
       // Request posts specifically for this target user from the server
@@ -646,6 +701,7 @@ export default function UserProfile() {
     }
   }, [
     params.userId,
+    resolvedUserId,
     user?.id,
     profileName,
     profileRole,
@@ -1115,9 +1171,9 @@ export default function UserProfile() {
 // Dedicated Full-Page Section for Post Detail (NewsFeed post card format)
   if (selectedGridPostIndex !== null && gridPostsData.length > 0) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-100" edges={["top", "bottom", "left", "right"]}>
+      <SafeAreaView className="flex-1 bg-gray-100 dark:bg-[#181818] " edges={["top", "bottom", "left", "right"]}>
         {/* Header Bar: Back arrow + "Posts" + Counter + Close button */}
-        <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200 bg-white shadow-xs">
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200 bg-white shadow-xs dark:border-[#414141] dark:bg-[#242424] ">
           <TouchableOpacity
             onPress={handleCloseGridPost}
             activeOpacity={0.7}
@@ -1125,13 +1181,13 @@ export default function UserProfile() {
             accessibilityRole="button"
             accessibilityLabel="Back to posts"
           >
-            <Ionicons name="arrow-back" size={24} color="#111827" />
-            <Text className="ml-2.5 text-base font-bold text-gray-900">
+            <Ionicons name="arrow-back" size={24} color={themeColor("#111827", "#E6E6E6")} />
+            <Text className="ml-2.5 text-base font-bold text-gray-900 dark:text-[#E6E6E6] ">
               Posts
             </Text>
           </TouchableOpacity>
 
-          <Text className="text-xs font-semibold text-gray-500">
+          <Text className="text-xs font-semibold text-gray-500 dark:text-[#ADADAD] ">
             {selectedGridPostIndex + 1} of {gridPostsData.length}
           </Text>
 
@@ -1142,7 +1198,7 @@ export default function UserProfile() {
             accessibilityRole="button"
             accessibilityLabel="Close post"
           >
-            <Ionicons name="close" size={24} color="#6B7280" />
+            <Ionicons name="close" size={24} color={themeColor("#6B7280", "#ADADAD")} />
           </TouchableOpacity>
         </View>
 
@@ -1208,7 +1264,7 @@ export default function UserProfile() {
             return (
               <View style={{ width: screenWidth }} className="flex-1">
                 <ScrollView
-                  className="flex-1 bg-gray-100"
+                  className="flex-1 bg-gray-100 dark:bg-[#181818] "
                   showsVerticalScrollIndicator={false}
                   contentContainerStyle={{
                     paddingVertical: 12,
@@ -1217,13 +1273,13 @@ export default function UserProfile() {
                   }}
                 >
                   {/* Post Card - Exact NewsFeed Design */}
-                  <View className="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden mb-4">
+                  <View className="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden mb-4 dark:bg-[#242424] dark:border-[#414141] ">
                     {/* Post Header */}
                     <View className="p-4 pb-2">
                       <View className="flex-row justify-between items-start mb-3">
                         <View className="flex-row items-center flex-1 pr-2">
                           {/* Avatar with calm ring */}
-                          <View className="h-10 w-10 rounded-full border border-[#C8DCCF] items-center justify-center bg-[#EDF3EE] mr-3 overflow-hidden">
+                          <View className="h-10 w-10 rounded-full border border-[#C8DCCF] items-center justify-center bg-[#EDF3EE] mr-3 overflow-hidden dark:border-[#414141] dark:bg-[#181818] ">
                             {currentPost.avatarUri || parentPost?.avatarUri || profileAvatar ? (
                               <Image
                                 source={{
@@ -1239,14 +1295,14 @@ export default function UserProfile() {
                               <Ionicons
                                 name="person"
                                 size={20}
-                                color="#7A8D81"
+                                color={themeColor("#7A8D81", "#E6E6E6")}
                               />
                             )}
                           </View>
                           {/* Author details */}
                           <View className="flex-1">
                             <View className="flex-row items-center flex-wrap">
-                              <Text className="font-bold text-gray-900 mr-1.5 text-base">
+                              <Text className="font-bold text-gray-900 mr-1.5 text-base dark:text-[#E6E6E6] ">
                                 {currentPost.authorName ||
                                   parentPost?.authorName ||
                                   profileName}
@@ -1265,8 +1321,8 @@ export default function UserProfile() {
                                   ((parentPost?.isVerified ??
                                     currentPost.isVerified) ??
                                   isVerifiedProfile)
-                                    ? "text-emerald-700 bg-emerald-50"
-                                    : "text-green-600 bg-green-50"
+                                    ? "text-emerald-700 bg-emerald-50 dark:text-[#E6E6E6] dark:bg-[#181818] "
+                                    : "text-green-600 bg-green-50 dark:bg-[#181818] "
                                 }`}
                               >
                                 {currentPost.authorRole ||
@@ -1286,20 +1342,20 @@ export default function UserProfile() {
                                   <Ionicons
                                     name="location"
                                     size={12}
-                                    color="#34594A"
+                                    color={themeColor("#34594A", "#E6E6E6")}
                                   />
-                                  <Text className="text-xs text-gray-500 ml-1 mr-1.5">
+                                  <Text className="text-xs text-gray-500 ml-1 mr-1.5 dark:text-[#ADADAD] ">
                                     {currentPost.location || parentPost?.location} •
                                   </Text>
                                 </>
                               )}
-                              <Text className="text-xs text-gray-500 mr-2">
+                              <Text className="text-xs text-gray-500 mr-2 dark:text-[#ADADAD] ">
                                 {currentPost.timeAgo || parentPost?.timeAgo}
                               </Text>
                               <Ionicons
                                 name="globe-outline"
                                 size={12}
-                                color="#9ca3af"
+                                color={themeColor("#9ca3af", "#ADADAD")}
                               />
                             </View>
                           </View>
@@ -1329,14 +1385,14 @@ export default function UserProfile() {
                           <Ionicons
                             name="ellipsis-horizontal"
                             size={20}
-                            color="#9ca3af"
+                            color={themeColor("#9ca3af", "#ADADAD")}
                           />
                         </TouchableOpacity>
                       </View>
 
                       {/* Post Caption */}
                       {!!(currentPost.caption || parentPost?.content) && (
-                        <Text className="text-gray-800 text-sm mb-3 leading-5">
+                        <Text className="text-gray-800 text-sm mb-3 leading-5 dark:text-[#E6E6E6] ">
                           {currentPost.caption || parentPost?.content}
                         </Text>
                       )}
@@ -1377,7 +1433,7 @@ export default function UserProfile() {
                       >
                         <Image
                           source={{ uri: currentPost.imageUri }}
-                          className="w-full rounded-lg mb-4 bg-gray-100"
+                          className="w-full rounded-lg mb-4 bg-gray-100 dark:bg-[#181818] "
                           style={{
                             width: "100%",
                             height: 280,
@@ -1388,7 +1444,7 @@ export default function UserProfile() {
                       </TouchableOpacity>
 
                       {/* Interaction Bar */}
-                      <View className="flex-row justify-between items-center pt-2 border-t border-gray-100">
+                      <View className="flex-row justify-between items-center pt-2 border-t border-gray-100 dark:border-[#414141] ">
                         <View className="flex-row gap-6">
                           {/* Like Button */}
                           <TouchableOpacity
@@ -1411,9 +1467,9 @@ export default function UserProfile() {
                                 <Ionicons
                                   name="heart-outline"
                                   size={24}
-                                  color="#6b7280"
+                                  color={themeColor("#6b7280", "#ADADAD")}
                                 />
-                                <Text className="font-medium text-gray-500">
+                                <Text className="font-medium text-gray-500 dark:text-[#ADADAD] ">
                                   {likesCount}
                                 </Text>
                               </>
@@ -1428,9 +1484,9 @@ export default function UserProfile() {
                             <Ionicons
                               name="chatbubble-outline"
                               size={22}
-                              color="#6b7280"
+                              color={themeColor("#6b7280", "#ADADAD")}
                             />
-                            <Text className="font-medium text-gray-500">
+                            <Text className="font-medium text-gray-500 dark:text-[#ADADAD] ">
                               {commentsCount}
                             </Text>
                           </TouchableOpacity>
@@ -1443,9 +1499,9 @@ export default function UserProfile() {
                             <Ionicons
                               name="share-social-outline"
                               size={22}
-                              color="#6b7280"
+                              color={themeColor("#6b7280", "#ADADAD")}
                             />
-                            <Text className="font-medium text-gray-500">
+                            <Text className="font-medium text-gray-500 dark:text-[#ADADAD] ">
                               Share
                             </Text>
                           </TouchableOpacity>
@@ -1476,7 +1532,7 @@ export default function UserProfile() {
                           onPress={() => toggleExpandComments(baseId)}
                           className="mt-2.5 active:opacity-70"
                         >
-                          <Text className="text-xs font-semibold text-gray-500 hover:text-[#34594A]">
+                          <Text className="text-xs font-semibold text-gray-500 hover:text-[#34594A] dark:text-[#ADADAD] dark:hover:text-[#E6E6E6] ">
                             View all {commentsCount}{" "}
                             {commentsCount === 1 ? "comment" : "comments"}
                           </Text>
@@ -1511,7 +1567,7 @@ export default function UserProfile() {
   return (
     <SafeAreaView
       className="flex-1"
-      style={{ flex: 1, backgroundColor: "#FAF9F5" }}
+      style={{ flex: 1, backgroundColor: themeColor("#FAF9F5", "#181818") }}
       edges={["top", "left", "right"]}
     >
       {/* Top Header */}
@@ -1519,7 +1575,7 @@ export default function UserProfile() {
       {/* Main Content ScrollView */}
       <ScrollView
         className="flex-1"
-        style={{ flex: 1, backgroundColor: "#FAF9F5" }}
+        style={{ flex: 1, backgroundColor: themeColor("#FAF9F5", "#181818") }}
         contentContainerStyle={{ paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
       >
@@ -1544,14 +1600,14 @@ export default function UserProfile() {
         />
 
         {/* 4. Profile Details Section */}
-        <View className="px-4 bg-white pb-1 border-b border-[#EAE7DF]">
+        <View className="px-4 bg-white pb-1 border-b border-[#EAE7DF] dark:bg-[#242424] dark:border-[#414141] ">
           {/* Name & Badge */}
           <View className="flex-row items-center mt-2 mb-1 flex-wrap">
             <Text
               style={{
                 fontSize: 24,
                 fontWeight: "700",
-                color: "#23382D",
+                color: themeColor("#23382D", "#E6E6E6"),
                 marginRight: 8,
                 letterSpacing: -0.3,
               }}
@@ -1560,7 +1616,7 @@ export default function UserProfile() {
             </Text>
             {isVerifiedProfile && (
               <View className="flex-row items-center mr-2">
-                <Ionicons name="checkmark-circle" size={20} color="#2A734D" />
+                <Ionicons name="checkmark-circle" size={20} color={themeColor("#2A734D", "#E6E6E6")} />
               </View>
             )}
             <View
@@ -1577,7 +1633,7 @@ export default function UserProfile() {
               }}
             >
               {isVerifiedProfile && (
-                <Ionicons name="ribbon-outline" size={12} color="#2A734D" />
+                <Ionicons name="ribbon-outline" size={12} color={themeColor("#2A734D", "#E6E6E6")} />
               )}
               <Text
                 style={{
@@ -1596,7 +1652,7 @@ export default function UserProfile() {
           <Text
             style={{
               fontSize: 13.5,
-              color: "#6F8074",
+              color: themeColor("#6F8074", "#E6E6E6"),
               marginBottom: 10,
               fontWeight: "500",
             }}
@@ -1607,11 +1663,11 @@ export default function UserProfile() {
           {/* Location */}
           {Boolean(profileLocation) && (
             <View className="flex-row items-center mb-4">
-              <Ionicons name="location-sharp" size={15} color="#34594A" />
+              <Ionicons name="location-sharp" size={15} color={themeColor("#34594A", "#E6E6E6")} />
               <Text
                 style={{
                   fontSize: 13,
-                  color: "#5F7265",
+                  color: themeColor("#5F7265", "#E6E6E6"),
                   marginLeft: 4,
                   fontWeight: "500",
                 }}
@@ -1635,7 +1691,7 @@ export default function UserProfile() {
                   }
                   style={{
                     flex: 1,
-                    backgroundColor: "#34594A",
+                    backgroundColor: themeColor("#34594A", "#E6E6E6"),
                     borderRadius: 14,
                     paddingVertical: 11,
                     paddingHorizontal: 12,
@@ -1653,10 +1709,10 @@ export default function UserProfile() {
                   accessibilityRole="button"
                   accessibilityLabel="Edit profile"
                 >
-                  <Ionicons name="create-outline" size={16} color="#FFFFFF" />
+                  <Ionicons name="create-outline" size={16} color={themeColor("#FFFFFF", "#E6E6E6")} />
                   <Text
                     style={{
-                      color: "#FFFFFF",
+                      color: themeColor("#FFFFFF", "#E6E6E6"),
                       fontSize: 14,
                       fontWeight: "700",
                       letterSpacing: -0.2,
@@ -1671,9 +1727,9 @@ export default function UserProfile() {
                   onPress={handleShareProfile}
                   style={{
                     flex: 1,
-                    backgroundColor: "#FFFFFF",
+                    backgroundColor: themeColor("#FFFFFF", "#242424"),
                     borderWidth: 1.2,
-                    borderColor: "#E0E7E1",
+                    borderColor: themeColor("#E0E7E1", "#414141"),
                     borderRadius: 14,
                     paddingVertical: 11,
                     paddingHorizontal: 12,
@@ -1694,11 +1750,11 @@ export default function UserProfile() {
                   <Ionicons
                     name="share-social-outline"
                     size={16}
-                    color="#34594A"
+                    color={themeColor("#34594A", "#E6E6E6")}
                   />
                   <Text
                     style={{
-                      color: "#24372C",
+                      color: themeColor("#24372C", "#E6E6E6"),
                       fontSize: 14,
                       fontWeight: "600",
                       letterSpacing: -0.2,
@@ -1718,9 +1774,9 @@ export default function UserProfile() {
                     isFriendRequested
                       ? {
                           flex: 1,
-                          backgroundColor: "#EDF3EE",
+                          backgroundColor: themeColor("#EDF3EE", "#181818"),
                           borderWidth: 1.2,
-                          borderColor: "#DCE6DF",
+                          borderColor: themeColor("#DCE6DF", "#414141"),
                           borderRadius: 14,
                           paddingVertical: 11,
                           paddingHorizontal: 12,
@@ -1731,7 +1787,7 @@ export default function UserProfile() {
                         }
                       : {
                           flex: 1,
-                          backgroundColor: "#34594A",
+                          backgroundColor: themeColor("#34594A", "#E6E6E6"),
                           borderRadius: 14,
                           paddingVertical: 11,
                           paddingHorizontal: 12,
@@ -1783,9 +1839,9 @@ export default function UserProfile() {
                   }
                   style={{
                     flex: 1,
-                    backgroundColor: "#FFFFFF",
+                    backgroundColor: themeColor("#FFFFFF", "#242424"),
                     borderWidth: 1.2,
-                    borderColor: "#E0E7E1",
+                    borderColor: themeColor("#E0E7E1", "#414141"),
                     borderRadius: 14,
                     paddingVertical: 11,
                     paddingHorizontal: 12,
@@ -1806,11 +1862,11 @@ export default function UserProfile() {
                   <Ionicons
                     name="chatbubble-outline"
                     size={15}
-                    color="#34594A"
+                    color={themeColor("#34594A", "#E6E6E6")}
                   />
                   <Text
                     style={{
-                      color: "#24372C",
+                      color: themeColor("#24372C", "#E6E6E6"),
                       fontSize: 14,
                       fontWeight: "600",
                       letterSpacing: -0.2,
@@ -1829,8 +1885,8 @@ export default function UserProfile() {
           style={{
             flexDirection: "row",
             borderBottomWidth: 1,
-            borderColor: "#E5ECE6",
-            backgroundColor: "#FFFFFF",
+            borderColor: themeColor("#E5ECE6", "#414141"),
+            backgroundColor: themeColor("#FFFFFF", "#242424"),
           }}
         >
           {/* Tab 1 (All - Left) */}
@@ -1918,10 +1974,10 @@ export default function UserProfile() {
         {/* 7. Tab Contents */}
         {activeTab === "posts" && (
           gridPostsData.length === 0 ? (
-            <View className="py-12 px-6 items-center justify-center bg-white">
-              <Ionicons name="images-outline" size={48} color="#9CA3AF" />
-              <Text className="text-base font-bold text-gray-700 mt-3">No photo posts yet</Text>
-              <Text className="text-sm text-gray-400 text-center mt-1">
+            <View className="py-12 px-6 items-center justify-center bg-white dark:bg-[#242424] ">
+              <Ionicons name="images-outline" size={48} color={themeColor("#9CA3AF", "#ADADAD")} />
+              <Text className="text-base font-bold text-gray-700 mt-3 dark:text-[#E6E6E6] ">No photo posts yet</Text>
+              <Text className="text-sm text-gray-400 text-center mt-1 dark:text-[#ADADAD] ">
                 {isOwnProfile
                   ? "Photos you share will appear here."
                   : `${profileName} hasn't shared any photo posts yet.`}
@@ -1934,7 +1990,7 @@ export default function UserProfile() {
                   key={post.id}
                   onPress={() => handleOpenGridPost(index)}
                   activeOpacity={0.88}
-                  className="w-1/3 aspect-square border-[1px] border-white bg-gray-200 overflow-hidden relative"
+                  className="w-1/3 aspect-square border-[1px] border-white bg-gray-200 overflow-hidden relative dark:border-[#414141] dark:bg-[#181818] "
                   accessibilityRole="button"
                   accessibilityLabel={`View post ${index + 1}`}
                 >
@@ -1955,11 +2011,11 @@ export default function UserProfile() {
             {/* 1. 'Create Post' Section */}
             <View
               style={{
-                backgroundColor: "#FFFFFF",
+                backgroundColor: themeColor("#FFFFFF", "#242424"),
                 paddingHorizontal: 16,
                 paddingVertical: 14,
                 borderBottomWidth: 1,
-                borderColor: "#EAE7DF",
+                borderColor: themeColor("#EAE7DF", "#414141"),
               }}
             >
               <View className="flex-row items-center">
@@ -1972,11 +2028,11 @@ export default function UserProfile() {
                     height: 40,
                     borderRadius: 20,
                     borderWidth: 1.5,
-                    borderColor: "#C8DCCF",
+                    borderColor: themeColor("#C8DCCF", "#414141"),
                     alignItems: "center",
                     justifyContent: "center",
                     overflow: "hidden",
-                    backgroundColor: "#EDF3EE",
+                    backgroundColor: themeColor("#EDF3EE", "#181818"),
                     marginRight: 12,
                   }}
                   accessibilityRole="button"
@@ -1989,7 +2045,7 @@ export default function UserProfile() {
                       resizeMode="cover"
                     />
                   ) : (
-                    <Ionicons name="person" size={20} color="#7A8D81" />
+                    <Ionicons name="person" size={20} color={themeColor("#7A8D81", "#E6E6E6")} />
                   )}
                 </TouchableOpacity>
 
@@ -1999,9 +2055,9 @@ export default function UserProfile() {
                   onPress={() => setCreatePostVisible(true)}
                   style={{
                     flex: 1,
-                    backgroundColor: "#F4F7F4",
+                    backgroundColor: themeColor("#F4F7F4", "#181818"),
                     borderWidth: 1,
-                    borderColor: "#E5ECE6",
+                    borderColor: themeColor("#E5ECE6", "#414141"),
                     borderRadius: 22,
                     paddingHorizontal: 16,
                     justifyContent: "center",
@@ -2014,7 +2070,7 @@ export default function UserProfile() {
                       : `Write something to ${profileName}...`
                   }
                 >
-                  <Text style={{ fontSize: 14, color: "#75867B", fontWeight: "500" }}>
+                  <Text style={{ fontSize: 14, color: themeColor("#75867B", "#E6E6E6"), fontWeight: "500" }}>
                     {isOwnProfile
                       ? "What's on your mind?"
                       : `Write something to ${profileName}...`}
@@ -2026,7 +2082,7 @@ export default function UserProfile() {
             {/* Post Feed */}
             <View
               style={{
-                backgroundColor: "#FAF9F5",
+                backgroundColor: themeColor("#FAF9F5", "#181818"),
                 paddingTop: 14,
                 paddingBottom: 24,
                 paddingHorizontal: 14,
@@ -2034,8 +2090,8 @@ export default function UserProfile() {
             >
               {isLoadingPosts ? (
                 <View className="py-12 items-center justify-center">
-                  <ActivityIndicator size="large" color="#34594A" />
-                  <Text style={{ fontSize: 13, color: "#75867B", marginTop: 8, fontWeight: "500" }}>
+                  <ActivityIndicator size="large" color={themeColor("#34594A", "#E6E6E6")} />
+                  <Text style={{ fontSize: 13, color: themeColor("#75867B", "#E6E6E6"), marginTop: 8, fontWeight: "500" }}>
                     Loading posts...
                   </Text>
                 </View>
@@ -2046,18 +2102,18 @@ export default function UserProfile() {
                     paddingHorizontal: 20,
                     alignItems: "center",
                     justifyContent: "center",
-                    backgroundColor: "#FFFFFF",
+                    backgroundColor: themeColor("#FFFFFF", "#242424"),
                     borderRadius: 18,
                     borderWidth: 1,
-                    borderColor: "#EAE7DF",
+                    borderColor: themeColor("#EAE7DF", "#414141"),
                   }}
                 >
-                  <Ionicons name="newspaper-outline" size={44} color="#A3B2A7" />
+                  <Ionicons name="newspaper-outline" size={44} color={themeColor("#A3B2A7", "#E6E6E6")} />
                   <Text
                     style={{
                       fontSize: 15,
                       fontWeight: "700",
-                      color: "#23382D",
+                      color: themeColor("#23382D", "#E6E6E6"),
                       marginTop: 10,
                     }}
                   >
@@ -2066,7 +2122,7 @@ export default function UserProfile() {
                   <Text
                     style={{
                       fontSize: 13,
-                      color: "#75867B",
+                      color: themeColor("#75867B", "#E6E6E6"),
                       textAlign: "center",
                       marginTop: 4,
                       lineHeight: 18,
@@ -2090,11 +2146,11 @@ export default function UserProfile() {
                     <View
                       key={post.id}
                       style={{
-                        backgroundColor: "#FFFFFF",
+                        backgroundColor: themeColor("#FFFFFF", "#242424"),
                         marginBottom: 14,
                         borderRadius: 20,
                         borderWidth: 1,
-                        borderColor: "#EAE7DF",
+                        borderColor: themeColor("#EAE7DF", "#414141"),
                         shadowColor: "#1e2a22",
                         shadowOffset: { width: 0, height: 2 },
                         shadowOpacity: 0.04,
@@ -2106,20 +2162,20 @@ export default function UserProfile() {
                       {/* Shared Post Header Banner */}
                       {post.isShared && post.originalPost && (
                         <View className="flex-row items-center px-4 pt-3 pb-1">
-                          <Ionicons name="arrow-redo" size={14} color="#34594A" />
+                          <Ionicons name="arrow-redo" size={14} color={themeColor("#34594A", "#E6E6E6")} />
                           <View className="flex-row items-center ml-1.5 flex-wrap">
-                            <Text style={{ fontWeight: "700", color: "#23382D", fontSize: 12 }}>
+                            <Text style={{ fontWeight: "700", color: themeColor("#23382D", "#E6E6E6"), fontSize: 12 }}>
                               {post.authorName}
                             </Text>
                             {isVerifiedUser && (
                               <Ionicons
                                 name="checkmark-circle"
                                 size={13}
-                                color="#2A734D"
+                                color={themeColor("#2A734D", "#E6E6E6")}
                                 style={{ marginHorizontal: 3 }}
                               />
                             )}
-                            <Text style={{ fontSize: 12, color: "#75867B", fontWeight: "500", marginLeft: 4 }}>
+                            <Text style={{ fontSize: 12, color: themeColor("#75867B", "#E6E6E6"), fontWeight: "500", marginLeft: 4 }}>
                               shared a post
                             </Text>
                           </View>
@@ -2137,10 +2193,10 @@ export default function UserProfile() {
                                 height: 40,
                                 borderRadius: 20,
                                 borderWidth: 1.5,
-                                borderColor: "#C8DCCF",
+                                borderColor: themeColor("#C8DCCF", "#414141"),
                                 alignItems: "center",
                                 justifyContent: "center",
-                                backgroundColor: "#EDF3EE",
+                                backgroundColor: themeColor("#EDF3EE", "#181818"),
                                 marginRight: 12,
                                 overflow: "hidden",
                               }}
@@ -2152,7 +2208,7 @@ export default function UserProfile() {
                                   resizeMode="cover"
                                 />
                               ) : (
-                                <Ionicons name="person" size={20} color="#7A8D81" />
+                                <Ionicons name="person" size={20} color={themeColor("#7A8D81", "#E6E6E6")} />
                               )}
                             </View>
                             {/* Author details */}
@@ -2161,7 +2217,7 @@ export default function UserProfile() {
                                 <Text
                                   style={{
                                     fontWeight: "700",
-                                    color: "#23382D",
+                                    color: themeColor("#23382D", "#E6E6E6"),
                                     fontSize: 15,
                                     marginRight: 6,
                                   }}
@@ -2172,7 +2228,7 @@ export default function UserProfile() {
                                   <Ionicons
                                     name="checkmark-circle"
                                     size={16}
-                                    color="#2A734D"
+                                    color={themeColor("#2A734D", "#E6E6E6")}
                                     style={{ marginRight: 6 }}
                                   />
                                 )}
@@ -2216,12 +2272,12 @@ export default function UserProfile() {
                                     <Ionicons
                                       name="location"
                                       size={12}
-                                      color="#34594A"
+                                      color={themeColor("#34594A", "#E6E6E6")}
                                     />
                                     <Text
                                       style={{
                                         fontSize: 11.5,
-                                        color: "#75867B",
+                                        color: themeColor("#75867B", "#E6E6E6"),
                                         marginLeft: 2,
                                         marginRight: 6,
                                         fontWeight: "500",
@@ -2234,7 +2290,7 @@ export default function UserProfile() {
                                 <Text
                                   style={{
                                     fontSize: 11.5,
-                                    color: "#75867B",
+                                    color: themeColor("#75867B", "#E6E6E6"),
                                     marginRight: 6,
                                     fontWeight: "500",
                                   }}
@@ -2250,7 +2306,7 @@ export default function UserProfile() {
                                       : "globe-outline"
                                   }
                                   size={12}
-                                  color="#879386"
+                                  color={themeColor("#879386", "#E6E6E6")}
                                 />
                               </View>
                             </View>
@@ -2266,7 +2322,7 @@ export default function UserProfile() {
                             <Ionicons
                               name="ellipsis-horizontal"
                               size={20}
-                              color="#879386"
+                              color={themeColor("#879386", "#E6E6E6")}
                             />
                           </TouchableOpacity>
                         </View>
@@ -2275,7 +2331,7 @@ export default function UserProfile() {
                         {!!post.content && (
                           <Text
                             style={{
-                              color: "#23382D",
+                              color: themeColor("#23382D", "#E6E6E6"),
                               fontSize: 14.5,
                               lineHeight: 21,
                               marginBottom: 10,
@@ -2287,9 +2343,9 @@ export default function UserProfile() {
 
                         {/* Shared Post: Embedded Original Post Card */}
                         {post.isShared && post.originalPost ? (
-                          <View className="border border-gray-200 rounded-xl p-3 bg-gray-50/80 mb-3">
+                          <View className="border border-gray-200 rounded-xl p-3 bg-gray-50/80 mb-3 dark:border-[#414141] dark:bg-[#242424]/80 ">
                             <View className="flex-row items-center mb-2">
-                              <View className="h-8 w-8 rounded-full border border-gray-300 items-center justify-center bg-gray-200 mr-2.5 overflow-hidden">
+                              <View className="h-8 w-8 rounded-full border border-gray-300 items-center justify-center bg-gray-200 mr-2.5 overflow-hidden dark:border-[#414141] dark:bg-[#181818] ">
                                 {post.originalPost.avatarUri ? (
                                   <Image
                                     source={{ uri: post.originalPost.avatarUri }}
@@ -2300,13 +2356,13 @@ export default function UserProfile() {
                                   <Ionicons
                                     name="person"
                                     size={16}
-                                    color="#6b7280"
+                                    color={themeColor("#6b7280", "#ADADAD")}
                                   />
                                 )}
                               </View>
                               <View>
                                 <View className="flex-row items-center flex-wrap">
-                                  <Text className="font-bold text-gray-900 text-sm mr-1.5">
+                                  <Text className="font-bold text-gray-900 text-sm mr-1.5 dark:text-[#E6E6E6] ">
                                     {post.originalPost.authorName}
                                   </Text>
                                   {post.originalPost.isVerified && (
@@ -2317,11 +2373,11 @@ export default function UserProfile() {
                                       style={{ marginRight: 4 }}
                                     />
                                   )}
-                                  <Text className="text-gray-500 text-[10px] font-semibold bg-gray-200 px-1.5 py-0.5 rounded">
+                                  <Text className="text-gray-500 text-[10px] font-semibold bg-gray-200 px-1.5 py-0.5 rounded dark:text-[#ADADAD] dark:bg-[#181818] ">
                                     {post.originalPost.authorRole}
                                   </Text>
                                 </View>
-                                <Text className="text-[11px] text-gray-400 mt-0.5">
+                                <Text className="text-[11px] text-gray-400 mt-0.5 dark:text-[#ADADAD] ">
                                   {Boolean(
                                     post.originalPost.location &&
                                       post.originalPost.location.trim().length > 0 &&
@@ -2334,7 +2390,7 @@ export default function UserProfile() {
                             </View>
 
                             {!!post.originalPost.content && (
-                              <Text className="text-gray-700 text-sm mb-2 leading-5">
+                              <Text className="text-gray-700 text-sm mb-2 leading-5 dark:text-[#E6E6E6] ">
                                 {post.originalPost.content}
                               </Text>
                             )}
@@ -2405,7 +2461,7 @@ export default function UserProfile() {
                         )}
 
                         {/* Interaction Bar */}
-                        <View className="flex-row justify-between items-center pt-2 border-t border-gray-100">
+                        <View className="flex-row justify-between items-center pt-2 border-t border-gray-100 dark:border-[#414141] ">
                           <View className="flex-row gap-6">
                             {/* Like Button */}
                             <TouchableOpacity
@@ -2428,9 +2484,9 @@ export default function UserProfile() {
                                   <Ionicons
                                     name="heart-outline"
                                     size={24}
-                                    color="#6b7280"
+                                    color={themeColor("#6b7280", "#ADADAD")}
                                   />
-                                  <Text className="font-medium text-gray-500">
+                                  <Text className="font-medium text-gray-500 dark:text-[#ADADAD] ">
                                     {post.likes}
                                   </Text>
                                 </>
@@ -2445,9 +2501,9 @@ export default function UserProfile() {
                               <Ionicons
                                 name="chatbubble-outline"
                                 size={22}
-                                color="#6b7280"
+                                color={themeColor("#6b7280", "#ADADAD")}
                               />
-                              <Text className="font-medium text-gray-500">
+                              <Text className="font-medium text-gray-500 dark:text-[#ADADAD] ">
                                 {postComments[post.id] !== undefined
                                   ? postComments[post.id].length
                                   : post.comments}
@@ -2462,9 +2518,9 @@ export default function UserProfile() {
                               <Ionicons
                                 name="share-social-outline"
                                 size={22}
-                                color="#6b7280"
+                                color={themeColor("#6b7280", "#ADADAD")}
                               />
-                              <Text className="font-medium text-gray-500">
+                              <Text className="font-medium text-gray-500 dark:text-[#ADADAD] ">
                                 {post.shares}
                               </Text>
                             </TouchableOpacity>
@@ -2495,7 +2551,7 @@ export default function UserProfile() {
                             onPress={() => toggleExpandComments(post.id)}
                             className="mt-2.5 active:opacity-70"
                           >
-                            <Text className="text-xs font-semibold text-gray-500 hover:text-[#34594A]">
+                            <Text className="text-xs font-semibold text-gray-500 hover:text-[#34594A] dark:text-[#ADADAD] dark:hover:text-[#E6E6E6] ">
                               View all{" "}
                               {postComments[post.id] !== undefined
                                 ? postComments[post.id].length
@@ -2518,22 +2574,22 @@ export default function UserProfile() {
         )}
 
         {activeTab === "about" && (
-          <View className="p-6 bg-white">
+          <View className="p-6 bg-white dark:bg-[#242424] ">
             {isEditingAbout ? (
               /* Inline Edit Mode (Separated from personal info) */
               <View>
-                <Text className="text-base font-semibold text-gray-900 mb-2">
+                <Text className="text-base font-semibold text-gray-900 mb-2 dark:text-[#E6E6E6] ">
                   Edit About
                 </Text>
-                <View className="border border-[#34594A] rounded-xl p-3 bg-[#FAFBF9] mb-3">
+                <View className="border border-[#34594A] rounded-xl p-3 bg-[#FAFBF9] mb-3 dark:border-[#414141] dark:bg-[#242424] ">
                   <TextInput
                     value={aboutInput}
                     onChangeText={setAboutInput}
                     multiline={true}
                     numberOfLines={4}
                     placeholder="Write something about yourself or farm..."
-                    placeholderTextColor="#9CA3AF"
-                    className="text-sm text-gray-800 p-0"
+                    placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+                    className="text-sm text-gray-800 p-0 dark:text-[#E6E6E6] "
                     style={{ minHeight: 90, textAlignVertical: "top" }}
                     autoFocus={true}
                   />
@@ -2545,11 +2601,11 @@ export default function UserProfile() {
                       setAboutInput(user?.about || user?.bio || "");
                       setIsEditingAbout(false);
                     }}
-                    className="px-4 py-2 rounded-xl bg-gray-100 active:bg-gray-200"
+                    className="px-4 py-2 rounded-xl bg-gray-100 active:bg-gray-200 dark:bg-[#181818] dark:active:bg-[#181818] "
                     accessibilityRole="button"
                     accessibilityLabel="Cancel edit"
                   >
-                    <Text className="text-sm font-semibold text-gray-700">
+                    <Text className="text-sm font-semibold text-gray-700 dark:text-[#E6E6E6] ">
                       Cancel
                     </Text>
                   </TouchableOpacity>
@@ -2557,15 +2613,15 @@ export default function UserProfile() {
                   <TouchableOpacity
                     onPress={handleSaveAbout}
                     disabled={isSavingAbout}
-                    style={{ backgroundColor: "#34594A" }}
+                    style={{ backgroundColor: themeColor("#34594A", "#E6E6E6") }}
                     className="px-5 py-2 rounded-xl flex-row items-center gap-1.5 active:opacity-85"
                     accessibilityRole="button"
                     accessibilityLabel="Save about"
                   >
                     {isSavingAbout ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <ActivityIndicator size="small" color={themeColor("#FFFFFF", "#E6E6E6")} />
                     ) : (
-                      <Text className="text-sm font-bold text-white">Save</Text>
+                      <Text className="text-sm font-bold text-white dark:text-[#E6E6E6] ">Save</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -2573,10 +2629,10 @@ export default function UserProfile() {
             ) : (
               /* View Mode with Separate Edit Button */
               <View>
-                <Text className="text-base font-semibold text-gray-900 mb-2">
+                <Text className="text-base font-semibold text-gray-900 mb-2 dark:text-[#E6E6E6] ">
                   About {profileName}
                 </Text>
-                <Text className="text-sm text-gray-700 leading-6">
+                <Text className="text-sm text-gray-700 leading-6 dark:text-[#E6E6E6] ">
                   {(isOwnProfile
                     ? user?.about || user?.bio
                     : params.userAbout || params.userBio) ||
@@ -2596,14 +2652,14 @@ export default function UserProfile() {
                       setAboutInput(user?.about || user?.bio || "");
                       setIsEditingAbout(true);
                     }}
-                    style={{ backgroundColor: "#34594A" }}
+                    style={{ backgroundColor: themeColor("#34594A", "#E6E6E6") }}
                     className="mt-4 w-full rounded-xl py-2.5 flex-row items-center justify-center gap-2 active:opacity-85"
                     activeOpacity={0.85}
                     accessibilityRole="button"
                     accessibilityLabel="Edit about"
                   >
-                    <Ionicons name="create-outline" size={16} color="#ffffff" />
-                    <Text className="text-md font-semibold text-white">
+                    <Ionicons name="create-outline" size={16} color={themeColor("#ffffff", "#E6E6E6")} />
+                    <Text className="text-md font-semibold text-white dark:text-[#E6E6E6] ">
                       Edit
                     </Text>
                   </TouchableOpacity>
@@ -2667,56 +2723,56 @@ export default function UserProfile() {
                   shadowOpacity: 0.35,
                   shadowRadius: 16,
                   transform: [{ translateY: standaloneCommentsTranslateY }],
-                  backgroundColor: "#FFFFFF",
+                  backgroundColor: themeColor("#FFFFFF", "#242424"),
                 }}
-                className="bg-white rounded-t-3xl flex-col overflow-hidden w-full"
+                className="bg-white rounded-t-3xl flex-col overflow-hidden w-full dark:bg-[#242424] "
               >
                 <KeyboardAvoidingView
                   behavior={Platform.OS === "ios" ? "padding" : undefined}
                   keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
-                  style={{ flex: 1, backgroundColor: "#FFFFFF" }}
-                  className="flex-1 flex-col bg-white"
+                  style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }}
+                  className="flex-1 flex-col bg-white dark:bg-[#181818] "
                 >
                   {/* Drawer Drag Handle & Header (Swipe down to close) */}
                   <View
                     {...standaloneCommentsPanResponder.panHandlers}
-                    style={{ backgroundColor: "#FFFFFF" }}
-                    className="pt-3 pb-2.5 px-5 border-b border-gray-100 bg-white"
+                    style={{ backgroundColor: themeColor("#FFFFFF", "#242424") }}
+                    className="pt-3 pb-2.5 px-5 border-b border-gray-100 bg-white dark:border-[#414141] dark:bg-[#242424] "
                   >
-                    <View className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-2" />
-                    <Text className="text-base font-bold text-gray-900 text-center">
+                    <View className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-2 dark:bg-[#303030] " />
+                    <Text className="text-base font-bold text-gray-900 text-center dark:text-[#E6E6E6] ">
                       Comments
                     </Text>
                   </View>
 
                 {/* Comments List */}
                 <ScrollView
-                  style={{ flex: 1, backgroundColor: "#FFFFFF" }}
-                  className="flex-1 px-4 py-3 bg-white"
+                  style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }}
+                  className="flex-1 px-4 py-3 bg-white dark:bg-[#181818] "
                   showsVerticalScrollIndicator={true}
                   keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={{ paddingBottom: 24, backgroundColor: "#FFFFFF" }}
+                  contentContainerStyle={{ paddingBottom: 24, backgroundColor: themeColor("#FFFFFF", "#242424") }}
                 >
                   {loadingComments[activeCommentsPostId] ? (
                     <View className="py-16 items-center justify-center">
-                      <ActivityIndicator size="small" color="#34594A" />
-                      <Text className="text-xs text-gray-400 mt-2 font-medium">
+                      <ActivityIndicator size="small" color={themeColor("#34594A", "#E6E6E6")} />
+                      <Text className="text-xs text-gray-400 mt-2 font-medium dark:text-[#ADADAD] ">
                         Loading comments...
                       </Text>
                     </View>
                   ) : currentComments.length === 0 ? (
                     <View className="py-16 items-center justify-center px-6">
-                      <View className="w-14 h-14 rounded-full bg-[#EDF3EE] items-center justify-center mb-3">
+                      <View className="w-14 h-14 rounded-full bg-[#EDF3EE] items-center justify-center mb-3 dark:bg-[#181818] ">
                         <Ionicons
                           name="chatbubbles-outline"
                           size={28}
-                          color="#34594A"
+                          color={themeColor("#34594A", "#E6E6E6")}
                         />
                       </View>
-                      <Text className="text-sm font-bold text-gray-800">
+                      <Text className="text-sm font-bold text-gray-800 dark:text-[#E6E6E6] ">
                         No comments yet
                       </Text>
-                      <Text className="text-xs text-gray-400 text-center mt-1">
+                      <Text className="text-xs text-gray-400 text-center mt-1 dark:text-[#ADADAD] ">
                         Be the first to share your thoughts!
                       </Text>
                     </View>
@@ -2764,7 +2820,7 @@ export default function UserProfile() {
                               key={comment.id}
                               className={`flex-row items-start mb-3.5 relative ${
                                 isReply
-                                  ? "ml-10 pl-3 border-l-2 border-gray-200 mt-1"
+                                  ? "ml-10 pl-3 border-l-2 border-gray-200 mt-1 dark:border-[#414141] "
                                   : ""
                               }`}
                             >
@@ -2772,7 +2828,7 @@ export default function UserProfile() {
                               <View
                                 className={`${
                                   isReply ? "h-7 w-7" : "h-8 w-8"
-                                } rounded-full mr-2.5 bg-gray-200 items-center justify-center overflow-hidden border border-gray-100`}
+                                } rounded-full mr-2.5 bg-gray-200 items-center justify-center overflow-hidden border border-gray-100 dark:bg-[#181818] dark:border-[#414141] `}
                               >
                                 {comment.avatarUri ? (
                                   <Image
@@ -2787,7 +2843,7 @@ export default function UserProfile() {
                                   <Ionicons
                                     name="person"
                                     size={isReply ? 13 : 15}
-                                    color="#9CA3AF"
+                                    color={themeColor("#9CA3AF", "#ADADAD")}
                                   />
                                 )}
                               </View>
@@ -2800,7 +2856,7 @@ export default function UserProfile() {
                                     <Text
                                       className={`${
                                         isReply ? "text-xs" : "text-sm"
-                                      } font-bold text-gray-900`}
+                                      } font-bold text-gray-900 dark:text-[#E6E6E6] `}
                                     >
                                       {comment.authorName}
                                     </Text>
@@ -2820,13 +2876,13 @@ export default function UserProfile() {
                                       />
                                     )}
                                   </View>
-                                  <Text className="text-[11px] text-gray-400">
+                                  <Text className="text-[11px] text-gray-400 dark:text-[#ADADAD] ">
                                     {comment.timeAgo}
                                   </Text>
                                 </View>
 
                                 {/* Comment Text */}
-                                <Text className="text-sm text-gray-700 leading-5">
+                                <Text className="text-sm text-gray-700 leading-5 dark:text-[#E6E6E6] ">
                                   {comment.content}
                                 </Text>
 
@@ -2865,7 +2921,7 @@ export default function UserProfile() {
                                       className={`text-xs ${
                                         hasCommentReaction
                                           ? "text-[#EF4444] font-bold"
-                                          : "text-gray-500 font-medium"
+                                          : "text-gray-500 font-medium dark:text-[#ADADAD] "
                                       }`}
                                     >
                                       {commentLikesCount}
@@ -2891,7 +2947,7 @@ export default function UserProfile() {
                                   >
                                     <Text
                                       numberOfLines={1}
-                                      className="text-xs text-gray-500 font-medium hover:text-[#34594A]"
+                                      className="text-xs text-gray-500 font-medium hover:text-[#34594A] dark:text-[#ADADAD] dark:hover:text-[#E6E6E6] "
                                     >
                                       Reply
                                     </Text>
@@ -2917,11 +2973,11 @@ export default function UserProfile() {
                                   activeOpacity={0.7}
                                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 >
-                                  <View className="w-5 h-[1.5px] bg-[#34594A] mr-2 rounded-full" />
+                                  <View className="w-5 h-[1.5px] bg-[#34594A] mr-2 rounded-full dark:bg-[#E6E6E6] " />
                                   <Text
                                     numberOfLines={1}
                                     style={{ flexShrink: 0 }}
-                                    className="text-xs font-bold text-[#34594A]"
+                                    className="text-xs font-bold text-[#34594A] dark:text-[#E6E6E6] "
                                   >
                                     {childReplies.length === 1
                                       ? "View 1 reply"
@@ -2930,7 +2986,7 @@ export default function UserProfile() {
                                   <Ionicons
                                     name="chevron-down"
                                     size={13}
-                                    color="#34594A"
+                                    color={themeColor("#34594A", "#E6E6E6")}
                                     style={{ marginLeft: 4 }}
                                   />
                                 </TouchableOpacity>
@@ -2951,18 +3007,18 @@ export default function UserProfile() {
                                     activeOpacity={0.7}
                                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                   >
-                                    <View className="w-5 h-[1.5px] bg-gray-300 mr-2 rounded-full" />
+                                    <View className="w-5 h-[1.5px] bg-gray-300 mr-2 rounded-full dark:bg-[#303030] " />
                                     <Text
                                       numberOfLines={1}
                                       style={{ flexShrink: 0 }}
-                                      className="text-xs font-semibold text-gray-500 hover:text-[#34594A]"
+                                      className="text-xs font-semibold text-gray-500 hover:text-[#34594A] dark:text-[#ADADAD] dark:hover:text-[#E6E6E6] "
                                     >
                                       Hide replies
                                     </Text>
                                     <Ionicons
                                       name="chevron-up"
                                       size={13}
-                                      color="#9CA3AF"
+                                      color={themeColor("#9CA3AF", "#ADADAD")}
                                       style={{ marginLeft: 4 }}
                                     />
                                   </TouchableOpacity>
@@ -2979,24 +3035,24 @@ export default function UserProfile() {
                 <View
                   style={{
                     paddingBottom: Math.max(insets.bottom, 12) + 6,
-                    backgroundColor: "#FFFFFF",
+                    backgroundColor: themeColor("#FFFFFF", "#242424"),
                   }}
-                  className="px-4 pt-2.5 border-t border-gray-200 bg-white"
+                  className="px-4 pt-2.5 border-t border-gray-200 bg-white dark:border-[#414141] dark:bg-[#242424] "
                 >
                   {replyingTo && (
-                    <View className="bg-[#EDF3EE] border border-[#DCE6DF] px-3.5 py-1.5 flex-row justify-between items-center rounded-t-xl border-b-0 mb-1">
+                    <View className="bg-[#EDF3EE] border border-[#DCE6DF] px-3.5 py-1.5 flex-row justify-between items-center rounded-t-xl border-b-0 mb-1 dark:bg-[#181818] dark:border-[#414141] ">
                       <View className="flex-row items-center gap-1.5 flex-1 pr-2">
                         <Ionicons
                           name="return-down-forward"
                           size={14}
-                          color="#34594A"
+                          color={themeColor("#34594A", "#E6E6E6")}
                         />
                         <Text
-                          className="text-xs text-gray-700"
+                          className="text-xs text-gray-700 dark:text-[#E6E6E6] "
                           numberOfLines={1}
                         >
                           Replying to{" "}
-                          <Text className="font-bold text-gray-900">
+                          <Text className="font-bold text-gray-900 dark:text-[#E6E6E6] ">
                             @{replyingTo.username}
                           </Text>
                         </Text>
@@ -3011,14 +3067,14 @@ export default function UserProfile() {
                         <Ionicons
                           name="close-circle"
                           size={16}
-                          color="#6B7280"
+                          color={themeColor("#6B7280", "#ADADAD")}
                         />
                       </TouchableOpacity>
                     </View>
                   )}
 
                   <View
-                    className={`bg-gray-50 border border-gray-200 px-4 py-2 flex-row items-center shadow-xs ${
+                    className={`bg-gray-50 border border-gray-200 px-4 py-2 flex-row items-center shadow-xs  dark:bg-[#242424] dark:border-[#414141] ${
                       replyingTo ? "rounded-b-xl rounded-t-none" : "rounded-full"
                     }`}
                   >
@@ -3036,8 +3092,8 @@ export default function UserProfile() {
                           ? `Reply to @${replyingTo.username}...`
                           : "Add a comment..."
                       }
-                      placeholderTextColor="#9CA3AF"
-                      className="flex-1 text-sm text-gray-800 p-0"
+                      placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+                      className="flex-1 text-sm text-gray-800 p-0 dark:text-[#E6E6E6] "
                       onSubmitEditing={() =>
                         handleAddComment(activeCommentsPostId)
                       }
@@ -3054,14 +3110,14 @@ export default function UserProfile() {
                       className={`ml-2 p-2 rounded-full items-center justify-center min-w-[32px] min-h-[32px] ${
                         (commentInputs[activeCommentsPostId] || "").trim() &&
                         !submittingComments[activeCommentsPostId]
-                          ? "bg-[#34594A] active:opacity-85"
-                          : "bg-gray-200 opacity-60"
+                          ? "bg-[#34594A] active:opacity-85 dark:bg-[#E6E6E6] "
+                          : "bg-gray-200 opacity-60 dark:bg-[#181818] "
                       }`}
                     >
                       {submittingComments[activeCommentsPostId] ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
+                        <ActivityIndicator size="small" color={themeColor("#FFFFFF", "#181818")} />
                       ) : (
-                        <Ionicons name="send" size={14} color="#FFFFFF" />
+                        <Ionicons name="send" size={14} color={themeColor("#FFFFFF", "#181818")} />
                       )}
                     </TouchableOpacity>
                   </View>
@@ -3100,8 +3156,8 @@ export default function UserProfile() {
                 className="px-4 pb-3 flex-row items-center justify-between z-20"
               >
                 {imagesList.length > 1 ? (
-                  <View className="bg-white/20 px-3 py-1 rounded-full">
-                    <Text className="text-white text-xs font-semibold">
+                  <View className="bg-white/20 px-3 py-1 rounded-full dark:bg-[#242424]/20 ">
+                    <Text className="text-white text-xs font-semibold dark:text-[#E6E6E6] ">
                       {(previewImage.currentIndex ?? 0) + 1} / {imagesList.length}
                     </Text>
                   </View>
@@ -3111,12 +3167,12 @@ export default function UserProfile() {
 
                 <TouchableOpacity
                   onPress={handleCloseLightbox}
-                  className="w-10 h-10 rounded-full bg-white/20 items-center justify-center active:bg-white/30"
+                  className="w-10 h-10 rounded-full bg-white/20 items-center justify-center active:bg-white/30 dark:bg-[#242424]/20 dark:active:bg-[#242424]/30 "
                   accessibilityRole="button"
                   accessibilityLabel="Close image preview"
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
-                  <Ionicons name="close" size={24} color="#FFFFFF" />
+                  <Ionicons name="close" size={24} color={themeColor("#FFFFFF", "#E6E6E6")} />
                 </TouchableOpacity>
               </View>
 
@@ -3186,8 +3242,8 @@ export default function UserProfile() {
                       key={dotIdx}
                       className={`h-1.5 rounded-full ${
                         dotIdx === (previewImage.currentIndex ?? 0)
-                          ? "w-5 bg-white"
-                          : "w-1.5 bg-white/40"
+                          ? "w-5 bg-white dark:bg-[#242424] "
+                          : "w-1.5 bg-white/40 dark:bg-[#242424]/40 "
                       }`}
                     />
                   ))}
@@ -3198,13 +3254,13 @@ export default function UserProfile() {
               {previewImage?.caption ? (
                 <View
                   style={{ paddingBottom: Math.max(insets.bottom, 12) + 8 }}
-                  className="bg-black/75 border-t border-white/10 z-10 px-5 pt-3 pb-2"
+                  className="bg-black/75 border-t border-white/10 z-10 px-5 pt-3 pb-2 dark:border-[#414141]/10 "
                 >
                   <ScrollView
                     style={{ maxHeight: 90 }}
                     showsVerticalScrollIndicator={false}
                   >
-                    <Text className="text-white/95 text-sm leading-5">
+                    <Text className="text-white/95 text-sm leading-5 dark:text-[#E6E6E6]/95 ">
                       {previewImage.caption}
                     </Text>
                   </ScrollView>
@@ -3241,7 +3297,7 @@ export default function UserProfile() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="w-full bg-white rounded-t-3xl pt-3 px-5 border-t border-l border-r border-gray-200"
+            className="w-full bg-white rounded-t-3xl pt-3 px-5 border-t border-l border-r border-gray-200 dark:bg-[#242424] dark:border-[#414141] "
             style={{
               paddingBottom: Math.max(insets.bottom, 16) + 12,
               elevation: 8,
@@ -3253,26 +3309,26 @@ export default function UserProfile() {
           >
             {/* Drag Indicator Handle */}
             <View className="items-center mb-3">
-              <View className="w-12 h-1.5 bg-gray-300 rounded-full" />
+              <View className="w-12 h-1.5 bg-gray-300 rounded-full dark:bg-[#303030] " />
             </View>
 
             {/* Header */}
-            <View className="flex-row justify-between items-center mb-3 pb-2.5 border-b border-gray-100">
+            <View className="flex-row justify-between items-center mb-3 pb-2.5 border-b border-gray-100 dark:border-[#414141] ">
               <View>
-                <Text className="text-lg font-bold text-gray-900">
+                <Text className="text-lg font-bold text-gray-900 dark:text-[#E6E6E6] ">
                   Change Cover Photo
                 </Text>
-                <Text className="text-xs text-gray-500 mt-0.5">
+                <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
                   Update the banner on your profile
                 </Text>
               </View>
               <TouchableOpacity
                 onPress={() => setIsCoverModalVisible(false)}
-                className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200"
+                className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200 dark:bg-[#181818] dark:active:bg-[#181818] "
                 accessibilityRole="button"
                 accessibilityLabel="Close cover photo modal"
               >
-                <Ionicons name="close" size={20} color="#6b7280" />
+                <Ionicons name="close" size={20} color={themeColor("#6b7280", "#ADADAD")} />
               </TouchableOpacity>
             </View>
 
@@ -3287,22 +3343,22 @@ export default function UserProfile() {
                   }, 250);
                 }}
                 activeOpacity={0.7}
-                className="flex-row items-center p-3.5 bg-gray-50 rounded-2xl border border-gray-100 active:bg-gray-100"
+                className="flex-row items-center p-3.5 bg-gray-50 rounded-2xl border border-gray-100 active:bg-gray-100 dark:bg-[#242424] dark:border-[#414141] dark:active:bg-[#181818] "
                 accessibilityRole="button"
                 accessibilityLabel="See cover photo"
               >
-                <View className="w-11 h-11 rounded-full bg-purple-50 items-center justify-center mr-3.5 border border-purple-100">
+                <View className="w-11 h-11 rounded-full bg-purple-50 items-center justify-center mr-3.5 border border-purple-100 dark:bg-[#181818] dark:border-[#414141] ">
                   <Ionicons name="eye-outline" size={22} color="#7C3AED" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-[15px] font-semibold text-gray-900">
+                  <Text className="text-[15px] font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                     See cover photo
                   </Text>
-                  <Text className="text-xs text-gray-500 mt-0.5">
+                  <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
                     View your cover photo in full screen
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color={themeColor("#9ca3af", "#ADADAD")} />
               </TouchableOpacity>
 
               {/* Option 2: Choose from Library */}
@@ -3312,22 +3368,22 @@ export default function UserProfile() {
                   pickCoverFromGallery();
                 }}
                 activeOpacity={0.7}
-                className="flex-row items-center p-3.5 bg-gray-50 rounded-2xl border border-gray-100 active:bg-gray-100"
+                className="flex-row items-center p-3.5 bg-gray-50 rounded-2xl border border-gray-100 active:bg-gray-100 dark:bg-[#242424] dark:border-[#414141] dark:active:bg-[#181818] "
                 accessibilityRole="button"
                 accessibilityLabel="Choose from Library"
               >
-                <View className="w-11 h-11 rounded-full bg-[#EDF3EE] items-center justify-center mr-3.5">
-                  <Ionicons name="images" size={22} color="#34594A" />
+                <View className="w-11 h-11 rounded-full bg-[#EDF3EE] items-center justify-center mr-3.5 dark:bg-[#181818] ">
+                  <Ionicons name="images" size={22} color={themeColor("#34594A", "#E6E6E6")} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-[15px] font-semibold text-gray-900">
+                  <Text className="text-[15px] font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                     Choose from Library
                   </Text>
-                  <Text className="text-xs text-gray-500 mt-0.5">
+                  <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
                     Select a photo from your gallery
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color={themeColor("#9ca3af", "#ADADAD")} />
               </TouchableOpacity>
 
               {/* Option 2: Take Photo */}
@@ -3337,22 +3393,22 @@ export default function UserProfile() {
                   takeCoverPhoto();
                 }}
                 activeOpacity={0.7}
-                className="flex-row items-center p-3.5 bg-gray-50 rounded-2xl border border-gray-100 active:bg-gray-100"
+                className="flex-row items-center p-3.5 bg-gray-50 rounded-2xl border border-gray-100 active:bg-gray-100 dark:bg-[#242424] dark:border-[#414141] dark:active:bg-[#181818] "
                 accessibilityRole="button"
                 accessibilityLabel="Take Photo"
               >
-                <View className="w-11 h-11 rounded-full bg-blue-50 items-center justify-center mr-3.5">
+                <View className="w-11 h-11 rounded-full bg-blue-50 items-center justify-center mr-3.5 dark:bg-[#181818] ">
                   <Ionicons name="camera" size={22} color="#2563EB" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-[15px] font-semibold text-gray-900">
+                  <Text className="text-[15px] font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                     Take Photo
                   </Text>
-                  <Text className="text-xs text-gray-500 mt-0.5">
+                  <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
                     Snap a new photo with your camera
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#9ca3af" />
+                <Ionicons name="chevron-forward" size={18} color={themeColor("#9ca3af", "#ADADAD")} />
               </TouchableOpacity>
 
               {/* Option 3: Reset to Default (if custom photo is set) */}
@@ -3360,11 +3416,11 @@ export default function UserProfile() {
                 <TouchableOpacity
                   onPress={handleResetCoverPhoto}
                   activeOpacity={0.7}
-                  className="flex-row items-center p-3.5 bg-red-50/70 rounded-2xl border border-red-100 active:bg-red-100"
+                  className="flex-row items-center p-3.5 bg-red-50/70 rounded-2xl border border-red-100 active:bg-red-100 dark:bg-[#181818]/70 dark:border-[#414141] dark:active:bg-[#181818] "
                   accessibilityRole="button"
                   accessibilityLabel="Reset to Default"
                 >
-                  <View className="w-11 h-11 rounded-full bg-red-100 items-center justify-center mr-3.5">
+                  <View className="w-11 h-11 rounded-full bg-red-100 items-center justify-center mr-3.5 dark:bg-[#181818] ">
                     <Ionicons name="trash-outline" size={20} color="#DC2626" />
                   </View>
                   <View className="flex-1">
@@ -3384,11 +3440,11 @@ export default function UserProfile() {
             <TouchableOpacity
               onPress={() => setIsCoverModalVisible(false)}
               activeOpacity={0.8}
-              className="mt-3 bg-gray-100 py-3 rounded-2xl active:bg-gray-200 items-center"
+              className="mt-3 bg-gray-100 py-3 rounded-2xl active:bg-gray-200 items-center dark:bg-[#181818] dark:active:bg-[#181818] "
               accessibilityRole="button"
               accessibilityLabel="Cancel"
             >
-              <Text className="text-sm font-semibold text-gray-700">
+              <Text className="text-sm font-semibold text-gray-700 dark:text-[#E6E6E6] ">
                 Cancel
               </Text>
             </TouchableOpacity>
@@ -3430,11 +3486,11 @@ export default function UserProfile() {
                 accessibilityRole="button"
                 accessibilityLabel="Close photo viewer"
               >
-                <Ionicons name="close" size={24} color="#FFFFFF" />
+                <Ionicons name="close" size={24} color={themeColor("#FFFFFF", "#E6E6E6")} />
               </TouchableOpacity>
               <Text
                 style={{
-                  color: "#FFFFFF",
+                  color: themeColor("#FFFFFF", "#E6E6E6"),
                   fontSize: 16,
                   fontWeight: "700",
                   letterSpacing: 0.2,
@@ -3492,12 +3548,12 @@ export default function UserProfile() {
           containerStyle={{ zIndex: 100, elevation: 100 }}
           style={{ zIndex: 100, elevation: 100 }}
           backgroundStyle={{
-            backgroundColor: "#FFFFFF",
+            backgroundColor: themeColor("#FFFFFF", "#242424"),
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
           }}
           handleIndicatorStyle={{
-            backgroundColor: "#D1D5DB",
+            backgroundColor: themeColor("#D1D5DB", "#303030"),
             width: 44,
             height: 4.5,
             borderRadius: 3,
@@ -3511,11 +3567,11 @@ export default function UserProfile() {
             }}
           >
             {/* Sheet Header */}
-            <View className="items-center pb-3 mb-2 border-b border-gray-100">
-              <Text className="text-base font-bold text-gray-900">
+            <View className="items-center pb-3 mb-2 border-b border-gray-100 dark:border-[#414141] ">
+              <Text className="text-base font-bold text-gray-900 dark:text-[#E6E6E6] ">
                 Profile Options
               </Text>
-              <Text className="text-xs text-gray-500 mt-0.5">
+              <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
                 {profileName}
               </Text>
             </View>
@@ -3526,18 +3582,18 @@ export default function UserProfile() {
               <TouchableOpacity
                 onPress={handleRestrict}
                 activeOpacity={0.7}
-                className="flex-row items-center py-3.5 px-2.5 rounded-xl active:bg-gray-100"
+                className="flex-row items-center py-3.5 px-2.5 rounded-xl active:bg-gray-100 dark:active:bg-[#181818] "
                 accessibilityRole="button"
                 accessibilityLabel="Not interested"
               >
-                <View className="w-11 h-11 rounded-full bg-gray-100 items-center justify-center mr-3.5">
-                  <Ionicons name="eye-off-outline" size={21} color="#374151" />
+                <View className="w-11 h-11 rounded-full bg-gray-100 items-center justify-center mr-3.5 dark:bg-[#181818] ">
+                  <Ionicons name="eye-off-outline" size={21} color={themeColor("#374151", "#E6E6E6")} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-[15px] font-semibold text-gray-900">
+                  <Text className="text-[15px] font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                     Not Interested
                   </Text>
-                  <Text className="text-xs text-gray-500 mt-0.5">
+                  <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
                     {"We won't suggest this account to you again"}
                   </Text>
                 </View>
@@ -3547,18 +3603,18 @@ export default function UserProfile() {
               <TouchableOpacity
                 onPress={handleBlock}
                 activeOpacity={0.7}
-                className="flex-row items-center py-3.5 px-2.5 rounded-xl active:bg-gray-100"
+                className="flex-row items-center py-3.5 px-2.5 rounded-xl active:bg-gray-100 dark:active:bg-[#181818] "
                 accessibilityRole="button"
                 accessibilityLabel="Block account"
               >
-                <View className="w-11 h-11 rounded-full bg-gray-100 items-center justify-center mr-3.5">
-                  <Ionicons name="ban-outline" size={21} color="#374151" />
+                <View className="w-11 h-11 rounded-full bg-gray-100 items-center justify-center mr-3.5 dark:bg-[#181818] ">
+                  <Ionicons name="ban-outline" size={21} color={themeColor("#374151", "#E6E6E6")} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-[15px] font-semibold text-gray-900">
+                  <Text className="text-[15px] font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                     Block
                   </Text>
-                  <Text className="text-xs text-gray-500 mt-0.5">
+                  <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
                     {"They won't be able to find your profile or message you"}
                   </Text>
                 </View>
@@ -3568,11 +3624,11 @@ export default function UserProfile() {
               <TouchableOpacity
                 onPress={handleReport}
                 activeOpacity={0.7}
-                className="flex-row items-center py-3.5 px-2.5 rounded-xl active:bg-red-50"
+                className="flex-row items-center py-3.5 px-2.5 rounded-xl active:bg-red-50 dark:active:bg-[#181818] "
                 accessibilityRole="button"
                 accessibilityLabel="Report account"
               >
-                <View className="w-11 h-11 rounded-full bg-red-100 items-center justify-center mr-3.5">
+                <View className="w-11 h-11 rounded-full bg-red-100 items-center justify-center mr-3.5 dark:bg-[#181818] ">
                   <Ionicons
                     name="alert-circle-outline"
                     size={21}
@@ -3593,18 +3649,18 @@ export default function UserProfile() {
               <TouchableOpacity
                 onPress={handleCopyProfileUrl}
                 activeOpacity={0.7}
-                className="flex-row items-center py-3.5 px-2.5 rounded-xl active:bg-gray-100"
+                className="flex-row items-center py-3.5 px-2.5 rounded-xl active:bg-gray-100 dark:active:bg-[#181818] "
                 accessibilityRole="button"
                 accessibilityLabel="Copy profile link"
               >
-                <View className="w-11 h-11 rounded-full bg-gray-100 items-center justify-center mr-3.5">
-                  <Ionicons name="link-outline" size={21} color="#374151" />
+                <View className="w-11 h-11 rounded-full bg-gray-100 items-center justify-center mr-3.5 dark:bg-[#181818] ">
+                  <Ionicons name="link-outline" size={21} color={themeColor("#374151", "#E6E6E6")} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-[15px] font-semibold text-gray-900">
+                  <Text className="text-[15px] font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                     Copy profile link
                   </Text>
-                  <Text className="text-xs text-gray-500 mt-0.5">
+                  <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
                     Copy link to this profile
                   </Text>
                 </View>
@@ -3614,22 +3670,22 @@ export default function UserProfile() {
               <TouchableOpacity
                 onPress={handleAboutThisAccount}
                 activeOpacity={0.7}
-                className="flex-row items-center py-3.5 px-2.5 rounded-xl active:bg-gray-100"
+                className="flex-row items-center py-3.5 px-2.5 rounded-xl active:bg-gray-100 dark:active:bg-[#181818] "
                 accessibilityRole="button"
                 accessibilityLabel="About this account"
               >
-                <View className="w-11 h-11 rounded-full bg-gray-100 items-center justify-center mr-3.5">
+                <View className="w-11 h-11 rounded-full bg-gray-100 items-center justify-center mr-3.5 dark:bg-[#181818] ">
                   <Ionicons
                     name="information-circle-outline"
                     size={21}
-                    color="#374151"
+                    color={themeColor("#374151", "#E6E6E6")}
                   />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-[15px] font-semibold text-gray-900">
+                  <Text className="text-[15px] font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                     About this account
                   </Text>
-                  <Text className="text-xs text-gray-500 mt-0.5">
+                  <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
                     See account details and verification info
                   </Text>
                 </View>
@@ -3642,18 +3698,18 @@ export default function UserProfile() {
                   setIsShareModalVisible(true);
                 }}
                 activeOpacity={0.7}
-                className="flex-row items-center py-3.5 px-2.5 rounded-xl active:bg-gray-100"
+                className="flex-row items-center py-3.5 px-2.5 rounded-xl active:bg-gray-100 dark:active:bg-[#181818] "
                 accessibilityRole="button"
                 accessibilityLabel="QR code"
               >
-                <View className="w-11 h-11 rounded-full bg-gray-100 items-center justify-center mr-3.5">
-                  <Ionicons name="qr-code-outline" size={21} color="#374151" />
+                <View className="w-11 h-11 rounded-full bg-gray-100 items-center justify-center mr-3.5 dark:bg-[#181818] ">
+                  <Ionicons name="qr-code-outline" size={21} color={themeColor("#374151", "#E6E6E6")} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-[15px] font-semibold text-gray-900">
+                  <Text className="text-[15px] font-semibold text-gray-900 dark:text-[#E6E6E6] ">
                     QR code
                   </Text>
-                  <Text className="text-xs text-gray-500 mt-0.5">
+                  <Text className="text-xs text-gray-500 mt-0.5 dark:text-[#ADADAD] ">
                     Let others scan to find this account
                   </Text>
                 </View>

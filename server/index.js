@@ -2031,7 +2031,7 @@ app.get(
           relationship = "accepted";
         } else if (row.connection_status === "pending") {
           relationship =
-            row.sender_id === userId ? "pending_sent" : "pending_received";
+            String(row.sender_id) === String(userId) ? "pending_sent" : "pending_received";
         } else if (row.connection_status === "declined") {
           relationship = "none";
         }
@@ -2094,9 +2094,14 @@ app.post(
           return res.status(400).json({ message: "You are already friends." });
         }
         if (conn.status === "pending") {
-          return res
-            .status(400)
-            .json({ message: "Friend request is already pending." });
+          const isSender = String(conn.sender_id) === String(senderId);
+          return res.json({
+            message: isSender
+              ? "Friend request is already pending."
+              : "This user has already sent you a friend request.",
+            connectionId: String(conn.id),
+            relationship: isSender ? "pending_sent" : "pending_received",
+          });
         }
         // Update to pending if it was previously declined
         await pool.query(
@@ -2104,6 +2109,45 @@ app.post(
           [senderId, targetUserId, conn.id],
         );
 
+        try {
+          // Fetch sender info for notification
+          const { rows: sRows } = await pool.query(
+            "SELECT first_name, last_name, username FROM users WHERE id = $1",
+            [senderId],
+          );
+          const senderName =
+            `${sRows[0]?.first_name || ""} ${sRows[0]?.last_name || ""}`.trim() ||
+            sRows[0]?.username ||
+            "Someone";
+
+          await pool.query(
+            `INSERT INTO notifications (user_id, actor_id, actor_type, type, title, content, entity_name, target_id, is_read)
+             VALUES ($1, $2, 'user', 'friend_request', 'Friend Request', $3, 'connection', $4, FALSE)`,
+            [
+              targetUserId,
+              senderId,
+              `${senderName} sent you a friend request.`,
+              conn.id,
+            ],
+          );
+        } catch (notifErr) {
+          console.warn("[Send Friend Request Notification Warning]", notifErr);
+        }
+
+        return res.json({
+          message: "Friend request sent!",
+          connectionId: String(conn.id),
+          relationship: "pending_sent",
+        });
+      }
+
+      const { rows: insertRes } = await pool.query(
+        "INSERT INTO connections (sender_id, receiver_id, status) VALUES ($1, $2, 'pending') RETURNING id",
+        [senderId, targetUserId],
+      );
+      const newConnId = insertRes[0]?.id || insertRes.insertId;
+
+      try {
         // Fetch sender info for notification
         const { rows: sRows } = await pool.query(
           "SELECT first_name, last_name, username FROM users WHERE id = $1",
@@ -2121,43 +2165,12 @@ app.post(
             targetUserId,
             senderId,
             `${senderName} sent you a friend request.`,
-            conn.id,
+            newConnId,
           ],
         );
-
-        return res.json({
-          message: "Friend request sent!",
-          connectionId: String(conn.id),
-          relationship: "pending_sent",
-        });
+      } catch (notifErr) {
+        console.warn("[Send Friend Request Notification Warning]", notifErr);
       }
-
-      const { rows: insertRes } = await pool.query(
-        "INSERT INTO connections (sender_id, receiver_id, status) VALUES ($1, $2, 'pending') RETURNING id",
-        [senderId, targetUserId],
-      );
-      const newConnId = insertRes[0].id;
-
-      // Fetch sender info for notification
-      const { rows: sRows } = await pool.query(
-        "SELECT first_name, last_name, username FROM users WHERE id = $1",
-        [senderId],
-      );
-      const senderName =
-        `${sRows[0]?.first_name || ""} ${sRows[0]?.last_name || ""}`.trim() ||
-        sRows[0]?.username ||
-        "Someone";
-
-      await pool.query(
-        `INSERT INTO notifications (user_id, actor_id, actor_type, type, title, content, entity_name, target_id, is_read)
-         VALUES ($1, $2, 'user', 'friend_request', 'Friend Request', $3, 'connection', $4, FALSE)`,
-        [
-          targetUserId,
-          senderId,
-          `${senderName} sent you a friend request.`,
-          newConnId,
-        ],
-      );
 
       res.json({
         message: "Friend request sent successfully!",
@@ -2184,12 +2197,13 @@ app.post(["/api/connections/cancel"], authenticateToken, async (req, res) => {
 
     if (connectionId) {
       await pool.query(
-        "DELETE FROM connections WHERE id = $1 AND sender_id = $2 AND status = 'pending'",
+        "DELETE FROM connections WHERE id = $1 AND (sender_id = $2 OR receiver_id = $2) AND status = 'pending'",
         [connectionId, senderId],
       );
-    } else if (targetUserId) {
+    }
+    if (targetUserId) {
       await pool.query(
-        "DELETE FROM connections WHERE sender_id = $1 AND receiver_id = $2 AND status = 'pending'",
+        "DELETE FROM connections WHERE ((sender_id = $1 AND receiver_id = $2) OR (sender_id = $2 AND receiver_id = $1)) AND status = 'pending'",
         [senderId, targetUserId],
       );
     }
@@ -2763,55 +2777,8 @@ app.post(
   },
 );
 
-// Submit User Report
-app.post(
-  "/api/reports",
-  authenticateToken,
-  async (req, res) => {
-    try {
-      const pool = getPool();
-      const reporterId = req.user.id;
-      const {
-        reportedUserId,
-        conversationId,
-        reason,
-        statement,
-        attachmentUrl,
-      } = req.body;
-
-      if (!reason || !reason.trim()) {
-        return res.status(400).json({ message: "Reason for reporting is required." });
-      }
-
-      if (!statement || !statement.trim()) {
-        return res.status(400).json({ message: "Statement is required." });
-      }
-
-      const { rows } = await pool.query(
-        `INSERT INTO reports (reporter_id, reported_user_id, conversation_id, reason, statement, attachment_url, status, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, 'pending', NOW())
-         RETURNING id`,
-        [
-          reporterId,
-          reportedUserId ? Number(reportedUserId) : null,
-          conversationId ? Number(conversationId) : null,
-          reason.trim(),
-          statement.trim(),
-          attachmentUrl || null,
-        ],
-      );
-
-      res.status(201).json({
-        success: true,
-        reportId: rows[0].id,
-        message: "Report submitted successfully.",
-      });
-    } catch (err) {
-      console.error("[Submit Report Error]", err);
-      res.status(500).json({ message: "Failed to submit report." });
-    }
-  },
-);
+// Shared chat-report and support-ticket submission handler.
+app.post("/api/reports", authenticateToken, require("./report-handler")(getPool));
 
 // 12.3 Get Messages (Strictly based on conversation_id, sender_id, receiver_id)
 app.get(
@@ -2820,15 +2787,35 @@ app.get(
   async (req, res) => {
     try {
       const pool = getPool();
-      const userId = req.user.id;
+      const userId = Number(req.user.id);
       const conversationId = req.params.id || req.query.conversationId;
       const otherUserId = req.query.userId || req.query.otherUserId;
 
-      let convId = conversationId;
+      let convId =
+        conversationId && !isNaN(Number(conversationId))
+          ? Number(conversationId)
+          : null;
 
-      if (!convId && otherUserId) {
-        const u1 = Math.min(userId, Number(otherUserId));
-        const u2 = Math.max(userId, Number(otherUserId));
+      let resolvedOtherId = null;
+      if (otherUserId) {
+        if (!isNaN(Number(otherUserId)) && Number(otherUserId) > 0) {
+          resolvedOtherId = Number(otherUserId);
+        } else {
+          try {
+            const { rows: uRows } = await pool.query(
+              "SELECT id FROM users WHERE username = $1 LIMIT 1",
+              [otherUserId],
+            );
+            if (uRows.length > 0) {
+              resolvedOtherId = Number(uRows[0].id);
+            }
+          } catch {}
+        }
+      }
+
+      if (!convId && resolvedOtherId) {
+        const u1 = Math.min(userId, resolvedOtherId);
+        const u2 = Math.max(userId, resolvedOtherId);
         const { rows: existing } = await pool.query(
           "SELECT id FROM conversations WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $3 AND user2_id = $4)",
           [u1, u2, u2, u1],
@@ -2844,10 +2831,10 @@ app.get(
           "UPDATE messages SET is_delivered = TRUE, is_read = TRUE WHERE conversation_id = $1 AND receiver_id = $2 AND (is_read = FALSE OR is_delivered = FALSE)",
           [convId, userId],
         ).catch(() => {});
-      } else if (otherUserId) {
+      } else if (resolvedOtherId) {
         await pool.query(
           "UPDATE messages SET is_delivered = TRUE, is_read = TRUE WHERE sender_id = $1 AND receiver_id = $2 AND (is_read = FALSE OR is_delivered = FALSE)",
-          [otherUserId, userId],
+          [resolvedOtherId, userId],
         ).catch(() => {});
       }
 
@@ -2864,7 +2851,7 @@ app.get(
           [convId],
         );
         rows = convRows;
-      } else if (otherUserId) {
+      } else if (resolvedOtherId) {
         const { rows: otherRows } = await pool.query(
           `SELECT m.id, m.conversation_id, m.sender_id, m.receiver_id, m.message_text,
                   m.message_type, m.image_url, m.is_read, m.is_delivered, m.created_at,
@@ -2873,7 +2860,7 @@ app.get(
            JOIN users u ON m.sender_id = u.id
            WHERE (m.sender_id = $1 AND m.receiver_id = $2) OR (m.sender_id = $3 AND m.receiver_id = $4)
            ORDER BY m.id ASC`,
-          [userId, otherUserId, otherUserId, userId],
+          [userId, resolvedOtherId, resolvedOtherId, userId],
         );
         rows = otherRows;
       }
@@ -2903,7 +2890,7 @@ app.get(
         };
       });
 
-      let otherId = otherUserId;
+      let otherId = resolvedOtherId || otherUserId;
       if (!otherId && convId) {
         const { rows: cInfo } = await pool.query(
           "SELECT user1_id, user2_id FROM conversations WHERE id = $1",
@@ -2953,10 +2940,13 @@ app.post(
       }
 
       const pool = getPool();
-      const senderId = req.user.id;
+      const senderId = Number(req.user.id);
 
       let targetReceiverId = receiverId;
-      let convId = conversationId;
+      let convId =
+        conversationId && !isNaN(Number(conversationId))
+          ? Number(conversationId)
+          : null;
 
       if (!targetReceiverId && convId) {
         const { rows: convRows } = await pool.query(
@@ -2965,22 +2955,39 @@ app.post(
         );
         if (convRows.length > 0) {
           targetReceiverId =
-            convRows[0].user1_id === senderId
+            Number(convRows[0].user1_id) === senderId
               ? convRows[0].user2_id
               : convRows[0].user1_id;
         }
       }
 
-      if (!targetReceiverId) {
+      let numericReceiverId = null;
+      if (targetReceiverId) {
+        if (!isNaN(Number(targetReceiverId)) && Number(targetReceiverId) > 0) {
+          numericReceiverId = Number(targetReceiverId);
+        } else {
+          try {
+            const { rows: uRows } = await pool.query(
+              "SELECT id FROM users WHERE username = $1 LIMIT 1",
+              [targetReceiverId],
+            );
+            if (uRows.length > 0) {
+              numericReceiverId = Number(uRows[0].id);
+            }
+          } catch {}
+        }
+      }
+
+      if (!numericReceiverId) {
         return res.status(400).json({ message: "Receiver ID is required." });
       }
 
       // Clear typing status on message send
-      setUserTyping(senderId, convId, targetReceiverId, false);
+      setUserTyping(senderId, convId, numericReceiverId, false);
 
       // Find or create conversation
-      const u1 = Math.min(senderId, Number(targetReceiverId));
-      const u2 = Math.max(senderId, Number(targetReceiverId));
+      const u1 = Math.min(senderId, numericReceiverId);
+      const u2 = Math.max(senderId, numericReceiverId);
 
       const { rows: convCheck } = await pool.query(
         "SELECT id FROM conversations WHERE user1_id = $1 AND user2_id = $2",
@@ -3115,21 +3122,39 @@ app.get(
     try {
       const pool = getPool();
       const targetUserId = req.params.id;
+      const numericTargetId =
+        !isNaN(Number(targetUserId)) && Number(targetUserId) > 0
+          ? Number(targetUserId)
+          : 0;
 
-      const { rows } = await pool.query(
-        `SELECT id, first_name, last_name, username, avatar_url, phone_number,
-                farm_name, farm_location, primary_crops, is_verified, bio, created_at
-         FROM users
-         WHERE id = $1`,
-        [targetUserId]
-      );
+      let rows;
+      try {
+        const result = await pool.query(
+          `SELECT u.id, u.first_name, u.last_name, u.full_name, u.username, u.avatar_url, u.phone_number, u.bio, u.created_at,
+                  fp.farm_name, fp.farm_location, fp.crops, fp.verification_status
+           FROM users u
+           LEFT JOIN farmer_profiles fp ON fp.user_id = u.id
+           WHERE u.id = $1 OR u.username = $2 LIMIT 1`,
+          [numericTargetId, targetUserId]
+        );
+        rows = result.rows;
+      } catch (qErr) {
+        const result = await pool.query(
+          `SELECT u.id, u.first_name, u.last_name, u.full_name, u.username, u.avatar_url, u.phone_number, u.bio, u.created_at
+           FROM users u
+           WHERE u.id = $1 OR u.username = $2 LIMIT 1`,
+          [numericTargetId, targetUserId]
+        );
+        rows = result.rows;
+      }
 
-      if (rows.length === 0) {
+      if (!rows || rows.length === 0) {
         return res.status(404).json({ message: "Farmer not found." });
       }
 
       const r = rows[0];
-      const fullName = `${r.first_name || ""} ${r.last_name || ""}`.trim() || r.username || "Local Farmer";
+      const fullName = r.full_name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || r.username || "Local Farmer";
+      const isVerified = r.verification_status === "verified";
 
       res.json({
         user: {
@@ -3142,8 +3167,8 @@ app.get(
           phoneNumber: r.phone_number || "",
           farmName: r.farm_name || "Local Harvest Farm",
           farmLocation: r.farm_location || "Iligan City, Northern Mindanao",
-          primaryCrops: r.primary_crops || "Fresh Vegetables & High-Value Crops",
-          isVerified: Boolean(r.is_verified),
+          primaryCrops: r.crops || "Fresh Vegetables & High-Value Crops",
+          isVerified,
           bio: r.bio || "Local sustainable farmer growing quality produce for the community.",
           memberSince: r.created_at ? new Date(r.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "Recent",
         },
@@ -3174,6 +3199,18 @@ app.get(
         otherUserId && !isNaN(Number(otherUserId))
           ? Number(otherUserId)
           : null;
+
+      if (!targetOtherId && otherUserId) {
+        try {
+          const { rows: uRows } = await pool.query(
+            "SELECT id FROM users WHERE username = $1 LIMIT 1",
+            [otherUserId],
+          );
+          if (uRows.length > 0) {
+            targetOtherId = Number(uRows[0].id);
+          }
+        } catch {}
+      }
 
       if (!convId && targetOtherId) {
         const u1 = Math.min(currentUserId, targetOtherId);
@@ -3387,22 +3424,37 @@ app.get(
       }
 
       // If no custom entries yet, dynamically generate cards using the farmer's live database record
-      const { rows: userRows } = await pool.query(
-        `SELECT id, first_name, last_name, username, farm_name, farm_location, primary_crops, phone_number
-         FROM users
-         WHERE id = $1`,
-        [farmerId]
-      );
+      let userRows;
+      try {
+        const result = await pool.query(
+          `SELECT u.id, u.first_name, u.last_name, u.full_name, u.username, u.phone_number,
+                  fp.farm_name, fp.farm_location, fp.crops
+           FROM users u
+           LEFT JOIN farmer_profiles fp ON fp.user_id = u.id
+           WHERE u.id = $1 LIMIT 1`,
+          [farmerId]
+        );
+        userRows = result.rows;
+      } catch (qErr) {
+        const result = await pool.query(
+          `SELECT u.id, u.first_name, u.last_name, u.full_name, u.username, u.phone_number
+           FROM users u
+           WHERE u.id = $1 LIMIT 1`,
+          [farmerId]
+        );
+        userRows = result.rows;
+      }
 
-      const farmer = userRows[0] || {};
+      const farmer = (userRows && userRows[0]) || {};
       const farmerName =
+        farmer.full_name ||
         `${farmer.first_name || ""} ${farmer.last_name || ""}`.trim() ||
         farmer.username ||
         "Local Farmer";
       const farmName = farmer.farm_name || `${farmerName}'s Farm`;
       const farmLocation =
         farmer.farm_location || "National Highway, Brgy. Pala-o, Iligan City";
-      const primaryCrops = farmer.primary_crops || "fresh produce & crops";
+      const primaryCrops = farmer.crops || "fresh produce & crops";
 
       const dynamicInquiries = [
         {
@@ -4431,10 +4483,10 @@ app.get(
       if (searchKeyword) {
         const pattern = "%" + searchKeyword + "%";
         whereClauses.push(
-          "(p.content LIKE $" + paramCounter + " OR p.crop_name LIKE $" + (paramCounter + 1) + " OR p.location LIKE $" + (paramCounter + 2) + " OR u.first_name LIKE $" + (paramCounter + 3) + " OR u.last_name LIKE $" + (paramCounter + 4) + " OR u.username LIKE $" + (paramCounter + 5) + ")"
+          "(p.content LIKE $" + paramCounter + " OR p.crop_name LIKE $" + (paramCounter + 1) + " OR p.location LIKE $" + (paramCounter + 2) + " OR p.category LIKE $" + (paramCounter + 3) + " OR u.first_name LIKE $" + (paramCounter + 4) + " OR u.last_name LIKE $" + (paramCounter + 5) + " OR CONCAT(u.first_name, ' ', u.last_name) LIKE $" + (paramCounter + 6) + " OR u.username LIKE $" + (paramCounter + 7) + ")"
         );
-        params.push(pattern, pattern, pattern, pattern, pattern, pattern);
-        paramCounter += 6;
+        params.push(pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern);
+        paramCounter += 8;
       }
 
       if (whereClauses.length > 0) {
@@ -6342,53 +6394,6 @@ app.put("/api/user/privacy", authenticateToken, async (req, res) => {
   } catch (err) {
     console.error("[PUT /api/user/privacy Error]", err);
     res.status(500).json({ message: "Failed to update privacy settings" });
-  }
-});
-
-// REPORTS 1. Create a support dispute / violation report
-app.post("/api/reports", authenticateToken, async (req, res) => {
-  try {
-    const pool = getPool();
-    const reporterId = req.user.id;
-    const { reason, statement, severity = "medium", reportedUserId, conversationId, attachmentUrl } = req.body;
-
-    const reportCode = `RPT-${Math.floor(1000 + Math.random() * 9000)}`;
-    const reporterName = req.user.name || req.user.email || "Local Farm User";
-
-    let reportedUserName = "Unspecified User";
-    if (reportedUserId) {
-      const { rows: uRows } = await pool.query(`SELECT full_name, username FROM users WHERE id = $1`, [reportedUserId]);
-      if (uRows.length > 0) reportedUserName = uRows[0].full_name || uRows[0].username || "User";
-    }
-
-    const dateReported = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-
-    await pool.query(
-      `INSERT INTO reports (
-         report_code, reporter_id, reporter_name, reported_user_id, reported_user_name,
-         report_type, reason, statement, date_reported, severity, status, conversation_id, attachment_url
-       ) VALUES ($1, $2, $3, $4, $5, 'user', $6, $7, $8, $9, 'pending', $10, $11)`,
-      [
-        reportCode, reporterId, reporterName, reportedUserId || null, reportedUserName,
-        reason || "Community Dispute", statement || "", dateReported, severity,
-        conversationId || null, attachmentUrl || null
-      ]
-    );
-
-    res.json({
-      message: "Ticket created successfully and escalated to admin moderation queue.",
-      ticket: {
-        id: reportCode,
-        category: reason,
-        subject: statement ? statement.split("\n")[0] : reason,
-        description: statement,
-        status: "Under Review",
-        date: dateReported,
-      },
-    });
-  } catch (err) {
-    console.error("[POST /api/reports Error]", err);
-    res.status(500).json({ message: "Failed to file report" });
   }
 });
 
