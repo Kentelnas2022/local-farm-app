@@ -1014,4 +1014,3 @@ const createStyles = (themeColor: (light: string, dark: string) => string) => St
 });
 
 export default NotificationModal;
-

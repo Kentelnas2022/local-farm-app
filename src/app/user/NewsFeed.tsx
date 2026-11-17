@@ -513,15 +513,6 @@ export default function NewsFeed() {
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [isRefreshingPosts, setIsRefreshingPosts] = useState(false);
 
-  const fetchStories = async () => {
-    try {
-      const data = await getStoriesApi();
-      setUserStories(data || []);
-    } catch (err) {
-      console.warn("Failed to fetch stories from API:", err);
-    }
-  };
-
   const fetchFeedPosts = async () => {
     try {
       const data = await getPostsApi();
@@ -1597,7 +1588,6 @@ export default function NewsFeed() {
                 onRefresh={() => {
                   setIsRefreshingPosts(true);
                   fetchFeedPosts();
-                  fetchStories();
                 }}
                 colors={["#72AF5B"]}
                 tintColor="#72AF5B"
@@ -2642,7 +2632,7 @@ export default function NewsFeed() {
 
               {/* User Header Story */}
               <View className="flex-row items-center justify-between w-full">
-                <View className="flex-row items-center flex-1 mr-2">
+                <View className="flex-row items-center">
                   <View
                     className="h-10 w-10 rounded-full border-2 items-center justify-center bg-gray-800 mr-3 overflow-hidden"
                     style={{ borderColor: themeColor("#72AF5B", "#414141") }}
@@ -3470,7 +3460,7 @@ export default function NewsFeed() {
             </View>
           </SafeAreaView>
         ) : (
-          /* Step 2: Full Screen Edit Story View (Screen 2) */
+          /* Step 2: Full Screen Edit Story View */
           <View className="flex-1 bg-black relative">
             {/* Main Media */}
             {Boolean(selectedStoryImage && selectedStoryImage.trim()) ? (

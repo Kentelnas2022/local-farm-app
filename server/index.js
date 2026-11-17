@@ -1651,7 +1651,7 @@ app.get(
   },
 );
 
-// 11.1b Get Suggestions (Users not connected yet, excluding admin accounts)
+// 11.1b Get Suggestions (Users not connected yet)
 app.get(
   ["/api/connections/suggestions", "/api/friends/suggestions"],
   authenticateToken,
@@ -1709,48 +1709,6 @@ app.get(
         .json({ message: err.message || "Failed to fetch suggestions." });
     }
   },
-);
-
-// 11.1c Get Active Users (Non-admin online/active users)
-app.get(
-  ["/api/connections/active", "/api/users/active"],
-  authenticateToken,
-  async (req, res) => {
-    try {
-      const pool = getPool();
-      const userId = req.user.id;
-
-      const [rows] = await pool.query(
-        `SELECT u.id, u.full_name, u.first_name, u.last_name, u.username, u.avatar_url, u.role,
-                (SELECT c.status FROM connections c 
-                 WHERE (c.sender_id = ? AND c.receiver_id = u.id) 
-                    OR (c.receiver_id = ? AND c.sender_id = u.id)
-                 LIMIT 1) AS connection_status
-         FROM users u
-         WHERE u.id != ?
-           AND u.role = 'user'
-         ORDER BY u.updated_at DESC
-         LIMIT 30`,
-        [userId, userId, userId]
-      );
-
-      const activeUsers = rows.map((r) => ({
-        id: String(r.id),
-        name: r.full_name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || r.username || "User",
-        username: r.username || "",
-        avatarUrl: r.avatar_url || "",
-        isActive: true,
-        isConnected: r.connection_status === "accepted",
-        status: r.connection_status || "none",
-        mutualFriends: "Active now",
-      }));
-
-      res.json({ activeUsers, count: activeUsers.length });
-    } catch (err) {
-      console.error("[Get Active Users Error]", err);
-      res.status(500).json({ message: err.message || "Failed to fetch active users." });
-    }
-  }
 );
 
 // 11.1c Get Sent Pending Requests
@@ -1956,34 +1914,6 @@ app.post(
           );
         }
       }
-
-      // If accepted, notify the original sender
-      if (newStatus === "accepted") {
-        try {
-          const [connRows] = await pool.query(
-            "SELECT sender_id FROM connections WHERE id = ?",
-            [connectionId]
-          );
-          if (connRows.length > 0) {
-            const originalSenderId = connRows[0].sender_id;
-            await pool.query(
-              `INSERT INTO notifications (user_id, actor_id, type, title, content, target_id, is_read)
-               VALUES (?, ?, 'connection_accepted', 'Connection Accepted', 'accepted your connection request.', ?, 0)`,
-              [originalSenderId, userId, connectionId]
-            );
-          }
-        } catch (notifErr) {
-          console.warn("[Accept Friend Request Notif Error]", notifErr.message);
-        }
-      }
-
-      // Mark the incoming request notification as read
-      try {
-        await pool.query(
-          "UPDATE notifications SET is_read = 1 WHERE user_id = ? AND target_id = ? AND type = 'connection_request'",
-          [userId, connectionId]
-        );
-      } catch (e) {}
 
       res.json({
         message:
@@ -2240,17 +2170,6 @@ app.post(
         );
       } catch (notifErr) {
         console.warn("[Send Friend Request Notification Warning]", notifErr);
-      }
-
-      // Insert notification for receiver
-      try {
-        await pool.query(
-          `INSERT INTO notifications (user_id, actor_id, type, title, content, target_id, is_read)
-           VALUES (?, ?, 'connection_request', 'Connection Request', 'sent you a connection request.', ?, 0)`,
-          [targetUserId, senderId, insertRes.insertId]
-        );
-      } catch (notifErr) {
-        console.warn("[Send Friend Request Notif Error]", notifErr.message);
       }
 
       res.json({
@@ -3701,10 +3620,8 @@ app.delete(
 
 // 13. NOTIFICATIONS & BADGE COUNTS API
 // -----------------------------------------------------------------------------
-
-// 13.1 Get All Notifications for User
 app.get(
-  ["/api/notifications", "/notifications"],
+  ["/api/notifications/badge-counts", "/api/badges"],
   authenticateToken,
   async (req, res) => {
     try {
@@ -3743,10 +3660,6 @@ app.get(
 
       const totalUnreadNotifs =
         (Number(notifRes?.count) || 0) + (Number(announcementRes?.count) || 0);
-
-      const unreadNotificationsCount = Number(notifRes?.count) || 0;
-      const requestsCount = Number(connRes?.count) || 0;
-      const unreadMessagesCount = Number(msgRes?.count) || 0;
 
       res.json({
         requestsCount: Number(connRes?.count) || 0,
@@ -4474,6 +4387,8 @@ app.get(
       const pool = getPool();
       const currentUserId = req.user?.id || 0;
       const category = req.query.category;
+
+      await ensureSamplePosts(pool);
 
       let query = `
         SELECT p.id, p.user_id, p.original_post_id, p.content, p.image_url, p.images, p.category, p.privacy, p.location,
@@ -6940,247 +6855,6 @@ app.patch("/api/reservations/:id/status", authenticateToken, async (req, res) =>
     res.status(500).json({ message: "Failed to update reservation status." });
   }
 });
-
-// -----------------------------------------------------------------------------
-// 14. STORIES API
-// -----------------------------------------------------------------------------
-
-// 14.1 Create a new story
-app.post(["/api/stories", "/stories"], authenticateToken, async (req, res) => {
-  try {
-    const pool = getPool();
-    const userId = req.user.id;
-    const {
-      mediaType = "image",
-      mediaUrl,
-      imageUrl,
-      textContent,
-      content,
-      backgroundColor = "#1e293b",
-      musicTitle,
-      privacy = "Public",
-    } = req.body;
-
-    const actualMediaUrl = mediaUrl || imageUrl || null;
-    const actualTextContent = textContent || content || null;
-
-    if (!actualMediaUrl && !actualTextContent) {
-      return res.status(400).json({ message: "Story requires an image or text content." });
-    }
-
-    const [result] = await pool.query(
-      `INSERT INTO stories (user_id, media_type, media_url, text_content, background_color, music_title, privacy, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))`,
-      [userId, mediaType, actualMediaUrl, actualTextContent, backgroundColor, musicTitle || null, privacy]
-    );
-
-    const [[userRow]] = await pool.query(
-      "SELECT id, full_name, first_name, last_name, username, avatar_url FROM users WHERE id = ?",
-      [userId]
-    );
-
-    const createdStory = {
-      id: String(result.insertId),
-      userId: String(userId),
-      userName: userRow?.full_name || `${userRow?.first_name || ""} ${userRow?.last_name || ""}`.trim() || userRow?.username || "You",
-      userAvatar: userRow?.avatar_url || "",
-      mediaType,
-      imageUrl: actualMediaUrl || "",
-      mediaUrl: actualMediaUrl || "",
-      content: actualTextContent || "",
-      textContent: actualTextContent || "",
-      backgroundColor,
-      musicTitle: musicTitle || null,
-      privacy,
-      isSeen: true,
-      timeAgo: "Just now",
-      createdAt: new Date().toISOString(),
-    };
-
-    res.status(201).json({
-      message: "Story shared successfully!",
-      story: createdStory,
-    });
-  } catch (err) {
-    console.error("[Create Story Error]", err);
-    res.status(500).json({ message: err.message || "Failed to create story." });
-  }
-});
-
-// 14.2 Get Active Stories Grouped by User
-app.get(["/api/stories", "/stories"], authenticateToken, async (req, res) => {
-  try {
-    const pool = getPool();
-    const currentUserId = req.user.id;
-
-    const [rows] = await pool.query(
-      `SELECT 
-         s.id AS story_id,
-         s.user_id,
-         s.media_type,
-         s.media_url,
-         s.text_content,
-         s.background_color,
-         s.music_title,
-         s.privacy,
-         s.created_at,
-         s.expires_at,
-         u.full_name,
-         u.first_name,
-         u.last_name,
-         u.username,
-         u.avatar_url,
-         EXISTS(SELECT 1 FROM story_views sv WHERE sv.story_id = s.id AND sv.viewer_id = ?) AS is_viewed
-       FROM stories s
-       JOIN users u ON s.user_id = u.id
-       WHERE s.expires_at > NOW()
-         AND (
-           s.user_id = ?
-           OR s.privacy = 'Public'
-           OR (s.privacy = 'Friends' AND EXISTS (
-                SELECT 1 FROM connections c 
-                WHERE ((c.sender_id = ? AND c.receiver_id = s.user_id) 
-                   OR (c.sender_id = s.user_id AND c.receiver_id = ?)) 
-                  AND c.status = 'accepted'
-           ))
-         )
-       ORDER BY (s.user_id = ?) DESC, s.created_at ASC`,
-      [currentUserId, currentUserId, currentUserId, currentUserId, currentUserId]
-    );
-
-    const userStoryMap = new Map();
-
-    const colorPalette = ["#72AF5B", "#3B82F6", "#EC4899", "#F59E0B", "#8B5CF6", "#10B981", "#EF4444", "#6366F1"];
-
-    for (const row of rows) {
-      const uId = String(row.user_id);
-      if (!userStoryMap.has(uId)) {
-        const colorIndex = Math.abs(parseInt(uId, 10) || 0) % colorPalette.length;
-        userStoryMap.set(uId, {
-          userId: uId,
-          userName: (row.first_name || row.full_name || row.username || "User").split(" ")[0],
-          userFullName: row.full_name || `${row.first_name || ""} ${row.last_name || ""}`.trim() || row.username || "User",
-          userAvatar: row.avatar_url || "",
-          color: colorPalette[colorIndex],
-          isCurrentUser: uId === String(currentUserId),
-          hasUnseenStories: false,
-          stories: [],
-        });
-      }
-
-      const userGroup = userStoryMap.get(uId);
-      const isSeen = Boolean(row.is_viewed) || uId === String(currentUserId);
-      if (!isSeen) {
-        userGroup.hasUnseenStories = true;
-      }
-
-      userGroup.stories.push({
-        id: String(row.story_id),
-        mediaType: row.media_type,
-        imageUrl: row.media_url || "",
-        mediaUrl: row.media_url || "",
-        content: row.text_content || "",
-        textContent: row.text_content || "",
-        backgroundColor: row.background_color || "#1e293b",
-        musicTitle: row.music_title || null,
-        privacy: row.privacy,
-        isSeen,
-        timeAgo: formatTimeAgo(row.created_at),
-        createdAt: row.created_at,
-      });
-    }
-
-    res.json({ userStories: Array.from(userStoryMap.values()) });
-  } catch (err) {
-    console.error("[Get Stories Error]", err);
-    res.status(500).json({ message: err.message || "Failed to fetch stories." });
-  }
-});
-
-// 14.3 Mark Story as Viewed
-app.post(["/api/stories/:id/view", "/stories/:id/view"], authenticateToken, async (req, res) => {
-  try {
-    const pool = getPool();
-    const storyId = req.params.id;
-    const viewerId = req.user.id;
-
-    await pool.query(
-      `INSERT IGNORE INTO story_views (story_id, viewer_id) VALUES (?, ?)`,
-      [storyId, viewerId]
-    );
-
-    res.json({ status: "success", message: "Story view recorded." });
-  } catch (err) {
-    console.error("[Story View Error]", err);
-    res.status(500).json({ message: err.message || "Failed to record story view." });
-  }
-});
-
-// 14.4 Delete Story
-app.delete(["/api/stories/:id", "/stories/:id"], authenticateToken, async (req, res) => {
-  try {
-    const pool = getPool();
-    const storyId = req.params.id;
-    const userId = req.user.id;
-
-    const [result] = await pool.query(
-      `DELETE FROM stories WHERE id = ? AND user_id = ?`,
-      [storyId, userId]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Story not found or unauthorized." });
-    }
-
-    res.json({ message: "Story deleted successfully." });
-  } catch (err) {
-    console.error("[Delete Story Error]", err);
-    res.status(500).json({ message: err.message || "Failed to delete story." });
-  }
-});
-
-// 14.5 Update Story Privacy (Public, Friends, Only me)
-app.put(["/api/stories/:id/privacy", "/stories/:id/privacy"], authenticateToken, async (req, res) => {
-  try {
-    const pool = getPool();
-    const storyId = req.params.id;
-    const userId = req.user.id;
-    const { privacy } = req.body;
-
-    if (!["Public", "Friends", "Only me"].includes(privacy)) {
-      return res.status(400).json({ message: "Invalid privacy option. Must be Public, Friends, or Only me." });
-    }
-
-    const [result] = await pool.query(
-      `UPDATE stories SET privacy = ? WHERE id = ? AND user_id = ?`,
-      [privacy, storyId, userId]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Story not found or unauthorized to edit." });
-    }
-
-    res.json({ message: "Story privacy updated successfully.", privacy });
-  } catch (err) {
-    console.error("[Update Story Privacy Error]", err);
-    res.status(500).json({ message: err.message || "Failed to update story privacy." });
-  }
-});
-
-// Periodic Cleanup: Auto-purge stories expired over 24 hours (Runs hourly)
-setInterval(async () => {
-  try {
-    const pool = getPool();
-    if (pool) {
-      const [res] = await pool.query("DELETE FROM stories WHERE expires_at <= NOW()");
-      if (res.affectedRows > 0) {
-        console.log(`[Stories Cleaner] Purged ${res.affectedRows} expired stories.`);
-      }
-    }
-  } catch (e) {
-    // Ignore cleaner error
-  }
-}, 60 * 60 * 1000);
 
 // Start server
 initDB().then(() => {

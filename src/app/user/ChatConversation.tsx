@@ -189,64 +189,6 @@ export default function ChatConversation() {
   const [inputText, setInputText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
-  const [activeCall, setActiveCall] = useState<{
-    isOpen: boolean;
-    isVideo: boolean;
-    roomName: string;
-    roomUrl: string;
-  }>({
-    isOpen: false,
-    isVideo: false,
-    roomName: "",
-    roomUrl: "",
-  });
-
-  const handleStartCall = async (isVideo: boolean) => {
-    const sanitize = (str: string) => str.replace(/[^a-zA-Z0-9]/g, "");
-    const myName = sanitize(user?.username || user?.fullName || `user_${user?.id || "1"}`);
-    const peerName = sanitize(otherUserName || `peer_${params.userId || "2"}`);
-    const roomName = `LocalFarm_${[myName, peerName].sort().join("_")}`;
-
-    const displayName = encodeURIComponent(user?.fullName || user?.username || "Local Farmer");
-    const roomUrl = isVideo
-      ? `https://meet.jit.si/${roomName}#config.startWithVideoMuted=false&config.prejoinPageEnabled=false&userInfo.displayName="${displayName}"`
-      : `https://meet.jit.si/${roomName}#config.startWithVideoMuted=true&config.startWithAudioMuted=false&config.prejoinPageEnabled=false&userInfo.displayName="${displayName}"`;
-
-    setActiveCall({
-      isOpen: true,
-      isVideo,
-      roomName,
-      roomUrl,
-    });
-
-    // Send call invite message in chat so the other user can join immediately
-    try {
-      await sendMessageApi({
-        receiverId: params.userId,
-        conversationId: conversationId || undefined,
-        messageText: isVideo
-          ? `📹 Started a Video Call on Jitsi Meet. Tap to join: https://meet.jit.si/${roomName}`
-          : `📞 Started a Voice Call on Jitsi Meet. Tap to join: https://meet.jit.si/${roomName}`,
-      });
-      fetchMessages();
-    } catch (e) {}
-  };
-
-  const handleJoinCallFromUrl = (url: string, isVideo: boolean) => {
-    const match = url.match(/https:\/\/meet\.jit\.si\/([a-zA-Z0-9_-]+)/);
-    const roomName = match ? match[1] : "LocalFarm_Room";
-    const displayName = encodeURIComponent(user?.fullName || user?.username || "Local Farmer");
-    const roomUrl = isVideo
-      ? `https://meet.jit.si/${roomName}#config.startWithVideoMuted=false&config.prejoinPageEnabled=false&userInfo.displayName="${displayName}"`
-      : `https://meet.jit.si/${roomName}#config.startWithVideoMuted=true&config.startWithAudioMuted=false&config.prejoinPageEnabled=false&userInfo.displayName="${displayName}"`;
-
-    setActiveCall({
-      isOpen: true,
-      isVideo,
-      roomName,
-      roomUrl,
-    });
-  };
 
   // Location Pin States
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
@@ -1789,66 +1731,6 @@ export default function ChatConversation() {
                           </Text>
                         </View>
                       </View>
-                    ) : item.text?.includes("meet.jit.si") ? (
-                      (() => {
-                        const isVideoCall = item.text.toLowerCase().includes("video");
-                        const match = item.text.match(/(https:\/\/meet\.jit\.si\/[^\s]+)/);
-                        const callUrl = match ? match[0] : "";
-
-                        return (
-                          <View
-                            className={`p-3 rounded-2xl max-w-[82%] border shadow-xs ${
-                              isUser
-                                ? "bg-[#5D9649] border-[#4D823A]"
-                                : "bg-white border-gray-200"
-                            }`}
-                          >
-                            <View className="flex-row items-center mb-2">
-                              <View className="w-8 h-8 rounded-full bg-white/90 items-center justify-center mr-2 shadow-2xs">
-                                <Ionicons
-                                  name={isVideoCall ? "videocam" : "call"}
-                                  size={16}
-                                  color="#72AF5B"
-                                />
-                              </View>
-                              <View className="flex-1">
-                                <Text
-                                  className={`font-bold text-xs ${
-                                    isUser ? "text-white" : "text-gray-900"
-                                  }`}
-                                >
-                                  {isVideoCall ? "Video Call Invite" : "Voice Call Invite"}
-                                </Text>
-                                <Text
-                                  className={`text-[10px] ${
-                                    isUser ? "text-green-100" : "text-gray-500"
-                                  }`}
-                                >
-                                  Jitsi Meet Live Call
-                                </Text>
-                              </View>
-                            </View>
-
-                            <TouchableOpacity
-                              onPress={() =>
-                                callUrl && handleJoinCallFromUrl(callUrl, isVideoCall)
-                              }
-                              className="bg-white py-2 px-3 rounded-xl flex-row items-center justify-center border border-gray-200 active:bg-gray-50 shadow-2xs"
-                              activeOpacity={0.85}
-                            >
-                              <Ionicons
-                                name={isVideoCall ? "videocam" : "call"}
-                                size={14}
-                                color="#72AF5B"
-                                style={{ marginRight: 6 }}
-                              />
-                              <Text className="text-[#72AF5B] font-bold text-xs">
-                                Join Call Now
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                        );
-                      })()
                     ) : (
                       <View
                         className={`px-4 py-2.5 max-w-[76%] ${

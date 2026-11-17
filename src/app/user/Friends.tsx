@@ -10,6 +10,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -26,12 +27,10 @@ export default function Friends() {
   const { themeColor } = useAppTheme();
   const router = useRouter();
   const [isSidebarVisible, setSidebarVisible] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSortDropdownVisible, setSortDropdownVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<TabFilter>("all");
-  const [showAllRequests, setShowAllRequests] = useState(false);
-
-  // Connection data from MySQL
+  const [selectedSort, setSelectedSort] = useState("Newest first");
+  const [noMutualFilter, setNoMutualFilter] = useState(false);
   const [friends, setFriends] = useState<FriendItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -132,10 +131,10 @@ export default function Friends() {
       {/* 2. Search Bar */}
       <View className="flex-row items-center px-5 py-3 gap-3 mb-1">
         <TouchableOpacity
-          onPress={() => setIsSearchOpen((prev) => !prev)}
+          onPress={() => setSidebarVisible(true)}
           className="p-1 active:opacity-70"
           accessibilityRole="button"
-          accessibilityLabel="Search connections"
+          accessibilityLabel="Open sidebar menu"
         >
           <Ionicons name="person-add-outline" size={26} color={themeColor("#34594A", "#E6E6E6")} />
         </TouchableOpacity>
@@ -236,81 +235,10 @@ export default function Friends() {
               />
             </View>
           </View>
-        </View>
+        </>
       )}
 
-      {/* ── 3. Top Filter Chips (active, Suggestions, Your connections) ── */}
-      <View className="px-5 py-2.5 bg-white border-b border-gray-100">
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8 }}
-        >
-          {/* Chip 1: Active Online Indicator */}
-          <TouchableOpacity
-            onPress={() => setActiveTab(activeTab === "active" ? "all" : "active")}
-            activeOpacity={0.8}
-            className={`flex-row items-center px-4 py-2 rounded-full border ${
-              activeTab === "active"
-                ? "bg-[#72AF5B] border-[#72AF5B]"
-                : "bg-gray-100 border-transparent"
-            }`}
-          >
-            <View
-              className={`w-2.5 h-2.5 rounded-full mr-2 ${
-                activeTab === "active" ? "bg-white" : "bg-[#72AF5B]"
-              }`}
-            />
-            <Text
-              className={`text-sm font-bold ${
-                activeTab === "active" ? "text-white" : "text-gray-900"
-              }`}
-            >
-              {activeCount || activeUsers.length || 0} active
-            </Text>
-          </TouchableOpacity>
-
-          {/* Chip 2: Suggestions */}
-          <TouchableOpacity
-            onPress={() => setActiveTab(activeTab === "suggestions" ? "all" : "suggestions")}
-            activeOpacity={0.8}
-            className={`px-4 py-2 rounded-full border ${
-              activeTab === "suggestions"
-                ? "bg-[#72AF5B] border-[#72AF5B]"
-                : "bg-gray-100 border-transparent"
-            }`}
-          >
-            <Text
-              className={`text-sm font-bold ${
-                activeTab === "suggestions" ? "text-white" : "text-gray-900"
-              }`}
-            >
-              Suggestions
-            </Text>
-          </TouchableOpacity>
-
-          {/* Chip 3: Your connections */}
-          <TouchableOpacity
-            onPress={() => setActiveTab(activeTab === "friends" ? "all" : "friends")}
-            activeOpacity={0.8}
-            className={`px-4 py-2 rounded-full border ${
-              activeTab === "friends"
-                ? "bg-[#72AF5B] border-[#72AF5B]"
-                : "bg-gray-100 border-transparent"
-            }`}
-          >
-            <Text
-              className={`text-sm font-bold ${
-                activeTab === "friends" ? "text-white" : "text-gray-900"
-              }`}
-            >
-              Your connections
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-
-      {/* ── 4. Main Content ScrollView (Matching Chats ScrollView Props) ── */}
+      {/* Content */}
       <ScrollView
         className="flex-1 bg-white z-0 dark:bg-[#181818] "
         showsVerticalScrollIndicator={false}
@@ -430,7 +358,7 @@ export default function Friends() {
                 ))}
               </View>
             )}
-          </View>
+          </>
         )}
       </ScrollView>
 
