@@ -51,8 +51,8 @@
   },
   "scripts": {
     "start": "expo start",
-    "build": "expo export -p web",
-    "build:web": "expo export -p web",
+    "build": "npx expo export -p web",
+    "build:web": "npx expo export -p web",
     "dev": "node --watch-path=server server/index.js",
     "server": "node server/index.js",
     "server:dev": "node --watch-path=server server/index.js",
