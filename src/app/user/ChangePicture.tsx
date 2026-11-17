@@ -1,8 +1,11 @@
 import { useAppTheme } from "@/context/theme-context";
+import { AuthContext } from "@/context/auth-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useContext } from "react";
+import { uploadImageToSupabase } from "@/lib/storage";
+import { updateProfileApi } from "@/services/auth-service";
 import {
   Alert,
   Image,
@@ -20,6 +23,8 @@ const DEFAULT_AVATAR = "";
 
 export default function ChangePicture() {
   const { themeColor } = useAppTheme();
+  const { refreshUser } = useContext(AuthContext);
+  const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
   const [avatarUri, setAvatarUri] = useState<string>(DEFAULT_AVATAR);
   const [sliderProgress, setSliderProgress] = useState<number>(0.15);
@@ -43,10 +48,35 @@ export default function ChangePicture() {
     }
   };
 
-  const handleSave = () => {
-    Alert.alert("Success", "Profile picture updated successfully!", [
-      { text: "OK", onPress: handleBack },
-    ]);
+  const handleSave = async () => {
+    if (!avatarUri) {
+      handleBack();
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      let finalAvatarUrl = avatarUri;
+      if (!avatarUri.startsWith("http")) {
+        const { publicUrl, error } = await uploadImageToSupabase("avatars", avatarUri);
+        if (error || !publicUrl) {
+          throw new Error(error?.message || "Failed to upload image to avatars bucket");
+        }
+        finalAvatarUrl = publicUrl;
+      }
+
+      await updateProfileApi({ avatarUrl: finalAvatarUrl });
+      await refreshUser();
+
+      Alert.alert("Success", "Profile picture updated successfully!", [
+        { text: "OK", onPress: handleBack },
+      ]);
+    } catch (err: any) {
+      console.error("Failed to save avatar:", err);
+      Alert.alert("Error", err.message || "Failed to save profile picture. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const pickImageFromGallery = async () => {
@@ -235,13 +265,16 @@ export default function ChangePicture() {
 
             <TouchableOpacity
               onPress={handleSave}
+              disabled={isSaving}
               className="bg-[#72AF5B] px-7 py-2.5 rounded-lg active:bg-[#60964c] shadow-xs dark:bg-[#E6E6E6] dark:active:bg-[#E6E6E6] "
-              style={{ backgroundColor: themeColor("#72AF5B", "#E6E6E6") }}
+              style={{ backgroundColor: themeColor("#72AF5B", "#E6E6E6"), opacity: isSaving ? 0.7 : 1 }}
               activeOpacity={0.8}
               accessibilityRole="button"
               accessibilityLabel="Save"
             >
-              <Text className="text-white text-base font-bold dark:text-[#181818] ">Save</Text>
+              <Text className="text-white text-base font-bold dark:text-[#181818] ">
+                {isSaving ? "Saving..." : "Save"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

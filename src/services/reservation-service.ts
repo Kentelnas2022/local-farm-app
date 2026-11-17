@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 
 export interface HarvestReservation {
   id: number;
@@ -55,14 +56,71 @@ export async function getMyReservationsApi(
   status: string = 'all',
   postId?: string | number
 ): Promise<{ success: boolean; reservations: HarvestReservation[] }> {
-  const queryParams: Record<string, string> = { role, status };
-  if (postId) {
-    queryParams.postId = String(postId);
+  // 1. Try Supabase query
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData?.user) {
+      const uid = authData.user.id;
+      let query = supabase
+        .from('harvest_reservations')
+        .select(`
+          *,
+          buyer:profiles!buyer_id(full_name, username, email, phone_number, avatar_url),
+          seller:profiles!seller_id(full_name, username, email, phone_number, avatar_url)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (role === 'buyer') {
+        query = query.eq('buyer_id', uid);
+      } else if (role === 'seller') {
+        query = query.eq('seller_id', uid);
+      } else {
+        query = query.or(`buyer_id.eq.${uid},seller_id.eq.${uid}`);
+      }
+
+      if (status && status !== 'all') {
+        query = query.eq('status', status);
+      }
+      if (postId) {
+        query = query.eq('post_id', Number(postId));
+      }
+
+      const { data, error } = await query;
+      if (!error && data) {
+        const reservations: HarvestReservation[] = data.map((hr: any) => ({
+          ...hr,
+          buyer_name: hr.buyer?.full_name || 'Buyer',
+          buyer_username: hr.buyer?.username || '',
+          buyer_email: hr.buyer?.email || '',
+          buyer_phone: hr.buyer?.phone_number || '',
+          buyer_avatar: hr.buyer?.avatar_url || '',
+          seller_name: hr.seller?.full_name || 'Farmer',
+          seller_username: hr.seller?.username || '',
+          seller_email: hr.seller?.email || '',
+          seller_phone: hr.seller?.phone_number || '',
+          seller_avatar: hr.seller?.avatar_url || '',
+          farm_name: hr.crop_name ? `${hr.crop_name} Farm` : 'Local Farm',
+        }));
+        return { success: true, reservations };
+      }
+    }
+  } catch (err) {
+    console.warn("Supabase getMyReservationsApi warning:", err);
   }
-  const query = new URLSearchParams(queryParams).toString();
-  return apiFetch<{ success: boolean; reservations: HarvestReservation[] }>(
-    `/reservations/my-reservations?${query}`
-  );
+
+  // 2. Fallback to API server
+  try {
+    const queryParams: Record<string, string> = { role, status };
+    if (postId) {
+      queryParams.postId = String(postId);
+    }
+    const query = new URLSearchParams(queryParams).toString();
+    return await apiFetch<{ success: boolean; reservations: HarvestReservation[] }>(
+      `/reservations/my-reservations?${query}`
+    );
+  } catch {
+    return { success: true, reservations: [] };
+  }
 }
 
 // 2. Create advance pre-harvest reservation

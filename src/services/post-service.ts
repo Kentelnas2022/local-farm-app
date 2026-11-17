@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 
 export interface OriginalPostItem {
   id: string;
@@ -108,27 +109,119 @@ export interface CreatePostPayload {
   isLiveReplay?: boolean;
 }
 
+function mapSupabasePost(p: any): PostItem {
+  const profile = p.profiles || {};
+  return {
+    id: String(p.id),
+    userId: String(p.user_id),
+    authorName: profile.full_name || profile.username || 'Local Farmer',
+    authorRole: profile.role || 'farmer',
+    avatarUri: profile.avatar_url || '',
+    location: p.location || profile.location || 'Iligan City, Philippines',
+    latitude: p.latitude,
+    longitude: p.longitude,
+    timeAgo: p.created_at ? new Date(p.created_at).toLocaleDateString() : 'Just now',
+    content: p.content,
+    imageUrl: p.image_url || '',
+    images: Array.isArray(p.images) ? p.images : Array.isArray(p.photos) ? p.photos : [],
+    category: p.category || 'General',
+    privacy: p.privacy || 'Public',
+    likes: Number(p.likes_count) || 0,
+    comments: Number(p.comments_count) || 0,
+    shares: Number(p.shares_count) || 0,
+    isLiked: false,
+    cropName: p.crop_name,
+    unit: p.unit || 'kg',
+    pricePerUnit: p.price_per_unit,
+    availableQuantity: p.available_quantity,
+    reservedQuantity: p.reserved_quantity || 0,
+    isPreHarvest: Boolean(p.is_pre_harvest),
+    expectedHarvestDate: p.expected_harvest_date,
+    pickupHub: p.pickup_hub,
+  };
+}
+
 export async function getPostsApi(
   category?: string,
   userId?: string | number,
   search?: string
 ): Promise<PostItem[]> {
-  const queryParts: string[] = [];
-  if (category && category !== "All") {
-    queryParts.push(`category=${encodeURIComponent(category)}`);
+  // 1. Try Supabase direct query first
+  try {
+    let query = supabase
+      .from('posts')
+      .select('*, profiles!user_id(full_name, username, role, avatar_url, location)')
+      .order('created_at', { ascending: false });
+
+    if (category && category !== "All") {
+      query = query.eq('category', category);
+    }
+    if (userId) {
+      query = query.eq('user_id', String(userId));
+    }
+    if (search && search.trim()) {
+      query = query.or(`content.ilike.%${search.trim()}%,crop_name.ilike.%${search.trim()}%,location.ilike.%${search.trim()}%`);
+    }
+
+    const { data, error } = await query;
+    if (!error && data) {
+      return data.map(mapSupabasePost);
+    }
+  } catch (err) {
+    console.warn("Supabase getPostsApi warning:", err);
   }
-  if (userId) {
-    queryParts.push(`userId=${encodeURIComponent(String(userId))}`);
+
+  // 2. Fallback to API server if Express backend is running
+  try {
+    const queryParts: string[] = [];
+    if (category && category !== "All") {
+      queryParts.push(`category=${encodeURIComponent(category)}`);
+    }
+    if (userId) {
+      queryParts.push(`userId=${encodeURIComponent(String(userId))}`);
+    }
+    if (search && search.trim()) {
+      queryParts.push(`search=${encodeURIComponent(search.trim())}`);
+    }
+    const query = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
+    const res = await apiFetch<{ posts: PostItem[]; count: number }>(`/posts${query}`);
+    return res.posts || [];
+  } catch {
+    return [];
   }
-  if (search && search.trim()) {
-    queryParts.push(`search=${encodeURIComponent(search.trim())}`);
-  }
-  const query = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
-  const res = await apiFetch<{ posts: PostItem[]; count: number }>(`/posts${query}`);
-  return res.posts || [];
 }
 
 export async function createPostApi(payload: CreatePostPayload): Promise<PostItem> {
+  // 1. Try Supabase create post
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData?.user) {
+      const { data: newPost, error } = await supabase
+        .from('posts')
+        .insert({
+          user_id: authData.user.id,
+          content: payload.content,
+          category: payload.category || 'General',
+          privacy: payload.privacy || 'Public',
+          location: payload.location || 'Iligan City, Philippines',
+          latitude: payload.latitude || null,
+          longitude: payload.longitude || null,
+          image_url: payload.imageUrl || (payload.photos && payload.photos[0]) || (payload.images && payload.images[0]) || null,
+          photos: payload.photos || [],
+          images: payload.images || [],
+        })
+        .select('*, profiles!user_id(full_name, username, role, avatar_url, location)')
+        .single();
+
+      if (!error && newPost) {
+        return mapSupabasePost(newPost);
+      }
+    }
+  } catch (err) {
+    console.warn("Supabase createPostApi warning:", err);
+  }
+
+  // 2. Fallback to API server
   const res = await apiFetch<{ message: string; post: PostItem }>("/posts", {
     method: "POST",
     body: JSON.stringify(payload),

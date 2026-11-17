@@ -5,6 +5,7 @@ import {
   getSupportTicketsApi,
   SupportTicket,
 } from "@/services/support-service";
+import { uploadImageToSupabase } from "@/lib/storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
@@ -409,12 +410,24 @@ export default function HelpSupport() {
 
     try {
       setIsSubmittingReport(true);
+      let finalEvidence = evidenceImage;
+      if (evidenceImage && !evidenceImage.startsWith("http")) {
+        try {
+          const { path, publicUrl, error } = await uploadImageToSupabase("evidence", evidenceImage);
+          if (!error && (path || publicUrl)) {
+            finalEvidence = path || publicUrl;
+          }
+        } catch (uploadErr) {
+          console.warn("Evidence bucket upload warning:", uploadErr);
+        }
+      }
+
       const newTicket = await createSupportTicketApi({
         category: reportCategory,
         subject: reportSubject.trim(),
         description: reportDescription.trim(),
         relatedUserOrListing: reportReportedUser.trim() || undefined,
-        attachments: evidenceImage ? [evidenceImage] : [],
+        attachments: finalEvidence ? [finalEvidence] : [],
       });
 
       setTickets((prev) => [newTicket, ...prev]);

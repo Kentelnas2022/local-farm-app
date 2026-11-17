@@ -8,6 +8,7 @@ import {
   submitRSBSAApplication,
 } from "@/services/rsbsa-service";
 import { syncRSBSASupportTicket } from "@/services/support-service";
+import { uploadImageToSupabase } from "@/lib/storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -111,13 +112,25 @@ export default function RSBSAVerificationScreen() {
 
     setIsSubmitting(true);
     try {
+      let finalDocUri = documentUri;
+      if (documentUri && !documentUri.startsWith("http")) {
+        try {
+          const { path, publicUrl, error } = await uploadImageToSupabase("documents", documentUri);
+          if (!error && (path || publicUrl)) {
+            finalDocUri = path || publicUrl;
+          }
+        } catch (uploadErr) {
+          console.warn("Documents bucket upload warning:", uploadErr);
+        }
+      }
+
       const updated = await submitRSBSAApplication({
         fullName: fullName.trim(),
         rsbsaNumber: rsbsaNumber.trim(),
         farmName: farmName.trim(),
         location: location.trim(),
         crops: crops.trim() || "Various Fruits & Vegetables",
-        documentUri,
+        documentUri: finalDocUri,
       });
 
       setRsbsaApp(updated);

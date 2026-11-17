@@ -14,6 +14,7 @@ import {
   searchLocationsApi,
 } from "@/services/location-service";
 import { createPostApi, PostItem } from "@/services/post-service";
+import { uploadImageToSupabase } from "@/lib/storage";
 import {
   getRSBSAApplication,
   RSBSAApplication,
@@ -494,6 +495,25 @@ export default function CreatePostModal({
         (d) => d.value === temporaryDuration,
       );
 
+      // Upload local images to Supabase 'posts' storage bucket
+      const uploadedPhotos: string[] = [];
+      for (const uri of selectedPhotos) {
+        if (uri.startsWith("http")) {
+          uploadedPhotos.push(uri);
+        } else {
+          try {
+            const { publicUrl, error } = await uploadImageToSupabase("posts", uri);
+            if (!error && publicUrl) {
+              uploadedPhotos.push(publicUrl);
+            } else {
+              uploadedPhotos.push(uri);
+            }
+          } catch {
+            uploadedPhotos.push(uri);
+          }
+        }
+      }
+
       const newPost = await createPostApi({
         content: trimmedContent,
         category: selectedCategory,
@@ -505,9 +525,9 @@ export default function CreatePostModal({
         longitude: selectedLocation
           ? (selectedCoordinates?.longitude ?? mapCoords.longitude)
           : null,
-        photos: selectedPhotos,
-        images: selectedPhotos,
-        imageUrl: selectedPhotos.length > 0 ? selectedPhotos[0] : undefined,
+        photos: uploadedPhotos,
+        images: uploadedPhotos,
+        imageUrl: uploadedPhotos.length > 0 ? uploadedPhotos[0] : undefined,
         taggedUserIds: taggedUserIds.length > 0 ? taggedUserIds : undefined,
         expiresAt,
         temporaryDuration: isTemp ? temporaryDuration : undefined,
