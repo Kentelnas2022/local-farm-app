@@ -1,14 +1,53 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
+import * as Device from "expo-device";
 import { Platform } from "react-native";
 
-// Change this IP if testing on a physical mobile device over local Wi-Fi
-// (e.g. "http://192.168.1.5:5000/api")
-const DEFAULT_HOST = Platform.select({
-  web: "http://localhost:5000/api",
-  android: "http://10.0.2.2:5000/api", // Android emulator maps 10.0.2.2 to host machine localhost
-  ios: "http://localhost:5000/api",
-  default: "http://localhost:5000/api",
-});
+function getDynamicHost(): string {
+  // 1. Explicit environment variable configured in Vercel or .env (e.g. EXPO_PUBLIC_API_URL)
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl) {
+    return envUrl.endsWith("/api")
+      ? envUrl
+      : `${envUrl.replace(/\/+$/, "")}/api`;
+  }
+
+  // 2. Web browser environment
+  if (Platform.OS === "web") {
+    if (typeof window !== "undefined" && window.location) {
+      const { hostname, origin } = window.location;
+      // In production deployment on Vercel or custom domain, route to the deployment origin /api
+      if (hostname && hostname !== "localhost" && hostname !== "127.0.0.1") {
+        return `${origin}/api`;
+      }
+    }
+    return "http://localhost:5000/api";
+  }
+
+  // 3. In Expo Go or Dev Client, Constants provides the IP of the machine running Metro
+  const metroHost =
+    Constants.expoConfig?.hostUri?.split(":")[0] ||
+    (Constants as any).manifest2?.extra?.expoGo?.debuggerHost?.split(":")[0] ||
+    (Constants as any).manifest?.debuggerHost?.split(":")[0];
+
+  if (metroHost && metroHost !== "localhost" && metroHost !== "127.0.0.1") {
+    return `http://${metroHost}:5000/api`;
+  }
+
+  // 4. Physical mobile device fallback
+  if (Device.isDevice) {
+    return "http://192.168.110.229:5000/api";
+  }
+
+  // 5. Android emulator loopback alias
+  if (Platform.OS === "android") {
+    return "http://10.0.2.2:5000/api";
+  }
+
+  return "http://localhost:5000/api";
+}
+
+const DEFAULT_HOST = getDynamicHost();
 
 export const TOKEN_STORAGE_KEY = "localfarm_auth_token";
 export const API_URL_STORAGE_KEY = "localfarm_api_url";
@@ -45,6 +84,12 @@ export async function removeAuthToken(): Promise<void> {
     await AsyncStorage.removeItem(TOKEN_STORAGE_KEY);
   } catch (err) {
     console.error("Failed to remove auth token", err);
+  }
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+      window.localStorage.removeItem("localfarm_cached_user");
+    } catch {}
   }
 }
 

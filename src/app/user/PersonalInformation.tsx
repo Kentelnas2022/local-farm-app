@@ -1,64 +1,380 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useToast } from "@/context/toast-context";
 import { useAuth } from "@/hooks/use-auth";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  DEFAULT_RSBSA_STATE,
+  getRSBSAApplication,
+  RSBSAApplication,
+} from "@/services/rsbsa-service";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   Image,
+  LayoutAnimation,
   Modal,
   Platform,
-  SafeAreaView,
+  Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  UIManager,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import Navigation from "../../components/Navigation";
 
-interface FormFieldItem {
-  id: string;
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const FARM_DETAILS_STORAGE_KEY = "localfarm_user_farm_details_v1";
+
+interface FarmDetails {
+  farmName: string; // Farm or Product
+  farmLocation: string;
+  primaryCrops: string;
+}
+
+const DEFAULT_FARM_DETAILS: FarmDetails = {
+  farmName: "",
+  farmLocation: "",
+  primaryCrops: "",
+};
+
+const GENDER_OPTIONS = ["Male", "Female", "Prefer not to say"];
+
+// Floating Label Field with smooth placeholder animation
+function FloatingLabelField({
+  label,
+  value,
+  onChangeText,
+  iconName,
+  editable = true,
+  isEditing = false,
+  keyboardType,
+  multiline,
+  autoCapitalize,
+  lockedBadge,
+  children,
+}: {
   label: string;
-  value: string;
-  iconType: "person" | "mail" | "call" | "male" | "location";
-  editable: boolean;
+  value?: string;
+  onChangeText?: (text: string) => void;
+  iconName: keyof typeof Ionicons.glyphMap;
+  editable?: boolean;
+  isEditing?: boolean;
+  keyboardType?: any;
+  multiline?: boolean;
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  lockedBadge?: string;
+  children?: React.ReactNode;
+}) {
+  const { themeColor } = useAppTheme();
+  const styles = createStyles(themeColor);
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+  const hasValue = Boolean(value && value.trim().length > 0);
+  const shouldFloat = !isEditing || isFocused || hasValue || Boolean(children);
+
+  const animatedFocus = useRef(
+    new Animated.Value(shouldFloat ? 1 : 0)
+  ).current;
+
+  useEffect(() => {
+    Animated.timing(animatedFocus, {
+      toValue: shouldFloat ? 1 : 0,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [shouldFloat]);
+
+  const handleFocus = () => {
+    setIsFocused(true);
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+  };
+
+  const handleContainerPress = () => {
+    if (isEditing && editable && !children) {
+      inputRef.current?.focus();
+    }
+  };
+
+  const labelTop = animatedFocus.interpolate({
+    inputRange: [0, 1],
+    outputRange: [multiline ? 16 : 16, 5],
+  });
+
+  const labelFontSize = animatedFocus.interpolate({
+    inputRange: [0, 1],
+    outputRange: [13.5, 10],
+  });
+
+  const labelColor = animatedFocus.interpolate({
+    inputRange: [0, 1],
+    outputRange: [themeColor("#7F9185", "#ADADAD"), themeColor(isFocused ? "#34594A" : "#6B7D72", isFocused ? "#E6E6E6" : "#ADADAD")],
+  });
+
+  const borderColor = themeColor(isFocused ? "#34594A" : isEditing ? "#D8E3DB" : "#EAF0EC", isFocused ? "#8A8A8A" : "#414141");
+
+  const backgroundColor = themeColor(isFocused ? "#FFFFFF" : isEditing ? "#FAFCFA" : "#F8FAF8", isFocused ? "#353535" : "#2C2C2C");
+
+  return (
+    <Pressable
+      onPress={handleContainerPress}
+      style={[
+        styles.floatingFieldContainer,
+        {
+          borderColor,
+          backgroundColor,
+          borderWidth: isFocused ? 1.5 : 1,
+          minHeight: multiline ? (isEditing ? 96 : 72) : 56,
+          alignItems: multiline ? "flex-start" : "center",
+        },
+      ]}
+    >
+      {/* Leading Icon */}
+      <View
+        style={[
+          styles.floatingFieldIconBox,
+          isFocused && styles.floatingFieldIconBoxFocused,
+          multiline && { marginTop: 8 },
+        ]}
+      >
+        <Ionicons
+          name={iconName}
+          size={16}
+          color={themeColor(isFocused ? "#34594A" : "#5F7467", isFocused ? "#E6E6E6" : "#ADADAD")}
+        />
+      </View>
+
+      {/* Main Content Area */}
+      <View style={styles.floatingFieldContent}>
+        {/* Floating Animated Label */}
+        <Animated.Text
+          pointerEvents="none"
+          style={[
+            styles.floatingLabelText,
+            {
+              top: labelTop,
+              fontSize: labelFontSize,
+              color: labelColor,
+              fontWeight: isFocused ? "700" : "600",
+            },
+          ]}
+          numberOfLines={1}
+        >
+          {label}
+        </Animated.Text>
+
+        {children ? (
+          <View style={styles.floatingFieldCustomChild}>{children}</View>
+        ) : isEditing && editable ? (
+          <TextInput
+            ref={inputRef}
+            value={value}
+            onChangeText={onChangeText}
+            keyboardType={keyboardType}
+            multiline={multiline}
+            autoCapitalize={autoCapitalize}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            style={[
+              styles.floatingTextInput,
+              multiline && {
+                minHeight: 56,
+                paddingTop: 22,
+                textAlignVertical: "top",
+              },
+            ]}
+          />
+        ) : (
+          <Text
+            style={[
+              styles.floatingValueText,
+              !value && styles.floatingValueEmptyText,
+              multiline && { marginTop: 22 },
+            ]}
+            numberOfLines={multiline ? undefined : 1}
+          >
+            {value || "Not specified"}
+          </Text>
+        )}
+      </View>
+
+      {/* Locked Badge if applicable */}
+      {lockedBadge && (
+        <View style={styles.lockedPill}>
+          <Ionicons name="lock-closed" size={10} color={themeColor("#34594A", "#E6E6E6")} />
+          <Text style={styles.lockedPillText}>{lockedBadge}</Text>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+// Smooth subtle entrance for premium feel
+function FadeEntrance({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const progress = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(8)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: 280,
+        delay,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: Platform.OS !== "web",
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 280,
+        delay,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: Platform.OS !== "web",
+      }),
+    ]).start();
+  }, [delay, progress, translateY]);
+
+  return (
+    <Animated.View style={{ opacity: progress, transform: [{ translateY }] }}>
+      {children}
+    </Animated.View>
+  );
+}
+
+// Tactile press button with smooth spring animation
+function TactileTouchable({
+  children,
+  onPress,
+  style,
+  disabled,
+  activeOpacity = 0.85,
+  scaleTo = 0.98,
+  ...rest
+}: any) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: scaleTo,
+      useNativeDriver: Platform.OS !== "web",
+      speed: 35,
+      bounciness: 4,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: Platform.OS !== "web",
+      speed: 35,
+      bounciness: 4,
+    }).start();
+  };
+
+  const flattened = StyleSheet.flatten(style) || {};
+  const hasFlex = flattened.flex !== undefined;
+
+  return (
+    <Animated.View
+      style={[
+        hasFlex && { flex: flattened.flex },
+        { transform: [{ scale }] },
+      ]}
+    >
+      <TouchableOpacity
+        activeOpacity={activeOpacity}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={onPress}
+        disabled={disabled}
+        style={[style, hasFlex && { width: "100%" }]}
+        {...rest}
+      >
+        {children}
+      </TouchableOpacity>
+    </Animated.View>
+  );
 }
 
 export default function PersonalInformation() {
-  const router = useRouter();
+  const { themeColor } = useAppTheme();
+  const styles = createStyles(themeColor);
+  const params = useLocalSearchParams<{ edit?: string; mode?: string }>();
   const { user, updateUser } = useAuth();
   const { showToast } = useToast();
 
-  const [formData, setFormData] = useState<Record<string, string>>({
-    "1": user?.name || user?.fullName || "",
-    "2": user?.username || "",
-    "3": user?.email || "",
-    "4": user?.phoneNumber || "",
-    "5": user?.gender || "Male",
+  // Personal Info Form State
+  const [formData, setFormData] = useState({
+    name: user?.name || user?.fullName || "",
+    username: user?.username || "",
+    email: user?.email || "",
+    phoneNumber: user?.phoneNumber || "",
+    gender: user?.gender || "Male",
+    bio: user?.about || user?.bio || "",
   });
 
-  const [isEditing, setIsEditing] = useState(false);
+  // Agricultural Profile State (Farm or Product)
+  const [farmData, setFarmData] = useState<FarmDetails>({
+    farmName: user?.farmName || "",
+    farmLocation: user?.farmLocation || user?.location || "",
+    primaryCrops: user?.primaryCrops || "",
+  });
+
+  // RSBSA Verification State
+  const [rsbsaApp, setRsbsaApp] =
+    useState<RSBSAApplication>(DEFAULT_RSBSA_STATE);
+
+  // UI Control State
+  const [isEditing, setIsEditing] = useState(
+    params?.edit === "true" || params?.mode === "edit",
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [isChangingPicture, setIsChangingPicture] = useState(false);
   const [isPhotoOptionsVisible, setIsPhotoOptionsVisible] = useState(false);
 
+  // Avatar adjustment state
   const [avatarUri, setAvatarUri] = useState<string>(user?.avatarUrl || "");
   const [avatarScale, setAvatarScale] = useState<number>(1);
   const [sliderProgress, setSliderProgress] = useState<number>(0.15);
   const [trackWidth, setTrackWidth] = useState<number>(280);
 
-  // Sync state when user object loads or updates
+  // Check params for initial edit mode
+  useEffect(() => {
+    if (params?.edit === "true" || params?.mode === "edit") {
+      setIsEditing(true);
+    }
+  }, [params?.edit, params?.mode]);
+
+  // Sync user state on load
   useEffect(() => {
     if (user) {
       setFormData({
-        "1": user.name || user.fullName || "",
-        "2": user.username || "",
-        "3": user.email || "",
-        "4": user.phoneNumber || "",
-        "5": user.gender || "Male",
+        name: user.name || user.fullName || "",
+        username: user.username || "",
+        email: user.email || "",
+        phoneNumber: user.phoneNumber || "",
+        gender: user.gender || "Male",
+        bio: user.about || user.bio || "",
+      });
+      setFarmData({
+        farmName: user.farmName || "",
+        farmLocation: user.farmLocation || user.location || "",
+        primaryCrops: user.primaryCrops || "",
       });
       if (user.avatarUrl) {
         setAvatarUri(user.avatarUrl);
@@ -66,43 +382,45 @@ export default function PersonalInformation() {
     }
   }, [user]);
 
-  const formFields: FormFieldItem[] = [
-    {
-      id: "1",
-      label: "Fullname:",
-      value: formData["1"],
-      iconType: "person",
-      editable: true,
-    },
-    {
-      id: "2",
-      label: "Username:",
-      value: formData["2"],
-      iconType: "person",
-      editable: true,
-    },
-    {
-      id: "3",
-      label: "Email address:",
-      value: user?.email || formData["3"],
-      iconType: "mail",
-      editable: false, // Email is identity locked
-    },
-    {
-      id: "4",
-      label: "Phone Number:",
-      value: formData["4"],
-      iconType: "call",
-      editable: true,
-    },
-    {
-      id: "5",
-      label: "Gender:",
-      value: formData["5"],
-      iconType: "male",
-      editable: true,
-    },
-  ];
+  // Load RSBSA and Farm Details from local storage
+  useEffect(() => {
+    let isMounted = true;
+    const loadAgriculturalData = async () => {
+      try {
+        const app = await getRSBSAApplication();
+        if (!isMounted) return;
+        setRsbsaApp(app);
+
+        if (user?.farmName || user?.farmLocation || user?.primaryCrops) {
+          setFarmData({
+            farmName: user.farmName || "",
+            farmLocation: user.farmLocation || user.location || "",
+            primaryCrops: user.primaryCrops || "",
+          });
+        } else {
+          const savedFarm = await AsyncStorage.getItem(FARM_DETAILS_STORAGE_KEY);
+          if (!isMounted) return;
+          if (savedFarm) {
+            const parsed = JSON.parse(savedFarm);
+            setFarmData((prev) => ({ ...prev, ...parsed }));
+          } else if (app && (app.farmName || app.location || app.crops)) {
+            setFarmData({
+              farmName: app.farmName || "",
+              farmLocation: app.location || "",
+              primaryCrops: app.crops || "",
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Error loading agricultural profile data:", err);
+      }
+    };
+
+    loadAgriculturalData();
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   const updateSliderProgress = (locationX: number) => {
     if (trackWidth <= 0) return;
@@ -115,14 +433,7 @@ export default function PersonalInformation() {
       setAvatarUri(user?.avatarUrl || "");
       setIsChangingPicture(false);
     } else if (isEditing) {
-      setFormData({
-        "1": user?.name || user?.fullName || "",
-        "2": user?.username || "",
-        "3": user?.email || "",
-        "4": user?.phoneNumber || "",
-        "5": user?.gender || "Male",
-      });
-      setIsEditing(false);
+      handleCancelEdit();
     } else {
       try {
         if (router.canGoBack()) {
@@ -136,27 +447,74 @@ export default function PersonalInformation() {
     }
   };
 
-  const handleInputChange = (id: string, text: string) => {
-    setFormData((prev) => ({ ...prev, [id]: text }));
+  const handleCancelEdit = () => {
+    setFormData({
+      name: user?.name || user?.fullName || "",
+      username: user?.username || "",
+      email: user?.email || "",
+      phoneNumber: user?.phoneNumber || "",
+      gender: user?.gender || "Male",
+      bio: user?.about || user?.bio || "",
+    });
+    setFarmData({
+      farmName: user?.farmName || "",
+      farmLocation: user?.farmLocation || user?.location || "",
+      primaryCrops: user?.primaryCrops || "",
+    });
+    setIsEditing(false);
   };
 
   const handleDone = async () => {
-    if (!formData["1"].trim()) {
+    if (!formData.name.trim()) {
       showToast("Full name cannot be empty.", "warning");
       return;
     }
 
     setIsSaving(true);
     try {
+      // 1. Update user profile via auth context (persisting to PostgreSQL users table)
       await updateUser({
-        name: formData["1"].trim(),
-        fullName: formData["1"].trim(),
-        username: formData["2"].trim(),
-        phoneNumber: formData["4"].trim(),
-        gender: formData["5"].trim(),
+        name: formData.name.trim(),
+        fullName: formData.name.trim(),
+        username: formData.username.trim(),
+        phoneNumber: formData.phoneNumber.trim(),
+        gender: formData.gender.trim(),
+        about: formData.bio.trim(),
+        bio: formData.bio.trim(),
+        farmName: farmData.farmName.trim(),
+        farmLocation: farmData.farmLocation.trim(),
+        primaryCrops: farmData.primaryCrops.trim(),
       });
+
+      // 2. Persist farm profile details
+      await AsyncStorage.setItem(
+        FARM_DETAILS_STORAGE_KEY,
+        JSON.stringify(farmData),
+      );
+
+      // 3. Keep RSBSA application updated with farm profile if exists
+      try {
+        const currentRSBSA = await getRSBSAApplication();
+        if (currentRSBSA && currentRSBSA.status !== "unverified") {
+          const updatedRSBSA: RSBSAApplication = {
+            ...currentRSBSA,
+            fullName: formData.name.trim() || currentRSBSA.fullName,
+            farmName: farmData.farmName || currentRSBSA.farmName,
+            location: farmData.farmLocation || currentRSBSA.location,
+            crops: farmData.primaryCrops || currentRSBSA.crops,
+          };
+          await AsyncStorage.setItem(
+            "localfarm_rsbsa_verification_v1",
+            JSON.stringify(updatedRSBSA),
+          );
+          setRsbsaApp(updatedRSBSA);
+        }
+      } catch (rsbsaSyncErr) {
+        console.warn("RSBSA sync skipped:", rsbsaSyncErr);
+      }
+
       setIsEditing(false);
-      showToast("Profile updated successfully!", "success");
+      showToast("Personal & farm profile saved successfully!", "success");
     } catch (err: any) {
       showToast(err?.message || "Failed to update profile.", "error");
     } finally {
@@ -219,7 +577,6 @@ export default function PersonalInformation() {
       console.error("Error picking image from gallery:", error);
     }
 
-    // Direct Web fallback if running on web browser
     if (Platform.OS === "web" && typeof document !== "undefined") {
       try {
         const input = document.createElement("input");
@@ -280,35 +637,8 @@ export default function PersonalInformation() {
     }
   };
 
-  const handleChangePicture = () => {
-    setIsPhotoOptionsVisible(true);
-  };
-
-  const renderFieldIcon = (type: FormFieldItem["iconType"]) => {
-    switch (type) {
-      case "person":
-        return <Ionicons name="person" size={20} color="#ffffff" />;
-      case "mail":
-        return <Ionicons name="mail" size={20} color="#ffffff" />;
-      case "call":
-        return <Ionicons name="call" size={20} color="#ffffff" />;
-      case "male":
-        return (
-          <MaterialCommunityIcons
-            name="gender-male"
-            size={22}
-            color="#ffffff"
-          />
-        );
-      case "location":
-        return <Ionicons name="location" size={20} color="#ffffff" />;
-      default:
-        return <Ionicons name="person" size={20} color="#ffffff" />;
-    }
-  };
-
   // ---------------------------------------------------------------------------
-  // Change Picture Screen View
+  // Change Picture Screen View (Slider & Cropping)
   // ---------------------------------------------------------------------------
   if (isChangingPicture) {
     const thumbLeft = Math.max(
@@ -320,42 +650,52 @@ export default function PersonalInformation() {
     );
 
     return (
-      <SafeAreaView
-        className="flex-1 bg-white relative"
-        style={{ flex: 1, backgroundColor: "#FFFFFF" }}
-      >
-        <ScrollView
-          className="flex-1 bg-white"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 110 }}
-        >
-          {/* Top Header Row */}
-          <View className="flex-row items-center justify-center px-4 pt-4 pb-3 relative bg-white">
-            <TouchableOpacity
-              onPress={handleCancelPicture}
-              className="absolute left-4 top-4 p-1 active:opacity-70"
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-            >
-              <Ionicons name="arrow-undo" size={28} color="#000000" />
-            </TouchableOpacity>
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={handleCancelPicture}
+            style={styles.backButton}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="chevron-back" size={20} color={themeColor("#293E33", "#E6E6E6")} />
+          </TouchableOpacity>
 
-            <Text className="text-xl font-bold text-gray-900">
-              Change picture
-            </Text>
+          <View style={styles.headerTitleWrap}>
+            <Text style={styles.headerTitle}>Change Picture</Text>
           </View>
 
+          <View style={{ width: 36 }} />
+        </View>
+
+        <ScrollView
+          style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 110, paddingHorizontal: 20 }}
+        >
           {/* Large Circular Profile Picture Preview */}
-          <View className="items-center justify-center mt-10 mb-6">
+          <View style={{ alignItems: "center", justifyContent: "center", marginTop: 32, marginBottom: 24 }}>
             <TouchableOpacity
               onPress={pickImageFromGallery}
               activeOpacity={0.9}
-              className="relative"
+              style={{ position: "relative" }}
               accessibilityRole="button"
               accessibilityLabel="Choose photo from gallery"
             >
-              <View className="w-64 h-64 sm:w-72 sm:h-72 rounded-full overflow-hidden bg-[#E5E7EB] items-center justify-center shadow-lg border border-gray-100">
+              <View
+                style={{
+                  width: 240,
+                  height: 240,
+                  borderRadius: 120,
+                  overflow: "hidden",
+                  backgroundColor: themeColor("#F0F4EF", "#181818"),
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderWidth: 1,
+                  borderColor: themeColor("#E5ECE6", "#414141"),
+                }}
+              >
                 {avatarUri ? (
                   <Image
                     source={{ uri: avatarUri }}
@@ -367,31 +707,43 @@ export default function PersonalInformation() {
                     resizeMode="cover"
                   />
                 ) : (
-                  <View className="w-full h-full bg-[#72AF5B] items-center justify-center">
-                    <Ionicons name="person" size={130} color="#ffffff" />
+                  <View style={{ width: "100%", height: "100%", backgroundColor: themeColor("#34594A", "#303030"), alignItems: "center", justifyContent: "center" }}>
+                    <Ionicons name="person" size={110} color={themeColor("#FFFFFF", "#E6E6E6")} />
                   </View>
                 )}
               </View>
 
               {/* Gallery Icon Badge */}
-              <View className="absolute bottom-2 right-4 bg-[#72AF5B] p-2.5 rounded-full border-2 border-white shadow-md">
-                <Ionicons name="images" size={18} color="#FFFFFF" />
+              <View
+                style={{
+                  position: "absolute",
+                  bottom: 6,
+                  right: 12,
+                  backgroundColor: themeColor("#34594A", "#303030"),
+                  padding: 10,
+                  borderRadius: 20,
+                  borderWidth: 2,
+                  borderColor: themeColor("#FFFFFF", "#414141"),
+                }}
+              >
+                <Ionicons name="images" size={16} color={themeColor("#FFFFFF", "#E6E6E6")} />
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={pickImageFromGallery}
-              className="mt-3 flex-row items-center gap-1.5 active:opacity-70"
+              style={{ marginTop: 16, flexDirection: "row", alignItems: "center", gap: 6 }}
+              activeOpacity={0.7}
             >
-              <Ionicons name="image-outline" size={18} color="#72AF5B" />
-              <Text className="text-sm font-semibold text-[#72AF5B]">
+              <Ionicons name="image-outline" size={18} color={themeColor("#34594A", "#E6E6E6")} />
+              <Text style={{ fontSize: 13, fontWeight: "600", color: themeColor("#34594A", "#E6E6E6") }}>
                 Choose from gallery
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Slider & Actions Container */}
-          <View className="px-8 w-full max-w-[360px] self-center">
+          <View style={{ width: "100%", maxWidth: 320, alignSelf: "center", marginTop: 10 }}>
             {/* Horizontal Slider Track */}
             <View
               onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
@@ -403,12 +755,10 @@ export default function PersonalInformation() {
               onResponderMove={(evt) =>
                 updateSliderProgress(evt.nativeEvent.locationX)
               }
-              className="h-8 justify-center relative"
+              style={{ height: 32, justifyContent: "center", position: "relative" }}
             >
-              {/* Gray Bar */}
-              <View className="h-2 bg-[#D1D5DB] rounded-full w-full" />
+              <View style={{ height: 6, backgroundColor: themeColor("#EDF2EE", "#181818"), borderRadius: 3, width: "100%" }} />
 
-              {/* Slider Thumb Handle */}
               <View
                 style={{
                   position: "absolute",
@@ -416,42 +766,54 @@ export default function PersonalInformation() {
                   width: 24,
                   height: 24,
                   borderRadius: 12,
-                  backgroundColor: "#CBD5E1",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 2,
-                  elevation: 3,
+                  backgroundColor: themeColor("#34594A", "#303030"),
+                  borderWidth: 2,
+                  borderColor: themeColor("#FFFFFF", "#414141"),
                 }}
               />
             </View>
 
             {/* Action Buttons: Cancel and Save */}
-            <View className="flex-row justify-end gap-3 mt-6">
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 24 }}>
               <TouchableOpacity
                 onPress={handleCancelPicture}
                 disabled={isSaving}
-                className="bg-[#A0A8B0] px-6 py-2.5 rounded-xl active:bg-[#8e969e] shadow-xs"
+                style={{
+                  paddingHorizontal: 20,
+                  paddingVertical: 12,
+                  borderRadius: 13,
+                  backgroundColor: themeColor("#F3F5F2", "#181818"),
+                  borderWidth: 1,
+                  borderColor: themeColor("#E2ECE4", "#414141"),
+                }}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Cancel"
               >
-                <Text className="text-white text-base font-bold">Cancel</Text>
+                <Text style={{ fontSize: 13.5, fontWeight: "600", color: themeColor("#5E7265", "#E6E6E6") }}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={handleSavePicture}
                 disabled={isSaving}
-                className="bg-[#72AF5B] px-7 py-2.5 rounded-xl active:bg-[#60964c] shadow-xs flex-row items-center justify-center min-w-[90px]"
-                style={{ backgroundColor: "#72AF5B" }}
+                style={{
+                  paddingHorizontal: 26,
+                  paddingVertical: 12,
+                  borderRadius: 13,
+                  backgroundColor: themeColor("#34594A", "#303030"),
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: 100,
+                }}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Save"
               >
                 {isSaving ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
+                  <ActivityIndicator color={themeColor("#FFFFFF", "#E6E6E6")} size="small" />
                 ) : (
-                  <Text className="text-white text-base font-bold">Save</Text>
+                  <Text style={{ fontSize: 13.5, fontWeight: "600", color: themeColor("#FFFFFF", "#E6E6E6") }}>Save</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -464,171 +826,466 @@ export default function PersonalInformation() {
   }
 
   // ---------------------------------------------------------------------------
-  // Profile / User Information & Edit View
+  // Main View: Personal Information & Edit Information
   // ---------------------------------------------------------------------------
-  const displayName = formData["1"] || user?.name || user?.fullName || "User";
+  const displayName = formData.name || user?.name || user?.fullName || "Grower";
+  const isRSBSAVerified = rsbsaApp?.status === "verified";
+  const isRSBSAPending = rsbsaApp?.status === "pending";
 
   return (
-    <SafeAreaView
-      className="flex-1 bg-white relative"
-      style={{ flex: 1, backgroundColor: "#FFFFFF" }}
-    >
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <ScrollView
-        className="flex-1 bg-white"
+        style={styles.scrollArea}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 110 }}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* Top Green Header Banner */}
-        <View className="w-full bg-[#6EA352] pt-8 pb-16 px-4 relative">
-          <View className="flex-row items-center justify-center relative">
+        {/* Top Deep Forest Brand Banner Header (matching Reservations & Saved) */}
+        <View style={styles.topBanner}>
+          <View style={styles.bannerHeaderRow}>
             <TouchableOpacity
               onPress={handleBack}
-              className="absolute left-0 p-1 active:opacity-70"
+              style={styles.bannerBackBtn}
+              activeOpacity={0.75}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               accessibilityRole="button"
-              accessibilityLabel="Go back"
+              accessibilityLabel={isEditing ? "Cancel edit" : "Go back"}
             >
-              <Ionicons name="arrow-undo" size={28} color="#FFFFFF" />
+              <Ionicons name="chevron-back" size={20} color={themeColor("#FFFFFF", "#E6E6E6")} />
             </TouchableOpacity>
 
-            <Text className="text-white text-lg font-bold tracking-wide">
-              Profile
-            </Text>
+            <View style={styles.bannerTitleWrap}>
+              <Text style={styles.bannerTitle}>
+                {isEditing ? "Edit Information" : "Personal Information"}
+              </Text>
+              <Text style={styles.bannerSubtitle}>
+                {isEditing
+                  ? "Update farm & personal details"
+                  : "Identity & Agricultural Details"}
+              </Text>
+            </View>
+
+            <View style={{ width: 36 }} />
           </View>
         </View>
 
-        {/* Overlapping Avatar Section */}
-        <View className="items-center z-50 -mt-16">
-          <View className="relative">
-            <View className="w-32 h-32 rounded-full border-[5px] border-white bg-[#E5E7EB] items-center justify-center overflow-hidden shadow-md">
-              {avatarUri ? (
-                <Image
-                  source={{ uri: avatarUri }}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    transform: [{ scale: avatarScale }],
-                  }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View className="w-full h-full bg-[#E5E7EB] items-center justify-center">
-                  <Ionicons name="person" size={68} color="#9CA3AF" />
+        {/* Overlapping Avatar Profile Section */}
+        <FadeEntrance delay={20}>
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarWrap}>
+              <View style={styles.avatarCircle}>
+                {avatarUri ? (
+                  <Image
+                    source={{ uri: avatarUri }}
+                    style={[
+                      styles.avatarImg,
+                      { transform: [{ scale: avatarScale }] },
+                    ]}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.avatarFallback}>
+                    <Ionicons name="person" size={58} color={themeColor("#9CA3AF", "#ADADAD")} />
+                  </View>
+                )}
+              </View>
+
+              {/* Status Badge on Avatar */}
+              {isRSBSAVerified ? (
+                <View style={styles.avatarBadgeVerified}>
+                  <Ionicons name="checkmark-circle" size={20} color={themeColor("#2E7D5B", "#E6E6E6")} />
                 </View>
+              ) : (
+                <View style={styles.avatarBadgeDot} />
               )}
             </View>
 
-            {!isEditing && (
-              <View className="absolute bottom-1 right-1 w-6 h-6 bg-[#72AF5B] rounded-full border-[3px] border-white shadow-2xs" />
-            )}
-          </View>
-
-          {isEditing ? (
-            <TouchableOpacity
-              onPress={handleChangePicture}
-              className="mt-3 flex-row items-center justify-center gap-1.5 bg-[#72AF5B] px-5 py-2 rounded-lg shadow-sm active:bg-[#60964c]"
-              style={{ backgroundColor: "#72AF5B" }}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel="Change picture"
-            >
-              <Ionicons name="camera-outline" size={16} color="#FFFFFF" />
-              <Text className="text-sm font-bold text-white text-center">
-                Change picture
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <View className="items-center mt-2.5">
-              <Text className="text-xl font-bold text-gray-900 text-center">
-                {displayName}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setIsEditing(true)}
-                className="mt-2 flex-row items-center justify-center gap-2 bg-[#72AF5B] px-5 py-2 rounded-lg shadow-sm active:bg-[#60964c]"
-                style={{ backgroundColor: "#72AF5B" }}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel="Edit Profile"
-              >
-                <Text className="text-sm font-bold text-white">
-                  Edit Profile
+            {/* Profile Name & Primary Action */}
+            <View style={styles.nameBlock}>
+              <View style={styles.nameRow}>
+                <Text style={styles.profileName} numberOfLines={1}>
+                  {displayName}
                 </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+                {isRSBSAVerified && (
+                  <Ionicons name="checkmark-circle" size={18} color={themeColor("#2E7D5B", "#E6E6E6")} />
+                )}
+              </View>
 
-        {/* Form Fields List */}
-        <View className="px-5 mt-5">
-          {formFields.map((field) => {
-            return (
-              <View key={field.id} className="mb-3.5">
-                {/* Field Label */}
-                <Text className="text-sm font-medium text-gray-800 mb-1.5 ml-1">
-                  {field.label}
-                </Text>
-
-                {/* Input Card Container */}
-                <View
-                  className={`flex-row items-center rounded-2xl py-2.5 px-3 border shadow-2xs ${
-                    isEditing && field.editable
-                      ? "bg-white border-green-500/50"
-                      : "bg-[#F2F4F5] border-gray-100/80"
-                  }`}
+              {/* Change Photo or Edit Information Action */}
+              {isEditing ? (
+                <TactileTouchable
+                  onPress={() => setIsPhotoOptionsVisible(true)}
+                  style={styles.actionPillBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Change picture"
                 >
-                  {/* Circular Green Icon Badge */}
-                  <View
-                    className="bg-[#72AF5B] w-10 h-10 rounded-full items-center justify-center mr-3.5"
-                    style={{ backgroundColor: "#72AF5B" }}
-                  >
-                    {renderFieldIcon(field.iconType)}
+                  <Ionicons name="camera" size={14} color={themeColor("#FFFFFF", "#E6E6E6")} />
+                  <Text style={styles.actionPillText}>Change Photo</Text>
+                </TactileTouchable>
+              ) : (
+                <TactileTouchable
+                  onPress={() => setIsEditing(true)}
+                  style={styles.actionPillBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit Information"
+                >
+                  <Ionicons name="create-outline" size={15} color={themeColor("#FFFFFF", "#E6E6E6")} />
+                  <Text style={styles.actionPillText}>Edit Information</Text>
+                </TactileTouchable>
+              )}
+            </View>
+          </View>
+        </FadeEntrance>
+
+        {/* Content Body Container */}
+        <View style={styles.bodyContent}>
+          {/* ================================================================= */}
+          {/* RSBSA VERIFICATION STATUS CARD (Hidden in Edit Mode)              */}
+          {/* ================================================================= */}
+          {!isEditing && (
+            <FadeEntrance delay={60}>
+              {isRSBSAVerified ? (
+                <View style={styles.rsbsaCardVerified}>
+                  <View style={styles.rsbsaCardRow}>
+                    <View style={styles.rsbsaIconBoxVerified}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={22}
+                        color={themeColor("#2E7D5B", "#E6E6E6")}
+                      />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <Text style={styles.rsbsaTitleVerified}>
+                          RSBSA Verified Grower
+                        </Text>
+                        <View style={styles.rsbsaPillVerified}>
+                          <Text style={styles.rsbsaPillTextVerified}>
+                            Official DA
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.rsbsaDescVerified} numberOfLines={1}>
+                        {rsbsaApp?.rsbsaNumber
+                          ? `Ref ID: ${rsbsaApp.rsbsaNumber}`
+                          : "Department of Agriculture registered"}
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      onPress={() => router.push("/user/RSBSAVerification" as any)}
+                      style={styles.rsbsaActionBtnVerified}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.rsbsaActionTextVerified}>
+                        Credentials →
+                      </Text>
+                    </TouchableOpacity>
                   </View>
+                </View>
+              ) : isRSBSAPending ? (
+                <View style={styles.rsbsaCardPending}>
+                  <View style={styles.rsbsaCardRow}>
+                    <View style={styles.rsbsaIconBoxPending}>
+                      <Ionicons name="time" size={20} color="#B45309" />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <Text style={styles.rsbsaTitlePending}>
+                          RSBSA Verification Pending
+                        </Text>
+                        <View style={styles.rsbsaPillPending}>
+                          <Text style={styles.rsbsaPillTextPending}>
+                            In Review
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.rsbsaDescPending} numberOfLines={1}>
+                        Submitted for Municipal Agri Office verification.
+                      </Text>
+                    </View>
 
-                  {/* Input / Text Value */}
-                  <TextInput
-                    value={field.value}
-                    editable={isEditing && field.editable}
-                    onChangeText={(text) => handleInputChange(field.id, text)}
-                    className={`text-sm sm:text-base font-semibold flex-1 p-0 ${
-                      isEditing && field.editable ? "text-gray-900" : "text-gray-700"
-                    }`}
-                    placeholderTextColor="#9CA3AF"
-                  />
+                    <TouchableOpacity
+                      onPress={() => router.push("/user/RSBSAVerification" as any)}
+                      style={styles.rsbsaActionBtnPending}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.rsbsaActionTextPending}>
+                        Track →
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <TactileTouchable
+                  onPress={() => router.push("/user/RSBSAVerification" as any)}
+                  style={styles.rsbsaCardUnverified}
+                  accessibilityRole="button"
+                  accessibilityLabel="Apply for RSBSA Grower Verification"
+                >
+                  <View style={styles.rsbsaCardRow}>
+                    <View style={styles.rsbsaIconBoxUnverified}>
+                      <Ionicons name="ribbon" size={20} color={themeColor("#34594A", "#E6E6E6")} />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Text style={styles.rsbsaTitleUnverified}>
+                          Get RSBSA Verified
+                        </Text>
+                        <View style={styles.rsbsaPillUnverified}>
+                          <Text style={styles.rsbsaPillTextUnverified}>
+                            Badge
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.rsbsaDescUnverified}>
+                        Register with the DA Registry System to earn the
+                        verified grower badge & wholesale access.
+                      </Text>
+                    </View>
+                    <View style={styles.rsbsaChevronWrap}>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={16}
+                        color={themeColor("#34594A", "#E6E6E6")}
+                      />
+                    </View>
+                  </View>
+                </TactileTouchable>
+              )}
+            </FadeEntrance>
+          )}
 
-                  {!field.editable && isEditing && (
-                    <Ionicons name="lock-closed" size={16} color="#9CA3AF" />
-                  )}
+          {/* ================================================================= */}
+          {/* UNIFIED INFORMATION CONTAINER (Single container for view & edit)  */}
+          {/* ================================================================= */}
+          <FadeEntrance delay={80}>
+            <View style={styles.unifiedCardContainer}>
+              {/* SUBSECTION 1: Personal Identity */}
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionIconBox}>
+                  <Ionicons name="person" size={15} color={themeColor("#34594A", "#E6E6E6")} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sectionTitle}>Personal Identity</Text>
+                  <Text style={styles.sectionSubtitle}>
+                    {isEditing
+                      ? "Update your personal name, username, and story"
+                      : "Your personal profile details and bio"}
+                  </Text>
                 </View>
               </View>
-            );
-          })}
 
-          {/* Full-width "Done" Button in Edit Mode */}
-          {isEditing && (
-            <View className="mt-5 mb-3">
-              <TouchableOpacity
-                onPress={handleDone}
-                disabled={isSaving}
-                className="w-full bg-[#72AF5B] py-3.5 rounded-2xl items-center justify-center active:bg-[#60964c] shadow-sm flex-row"
-                style={{ backgroundColor: "#72AF5B" }}
-                activeOpacity={0.8}
-                accessibilityRole="button"
-                accessibilityLabel="Done"
+              <FloatingLabelField
+                label="Full Name"
+                value={formData.name}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({ ...prev, name: text }))
+                }
+                iconName="person-outline"
+                isEditing={isEditing}
+              />
+
+              <FloatingLabelField
+                label="Username"
+                value={formData.username}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({ ...prev, username: text }))
+                }
+                iconName="at-outline"
+                autoCapitalize="none"
+                isEditing={isEditing}
+              />
+
+              <FloatingLabelField
+                label="Gender"
+                value={formData.gender}
+                iconName={
+                  formData.gender === "Female"
+                    ? "female-outline"
+                    : formData.gender === "Male"
+                    ? "male-outline"
+                    : "male-female-outline"
+                }
+                isEditing={isEditing}
               >
-                {isSaving ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Text className="text-white text-base font-bold">Done</Text>
-                )}
-              </TouchableOpacity>
+                {isEditing ? (
+                  <View style={styles.genderPillsRow}>
+                    {GENDER_OPTIONS.map((g) => {
+                      const isSelected = formData.gender === g;
+                      return (
+                        <TouchableOpacity
+                          key={g}
+                          onPress={() =>
+                            setFormData((prev) => ({ ...prev, gender: g }))
+                          }
+                          style={[
+                            styles.genderPill,
+                            isSelected && styles.genderPillSelected,
+                          ]}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.genderPillText,
+                              isSelected && styles.genderPillTextSelected,
+                            ]}
+                          >
+                            {g}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                ) : null}
+              </FloatingLabelField>
+
+              <FloatingLabelField
+                label="Bio / Farm Story"
+                value={formData.bio}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({ ...prev, bio: text }))
+                }
+                iconName="document-text-outline"
+                multiline
+                isEditing={isEditing}
+              />
+
+              {/* Section Divider */}
+              <View style={styles.sectionDivider} />
+
+              {/* SUBSECTION 2: Farm & Agricultural Identity */}
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionIconBox}>
+                  <Ionicons name="leaf" size={15} color={themeColor("#34594A", "#E6E6E6")} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sectionTitle}>
+                    Farm & Agricultural Identity
+                  </Text>
+                  <Text style={styles.sectionSubtitle}>
+                    {isEditing
+                      ? "Update your farm and harvest product details"
+                      : "Your public grower credentials displayed across LocalFarm"}
+                  </Text>
+                </View>
+              </View>
+
+              <FloatingLabelField
+                label="Farm or Product"
+                value={farmData.farmName}
+                onChangeText={(text) =>
+                  setFarmData((prev) => ({ ...prev, farmName: text }))
+                }
+                iconName="storefront-outline"
+                isEditing={isEditing}
+              />
+
+              <FloatingLabelField
+                label="Farm Location (Barangay & Municipality)"
+                value={farmData.farmLocation}
+                onChangeText={(text) =>
+                  setFarmData((prev) => ({ ...prev, farmLocation: text }))
+                }
+                iconName="location-outline"
+                isEditing={isEditing}
+              />
+
+              <FloatingLabelField
+                label="Primary Produce / Crops & Livestock"
+                value={farmData.primaryCrops}
+                onChangeText={(text) =>
+                  setFarmData((prev) => ({ ...prev, primaryCrops: text }))
+                }
+                iconName="nutrition-outline"
+                isEditing={isEditing}
+              />
+
+              {/* Section Divider */}
+              <View style={styles.sectionDivider} />
+
+              {/* SUBSECTION 3: Contact & Security */}
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionIconBox}>
+                  <Ionicons name="call" size={15} color={themeColor("#34594A", "#E6E6E6")} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sectionTitle}>Contact & Security</Text>
+                  <Text style={styles.sectionSubtitle}>
+                    Your direct communication and account login channels
+                  </Text>
+                </View>
+              </View>
+
+              <FloatingLabelField
+                label="Phone Number"
+                value={formData.phoneNumber}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({ ...prev, phoneNumber: text }))
+                }
+                iconName="call-outline"
+                keyboardType="phone-pad"
+                isEditing={isEditing}
+              />
+
+              <FloatingLabelField
+                label="Email Address"
+                value={formData.email || "user@localfarm.ph"}
+                iconName="mail-outline"
+                editable={false}
+                lockedBadge="Primary"
+                isEditing={isEditing}
+              />
+              {isEditing && (
+                <Text style={styles.lockedNoteText}>
+                  Primary login email cannot be edited directly for security.
+                </Text>
+              )}
             </View>
+          </FadeEntrance>
+
+          {/* ================================================================= */}
+          {/* EDIT MODE BOTTOM ACTION BAR                                       */}
+          {/* ================================================================= */}
+          {isEditing && (
+            <FadeEntrance delay={180}>
+              <View style={styles.editActionBar}>
+                <TouchableOpacity
+                  onPress={handleCancelEdit}
+                  disabled={isSaving}
+                  style={styles.cancelBtn}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel"
+                >
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleDone}
+                  disabled={isSaving}
+                  style={styles.saveBtn}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Save Changes"
+                >
+                  {isSaving ? (
+                    <ActivityIndicator color={themeColor("#FFFFFF", "#E6E6E6")} size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark" size={17} color={themeColor("#FFFFFF", "#E6E6E6")} />
+                      <Text style={styles.saveBtnText}>Save Changes</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </FadeEntrance>
           )}
         </View>
       </ScrollView>
 
       <Navigation activeTab="Menu" showFab={false} />
 
-      {/* Photo Source Selection Modal */}
+      {/* Photo Options Modal */}
       <Modal
         visible={isPhotoOptionsVisible}
         transparent={true}
@@ -638,16 +1295,11 @@ export default function PersonalInformation() {
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => setIsPhotoOptionsVisible(false)}
-          className="flex-1 bg-black/50 justify-end sm:justify-center items-center px-4 pb-6"
+          style={styles.modalOverlay}
         >
-          <TouchableOpacity
-            activeOpacity={1}
-            className="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl"
-          >
-            <Text className="text-lg font-bold text-gray-900 text-center mb-1">
-              Change Profile Picture
-            </Text>
-            <Text className="text-xs text-gray-500 text-center mb-4">
+          <TouchableOpacity activeOpacity={1} style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Change Profile Picture</Text>
+            <Text style={styles.modalSubtitle}>
               Select an option to update your photo
             </Text>
 
@@ -657,18 +1309,17 @@ export default function PersonalInformation() {
                 setIsPhotoOptionsVisible(false);
                 pickImageFromGallery();
               }}
-              className="flex-row items-center py-3.5 px-4 bg-gray-50 rounded-2xl mb-2.5 active:bg-gray-100 border border-gray-100"
+              style={styles.modalOptionRow}
               accessibilityRole="button"
               accessibilityLabel="Choose from Gallery"
+              activeOpacity={0.7}
             >
-              <View className="w-10 h-10 rounded-full bg-[#E2F0D9] items-center justify-center mr-3.5">
-                <Ionicons name="images" size={20} color="#72AF5B" />
+              <View style={styles.modalOptionIconBox}>
+                <Ionicons name="images" size={18} color={themeColor("#34594A", "#E6E6E6")} />
               </View>
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900">
-                  Choose from Gallery
-                </Text>
-                <Text className="text-xs text-gray-500">
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalOptionTitle}>Choose from Gallery</Text>
+                <Text style={styles.modalOptionDesc}>
                   Pick an existing image from your device
                 </Text>
               </View>
@@ -680,18 +1331,17 @@ export default function PersonalInformation() {
                 setIsPhotoOptionsVisible(false);
                 takePhotoWithCamera();
               }}
-              className="flex-row items-center py-3.5 px-4 bg-gray-50 rounded-2xl mb-2.5 active:bg-gray-100 border border-gray-100"
+              style={styles.modalOptionRow}
               accessibilityRole="button"
               accessibilityLabel="Take Photo"
+              activeOpacity={0.7}
             >
-              <View className="w-10 h-10 rounded-full bg-[#E2F0D9] items-center justify-center mr-3.5">
-                <Ionicons name="camera" size={20} color="#72AF5B" />
+              <View style={styles.modalOptionIconBox}>
+                <Ionicons name="camera" size={18} color={themeColor("#34594A", "#E6E6E6")} />
               </View>
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900">
-                  Take Photo
-                </Text>
-                <Text className="text-xs text-gray-500">
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalOptionTitle}>Take Photo</Text>
+                <Text style={styles.modalOptionDesc}>
                   Use your camera to take a new picture
                 </Text>
               </View>
@@ -703,19 +1353,18 @@ export default function PersonalInformation() {
                 setIsPhotoOptionsVisible(false);
                 setIsChangingPicture(true);
               }}
-              className="flex-row items-center py-3.5 px-4 bg-gray-50 rounded-2xl mb-4 active:bg-gray-100 border border-gray-100"
+              style={styles.modalOptionRow}
               accessibilityRole="button"
               accessibilityLabel="Adjust Current Picture"
+              activeOpacity={0.7}
             >
-              <View className="w-10 h-10 rounded-full bg-[#E2F0D9] items-center justify-center mr-3.5">
-                <Ionicons name="crop" size={20} color="#72AF5B" />
+              <View style={styles.modalOptionIconBox}>
+                <Ionicons name="crop" size={18} color={themeColor("#34594A", "#E6E6E6")} />
               </View>
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900">
-                  Adjust Current Picture
-                </Text>
-                <Text className="text-xs text-gray-500">
-                  Zoom and crop your current avatar
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalOptionTitle}>Adjust Current Picture</Text>
+                <Text style={styles.modalOptionDesc}>
+                  Zoom and position your current avatar
                 </Text>
               </View>
             </TouchableOpacity>
@@ -723,13 +1372,12 @@ export default function PersonalInformation() {
             {/* Cancel Button */}
             <TouchableOpacity
               onPress={() => setIsPhotoOptionsVisible(false)}
-              className="w-full py-3 bg-gray-200 rounded-2xl items-center justify-center active:bg-gray-300"
+              style={styles.modalCancelBtn}
               accessibilityRole="button"
               accessibilityLabel="Cancel"
+              activeOpacity={0.8}
             >
-              <Text className="text-base font-semibold text-gray-700">
-                Cancel
-              </Text>
+              <Text style={styles.modalCancelBtnText}>Cancel</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -737,3 +1385,600 @@ export default function PersonalInformation() {
     </SafeAreaView>
   );
 }
+
+const createStyles = (themeColor: (light: string, dark: string) => string) => StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 10,
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderBottomWidth: 1,
+    borderBottomColor: themeColor("#EDF1EB", "#414141"),
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: themeColor("#F5F7F5", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitleWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: -0.4,
+    color: themeColor("#293E33", "#E6E6E6"),
+    textAlign: "center",
+  },
+  scrollArea: {
+    flex: 1,
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+  },
+  scrollContent: {
+    paddingBottom: 120,
+  },
+
+  // Top Deep Forest Brand Banner (matching Reservations & Saved)
+  topBanner: {
+    backgroundColor: themeColor("#34594A", "#202020"),
+    paddingTop: 14,
+    paddingBottom: 68,
+    paddingHorizontal: 16,
+  },
+  bannerHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  bannerBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "rgba(255, 255, 255, 0.16)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bannerTitleWrap: {
+    alignItems: "center",
+  },
+  bannerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+    color: themeColor("#FFFFFF", "#E6E6E6"),
+    textAlign: "center",
+  },
+  bannerSubtitle: {
+    fontSize: 11.5,
+    color: themeColor("#D2E3D6", "#ADADAD"),
+    textAlign: "center",
+    marginTop: 2,
+  },
+
+  // Overlapping Avatar Section
+  avatarSection: {
+    marginTop: -52,
+    alignItems: "center",
+    paddingHorizontal: 16,
+    zIndex: 10,
+  },
+  avatarWrap: {
+    position: "relative",
+  },
+  avatarCircle: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    borderWidth: 4,
+    borderColor: themeColor("#FFFFFF", "#414141"),
+    backgroundColor: themeColor("#E9EFEA", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImg: {
+    width: "100%",
+    height: "100%",
+  },
+  avatarFallback: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: themeColor("#E9EFEA", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarBadgeVerified: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarBadgeDot: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: themeColor("#34594A", "#303030"),
+    borderWidth: 3,
+    borderColor: themeColor("#FFFFFF", "#414141"),
+  },
+  nameBlock: {
+    alignItems: "center",
+    marginTop: 8,
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  profileName: {
+    fontSize: 19,
+    fontWeight: "700",
+    letterSpacing: -0.4,
+    color: themeColor("#23382D", "#E6E6E6"),
+    textAlign: "center",
+  },
+  actionPillBtn: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: themeColor("#34594A", "#303030"),
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  actionPillText: {
+    fontSize: 12.5,
+    fontWeight: "600",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
+  },
+
+  // Content Container
+  bodyContent: {
+    paddingHorizontal: 16,
+    marginTop: 18,
+  },
+
+  // RSBSA Status Cards (Crisp borders, zero harsh shadows)
+  rsbsaCardUnverified: {
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: themeColor("#E5ECE6", "#414141"),
+  },
+  rsbsaCardVerified: {
+    backgroundColor: themeColor("#F2F8F4", "#181818"),
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: themeColor("#D5E8DC", "#414141"),
+  },
+  rsbsaCardPending: {
+    backgroundColor: themeColor("#FEF9EC", "#181818"),
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#F7E6B8",
+  },
+  rsbsaCardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  rsbsaIconBoxUnverified: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rsbsaIconBoxVerified: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: themeColor("#E1EFE6", "#303030"),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rsbsaIconBoxPending: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: "#FDF0D1",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rsbsaTitleUnverified: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: themeColor("#293E33", "#E6E6E6"),
+  },
+  rsbsaPillUnverified: {
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  rsbsaPillTextUnverified: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: themeColor("#34594A", "#E6E6E6"),
+  },
+  rsbsaDescUnverified: {
+    fontSize: 11.5,
+    lineHeight: 16,
+    color: themeColor("#718376", "#ADADAD"),
+    marginTop: 2,
+  },
+  rsbsaChevronWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    backgroundColor: themeColor("#F4F7F3", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rsbsaTitleVerified: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: themeColor("#184530", "#E6E6E6"),
+  },
+  rsbsaPillVerified: {
+    backgroundColor: themeColor("#34594A", "#303030"),
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  rsbsaPillTextVerified: {
+    fontSize: 9.5,
+    fontWeight: "700",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
+    textTransform: "uppercase",
+  },
+  rsbsaDescVerified: {
+    fontSize: 11.5,
+    color: themeColor("#2B5E43", "#E6E6E6"),
+    marginTop: 2,
+  },
+  rsbsaActionBtnVerified: {
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: themeColor("#CDE3D5", "#414141"),
+  },
+  rsbsaActionTextVerified: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: themeColor("#2E7D5B", "#E6E6E6"),
+  },
+  rsbsaTitlePending: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#78350F",
+  },
+  rsbsaPillPending: {
+    backgroundColor: "#B45309",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  rsbsaPillTextPending: {
+    fontSize: 9.5,
+    fontWeight: "700",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
+    textTransform: "uppercase",
+  },
+  rsbsaDescPending: {
+    fontSize: 11.5,
+    color: "#92400E",
+    marginTop: 2,
+  },
+  rsbsaActionBtnPending: {
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: "#F2DC9D",
+  },
+  rsbsaActionTextPending: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#B45309",
+  },
+
+  // Single Unified Container (for both View and Edit modes)
+  unifiedCardContainer: {
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: themeColor("#E5ECE6", "#414141"),
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  sectionIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+    color: themeColor("#293E33", "#E6E6E6"),
+  },
+  sectionSubtitle: {
+    fontSize: 11.5,
+    lineHeight: 16,
+    color: themeColor("#7A887F", "#ADADAD"),
+    marginTop: 2,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: themeColor("#EDF2EE", "#181818"),
+    marginVertical: 14,
+  },
+
+  // Floating Label Fields (Smooth Placeholder Animation)
+  floatingFieldContainer: {
+    flexDirection: "row",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+  },
+  floatingFieldIconBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: themeColor("#F2F6F3", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  floatingFieldIconBoxFocused: {
+    backgroundColor: themeColor("#EBF3EE", "#181818"),
+  },
+  floatingFieldContent: {
+    flex: 1,
+    minHeight: 46,
+    justifyContent: "center",
+    position: "relative",
+  },
+  floatingLabelText: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    letterSpacing: -0.1,
+  },
+  floatingTextInput: {
+    fontSize: 13.5,
+    fontWeight: "500",
+    color: themeColor("#22382B", "#E6E6E6"),
+    paddingTop: 18,
+    paddingBottom: 2,
+    paddingHorizontal: 0,
+    margin: 0,
+    height: 48,
+  },
+  floatingValueText: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: themeColor("#1F3327", "#E6E6E6"),
+    letterSpacing: -0.1,
+    marginTop: 18,
+    paddingBottom: 2,
+  },
+  floatingValueEmptyText: {
+    color: themeColor("#8E9E94", "#ADADAD"),
+    fontWeight: "400",
+  },
+  floatingFieldCustomChild: {
+    marginTop: 18,
+    paddingBottom: 4,
+  },
+
+  // Gender Pill Selectors inside Floating Field
+  genderPillsRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingTop: 2,
+  },
+  genderPill: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: themeColor("#E5ECE6", "#414141"),
+    backgroundColor: themeColor("#F7FAF7", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  genderPillSelected: {
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
+    borderColor: themeColor("#34594A", "#414141"),
+    borderWidth: 1.5,
+  },
+  genderPillText: {
+    fontSize: 11.5,
+    fontWeight: "600",
+    color: themeColor("#718376", "#ADADAD"),
+  },
+  genderPillTextSelected: {
+    color: themeColor("#34594A", "#E6E6E6"),
+    fontWeight: "700",
+  },
+
+  // Locked Badge & Helper
+  lockedPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 7,
+    marginLeft: 8,
+  },
+  lockedPillText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: themeColor("#34594A", "#E6E6E6"),
+  },
+  lockedNoteText: {
+    fontSize: 11,
+    color: themeColor("#839287", "#ADADAD"),
+    marginTop: 2,
+    marginBottom: 4,
+    marginLeft: 4,
+  },
+
+  // Edit Mode Action Bar
+  editActionBar: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  cancelBtn: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 14,
+    backgroundColor: themeColor("#F3F5F2", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: themeColor("#E2ECE4", "#414141"),
+  },
+  cancelBtnText: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: themeColor("#5E7265", "#E6E6E6"),
+  },
+  saveBtn: {
+    flex: 2,
+    minHeight: 46,
+    borderRadius: 14,
+    backgroundColor: themeColor("#34594A", "#303030"),
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
+  saveBtnText: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
+  },
+
+  // Photo Options Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(22, 38, 29, 0.45)",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 390,
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: themeColor("#E5ECE6", "#414141"),
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: themeColor("#293E33", "#E6E6E6"),
+    textAlign: "center",
+    marginBottom: 3,
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: themeColor("#7A887F", "#ADADAD"),
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  modalOptionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: themeColor("#F7FAF7", "#181818"),
+    borderRadius: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: themeColor("#E8EFE9", "#414141"),
+    gap: 12,
+  },
+  modalOptionIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalOptionTitle: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: themeColor("#293E33", "#E6E6E6"),
+  },
+  modalOptionDesc: {
+    fontSize: 11,
+    color: themeColor("#7A887F", "#ADADAD"),
+    marginTop: 1,
+  },
+  modalCancelBtn: {
+    marginTop: 6,
+    minHeight: 44,
+    borderRadius: 13,
+    backgroundColor: themeColor("#F3F5F2", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: themeColor("#E2ECE4", "#414141"),
+  },
+  modalCancelBtnText: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: themeColor("#5E7265", "#E6E6E6"),
+  },
+});

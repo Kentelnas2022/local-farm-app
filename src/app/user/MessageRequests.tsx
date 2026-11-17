@@ -1,211 +1,234 @@
+import { useAppTheme } from "@/context/theme-context";
+import { ConversationItem, getConversationsApi } from "@/services/chat-service";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
-  SafeAreaView,
+  ActivityIndicator,
+  Image,
+  RefreshControl,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import ChatSidebarModal from "../../components/ChatSidebarModal";
 import BottomNavBar from "../../components/Navigation";
-
-interface MessageRequestItem {
-  id: string;
-  name: string;
-  snippet: string;
-  time: string;
-}
-
-const MOCK_REQUESTS: MessageRequestItem[] = [
-  {
-    id: "1",
-    name: "Ample Cero",
-    snippet: "Hello",
-    time: "3:08PM",
-  },
-  {
-    id: "2",
-    name: "Jayson Bohol",
-    snippet: "mao na nimo",
-    time: "12:30PM",
-  },
-  {
-    id: "3",
-    name: "Ralph Canoy",
-    snippet: "Hi",
-    time: "Yesterday",
-  },
-  {
-    id: "4",
-    name: "Cathy Amamangpang",
-    snippet: "Jejejeje mon kaymo",
-    time: "THU",
-  },
-  {
-    id: "5",
-    name: "Harley Cabasagan",
-    snippet: "Way mga angay",
-    time: "May 1",
-  },
-];
 
 function RequestListItem({
   item,
   onPress,
 }: {
-  item: MessageRequestItem;
+  item: ConversationItem;
   onPress?: () => void;
 }) {
+  const { themeColor } = useAppTheme();
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="flex-row items-center px-4 py-3 border-b border-gray-50 active:bg-gray-50"
+      className="flex-row items-center px-4 py-3.5 border-b border-gray-100 active:bg-gray-50 dark:border-[#414141] dark:active:bg-[#242424] "
       activeOpacity={0.7}
     >
-      <View className="w-14 h-14 rounded-full bg-gray-300 mr-4 items-center justify-center overflow-hidden shadow-2xs border border-gray-200">
-        <Ionicons name="person" size={32} color="#FFFFFF" />
+      {/* Left Avatar */}
+      <View className="w-13 h-13 rounded-full bg-gray-200 mr-3.5 items-center justify-center overflow-hidden border border-gray-200 dark:bg-[#181818] dark:border-[#414141] ">
+        {item.avatarUrl ? (
+          <Image
+            source={{ uri: item.avatarUrl }}
+            className="w-full h-full"
+            resizeMode="cover"
+          />
+        ) : (
+          <Ionicons name="person" size={26} color={themeColor("#34594A", "#E6E6E6")} />
+        )}
       </View>
 
+      {/* Middle Text Content: Name & Snippet */}
       <View className="flex-1 min-w-0 pr-2">
         <Text
-          className="text-base font-bold text-gray-900 mb-0.5 leading-tight"
+          className="text-base font-bold text-gray-900 mb-0.5 leading-tight dark:text-[#E6E6E6] "
           numberOfLines={1}
         >
           {item.name}
         </Text>
         <Text
-          className="text-sm text-gray-600 font-medium truncate"
+          className={`text-sm ${
+            item.unread > 0 ? "font-bold text-gray-900 dark:text-[#E6E6E6] " : "text-gray-500 font-normal dark:text-[#ADADAD] "
+          } truncate`}
           numberOfLines={1}
         >
-          {item.snippet}
+          {item.snippet || "Sent you a message request"}
         </Text>
       </View>
 
-      <View className="items-end justify-center min-w-[56px] flex-shrink-0">
-        <Text className="text-xs text-gray-800 font-medium">{item.time}</Text>
+      {/* Right: Time & Unread Badge */}
+      <View className="items-end justify-center min-w-[56px] flex-shrink-0 gap-1">
+        <Text className="text-xs text-gray-400 font-medium dark:text-[#ADADAD] ">{item.time}</Text>
+        {item.unread > 0 ? (
+          <View className="bg-red-500 rounded-full h-5 min-w-[20px] px-1.5 items-center justify-center">
+            <Text className="text-white text-[11px] font-bold dark:text-[#E6E6E6] ">
+              {item.unread > 9 ? "9+" : item.unread}
+            </Text>
+          </View>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
 }
 
 export default function MessageRequests() {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSidebarVisible, setSidebarVisible] = useState(false);
+  const [requests, setRequests] = useState<ConversationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleBack = () => {
+  const fetchRequests = async (isPull = false) => {
+    if (isPull) setIsRefreshing(true);
+    else if (requests.length === 0) setIsLoading(true);
+
     try {
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.push("/user/Chats" as any);
-      }
-    } catch {
-      router.push("/user/Chats" as any);
+      const data = await getConversationsApi({ category: "requests" });
+      setRequests(data);
+    } catch (err) {
+      console.warn("Failed to fetch message requests:", err);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
-  const filteredRequests = MOCK_REQUESTS.filter(
+  useFocusEffect(
+    useCallback(() => {
+      fetchRequests(false);
+    }, [])
+  );
+
+  const filteredRequests = requests.filter(
     (req) =>
       req.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (req.username && req.username.toLowerCase().includes(searchQuery.toLowerCase())) ||
       req.snippet.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
     <SafeAreaView
-      className="flex-1 bg-white relative h-full"
+      className="flex-1 bg-white relative h-full dark:bg-[#181818] "
       style={{ flex: 1, position: "relative", minHeight: "100%" }}
     >
-      {/*  Header  */}
-      <View className="flex-row items-center px-4 pt-4 pb-4">
-        {/* Title */}
-        <Text className="text-3xl font-bold text-gray-900 ml-3 tracking-tight">
+      {/* 1. Header */}
+      <View className="flex-row items-center justify-between px-5 pt-4 pb-2 bg-white dark:bg-[#242424] ">
+        <Text className="text-3xl font-bold text-gray-900 tracking-tight dark:text-[#E6E6E6] ">
           Chats
         </Text>
       </View>
 
-      {/*  Search Bar Container */}
-      <View className="flex-row items-center px-4 mb-4 gap-3">
+      {/* 2. Search Bar Container */}
+      <View className="flex-row items-center px-5 py-3 gap-3">
         <TouchableOpacity
           onPress={() => setSidebarVisible(true)}
-          className="w-11 h-11 rounded-2xl  items-center justify-center "
-          activeOpacity={0.7}
+          className="p-1 active:opacity-70"
           accessibilityRole="button"
           accessibilityLabel="Open menu"
         >
-          <Ionicons name="menu-outline" size={22} color="#6B7280" />
+          <Ionicons name="menu-outline" size={28} color={themeColor("#34594A", "#E6E6E6")} />
         </TouchableOpacity>
 
         {/* Search Input Box */}
-        <View className="flex-1 bg-gray-100 rounded-full flex-row items-center px-4 py-2.5 ">
+        <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 h-11 border border-gray-100 dark:bg-[#181818] dark:border-[#414141] ">
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search..."
-            placeholderTextColor="#9CA3AF"
-            className="flex-1 text-base text-gray-800 pr-2 p-0"
+            placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+            className="flex-1 text-base text-gray-800 pr-2 h-full font-medium dark:text-[#E6E6E6] "
+            autoCapitalize="none"
           />
           {searchQuery ? (
-            <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+            <TouchableOpacity onPress={() => setSearchQuery("")} className="p-1 mr-1">
+              <Ionicons name="close-circle" size={18} color={themeColor("#34594A", "#E6E6E6")} />
             </TouchableOpacity>
-          ) : (
-            <Ionicons name="search-outline" size={20} color="#9CA3AF" />
-          )}
+          ) : null}
+          <Ionicons name="search-outline" size={20} color={themeColor("#34594A", "#E6E6E6")} />
         </View>
       </View>
 
-      {/* Message Requests Title  */}
-      <View className="px-4 py-2 flex-row items-center justify-between">
-        <Text className="text-lg font-bold text-gray-900">Message Request</Text>
+      {/* Section Title */}
+      <View className="px-5 py-2 flex-row items-center justify-between border-b border-gray-50 dark:border-[#414141] ">
+        <Text className="text-lg font-bold text-gray-900 dark:text-[#E6E6E6] ">Message Request</Text>
+        <Text className="text-xs text-gray-400 font-medium dark:text-[#ADADAD] ">
+          {requests.length} {requests.length === 1 ? "request" : "requests"}
+        </Text>
       </View>
 
-      {/*  Message Requests Vertical Scroll List  */}
+      {/* Message Requests List */}
       <ScrollView
-        className="flex-1 bg-white"
+        className="flex-1 bg-white dark:bg-[#181818] "
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 110 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => fetchRequests(true)}
+            colors={["#34594A"]}
+            tintColor="#34594A"
+          />
+        }
       >
-        {filteredRequests.length > 0 ? (
+        {isLoading ? (
+          <View className="py-16 items-center justify-center">
+            <ActivityIndicator size="large" color={themeColor("#34594A", "#E6E6E6")} />
+            <Text className="text-sm text-gray-500 mt-2 font-medium dark:text-[#ADADAD] ">
+              Loading requests...
+            </Text>
+          </View>
+        ) : filteredRequests.length > 0 ? (
           filteredRequests.map((item) => (
             <RequestListItem
               key={item.id}
               item={item}
               onPress={() => {
-                try {
-                  router.push("/user/ChatConversation" as any);
-                } catch (e) {
-                  console.warn("Navigation error", e);
-                }
+                router.push({
+                  pathname: "/user/ChatConversation",
+                  params: {
+                    conversationId: item.id,
+                    userId: item.otherUserId,
+                    name: item.name,
+                    avatarUrl: item.avatarUrl || "",
+                    isRequest: "true",
+                  },
+                } as any);
               }}
             />
           ))
         ) : (
-          <View className="items-center justify-center py-16 px-4">
-            <Ionicons name="chatbubbles-outline" size={48} color="#D1D5DB" />
-            <Text className="text-gray-500 font-semibold text-base mt-3">
-              No message requests
+          <View className="items-center justify-center py-20 px-6">
+            <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3 dark:bg-[#181818] ">
+              <Ionicons name="chatbubbles-outline" size={32} color={themeColor("#34594A", "#E6E6E6")} />
+            </View>
+            <Text className="text-gray-800 font-bold text-base mb-1 dark:text-[#E6E6E6] ">
+              No Message Requests
             </Text>
-            <Text className="text-gray-400 text-xs mt-1 text-center">
-              You have no pending requests at this time
+            <Text className="text-gray-500 text-xs text-center max-w-xs dark:text-[#ADADAD] ">
+              Messages from people who aren't your connections will appear here.
             </Text>
           </View>
         )}
       </ScrollView>
 
-      {/*  Sidebar Drawer */}
+      {/* Bottom Navigation Bar */}
+      <BottomNavBar accentColor="#34594A" showFab={false} activeTab="Chat" />
+
+      {/* Sidebar Drawer */}
       <ChatSidebarModal
         isVisible={isSidebarVisible}
         onClose={() => setSidebarVisible(false)}
         activeItem="Message Request"
       />
-
-      {/*  Bottom Navigation Bar  */}
-      <BottomNavBar showFab={false} activeTabName="chat" />
     </SafeAreaView>
   );
 }

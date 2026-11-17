@@ -1,51 +1,30 @@
-import {
-  ActiveUserItem,
-  cancelFriendRequestApi,
-  ConnectionRequestItem,
-  FriendItem,
-  getActiveUsersApi,
-  getConnectionRequestsApi,
-  getFriendsApi,
-  getSuggestionsApi,
-  respondToConnectionRequestApi,
-  SearchedUserItem,
-  searchUsersToConnectApi,
-  sendFriendRequestApi,
-  SuggestionUserItem,
-} from "@/services/connection-service";
-import { useToast } from "@/context/toast-context";
+import { useAppTheme } from "@/context/theme-context";
+import { FriendItem, getFriendsApi } from "@/services/connection-service";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  LayoutAnimation,
-  Platform,
+  Modal,
+  Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
-  UIManager,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import BottomNavBar from "../../components/Navigation";
 import SidebarMenu from "../../components/SidebarMenu";
 
-if (Platform.OS === "android") {
-  UIManager.setLayoutAnimationEnabledExperimental?.(true);
-}
-
-type TabFilter = "all" | "active" | "suggestions" | "friends";
-
-const INITIAL_SAMPLE_SUGGESTIONS: SuggestionUserItem[] = [];
+const SORT_OPTIONS = ["Newest first", "Oldest first", "A to Z", "Z to A"];
 
 export default function Friends() {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
-  const { showToast } = useToast();
   const [isSidebarVisible, setSidebarVisible] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -54,47 +33,19 @@ export default function Friends() {
 
   // Connection data from MySQL
   const [friends, setFriends] = useState<FriendItem[]>([]);
-  const [connectionRequests, setConnectionRequests] = useState<ConnectionRequestItem[]>([]);
-  const [suggestions, setSuggestions] = useState<SuggestionUserItem[]>([]);
-  const [activeUsers, setActiveUsers] = useState<ActiveUserItem[]>([]);
-  const [activeCount, setActiveCount] = useState<number>(0);
-
-  // Search state
-  const [searchResults, setSearchResults] = useState<SearchedUserItem[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchActionLoading, setSearchActionLoading] = useState<Record<string, boolean>>({});
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // States per card
-  const [requestStates, setRequestStates] = useState<Record<string, "confirmed" | "declined" | undefined>>({});
-  const [sentSuggestionIds, setSentSuggestionIds] = useState<Record<string, boolean>>({});
-  const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<Record<string, boolean>>({});
-  const [actionLoadingIds, setActionLoadingIds] = useState<Record<string, boolean>>({});
-
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedFriendForOptions, setSelectedFriendForOptions] =
+    useState<FriendItem | null>(null);
 
-  const fetchAll = async (isPull = false) => {
+  const fetchFriends = async (isPull = false) => {
     if (isPull) setIsRefreshing(true);
-    else setIsLoading(true);
 
     try {
-      const [friendsData, requestsData, suggestionsData, activeData] = await Promise.all([
-        getFriendsApi().catch(() => []),
-        getConnectionRequestsApi().catch(() => []),
-        getSuggestionsApi().catch(() => []),
-        getActiveUsersApi().catch(() => ({ activeUsers: [], count: 0 })),
-      ]);
-
-      if (friendsData) setFriends(friendsData);
-      if (requestsData) setConnectionRequests(requestsData);
-      if (suggestionsData) setSuggestions(suggestionsData);
-      if (activeData) {
-        setActiveUsers(activeData.activeUsers || []);
-        setActiveCount(activeData.count || (activeData.activeUsers || []).length);
-      }
+      const data = await getFriendsApi();
+      setFriends(data);
     } catch (err) {
-      console.warn("Failed to fetch connection data:", err);
+      console.log("Failed to fetch friends:", err);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -102,186 +53,70 @@ export default function Friends() {
   };
 
   useEffect(() => {
-    fetchAll();
+    let isMounted = true;
+    getFriendsApi()
+      .then((data) => {
+        if (isMounted) setFriends(data);
+      })
+      .catch((err) => {
+        console.log("Failed to fetch friends:", err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Search Debounce Effect
-  useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
+  const filteredFriends = useMemo(() => {
+    let result = friends.filter((friend) => {
+      const matchesSearch =
+        friend.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (friend.username?.toLowerCase().includes(searchQuery.toLowerCase()) ??
+          false);
+      const matchesMutual = noMutualFilter ? !friend.hasMutual : true;
+      return matchesSearch && matchesMutual;
+    });
+
+    if (selectedSort === "Newest first") {
+      return result;
+    } else if (selectedSort === "Oldest first") {
+      return [...result].reverse();
+    } else if (selectedSort === "A to Z") {
+      return [...result].sort((a, b) => a.name.localeCompare(b.name));
+    } else if (selectedSort === "Z to A") {
+      return [...result].sort((a, b) => b.name.localeCompare(a.name));
     }
+    return result;
+  }, [friends, searchQuery, noMutualFilter, selectedSort]);
 
-    const q = searchQuery.trim();
-    if (!q) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-    searchTimeoutRef.current = setTimeout(async () => {
-      try {
-        const results = await searchUsersToConnectApi(q);
-        setSearchResults(results.filter((u) => !u.name?.toLowerCase().includes("admin")));
-      } catch (err) {
-        console.warn("Search error:", err);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchQuery]);
-
-  // Handle Search Result Add Request
-  const handleSearchSendRequest = async (targetUserId: string) => {
-    setSearchActionLoading((prev) => ({ ...prev, [targetUserId]: true }));
-    try {
-      const res = await sendFriendRequestApi(targetUserId);
-      setSearchResults((prev) =>
-        prev.map((u) =>
-          u.id === targetUserId
-            ? { ...u, relationship: "pending_sent", connectionId: res.connectionId || null }
-            : u
-        )
-      );
-      showToast("Connection request sent!", "success");
-    } catch (err: any) {
-      showToast(err?.message || "Failed to send request.", "error");
-    } finally {
-      setSearchActionLoading((prev) => ({ ...prev, [targetUserId]: false }));
-    }
+  const handleOpenUserProfile = (friend: FriendItem) => {
+    router.push({
+      pathname: "/user/UserProfile",
+      params: {
+        userId: friend.id,
+        userName: friend.name,
+        userAvatar: friend.avatarUrl || "",
+      },
+    } as any);
   };
 
-  // Handle Search Result Cancel Request
-  const handleSearchCancelRequest = async (connectionId: string, targetUserId: string) => {
-    setSearchActionLoading((prev) => ({ ...prev, [targetUserId]: true }));
-    try {
-      await cancelFriendRequestApi(targetUserId, connectionId);
-      setSearchResults((prev) =>
-        prev.map((u) =>
-          u.id === targetUserId
-            ? { ...u, relationship: "none", connectionId: null }
-            : u
-        )
-      );
-      showToast("Connection request canceled.", "info");
-    } catch (err: any) {
-      showToast(err?.message || "Failed to cancel request.", "error");
-    } finally {
-      setSearchActionLoading((prev) => ({ ...prev, [targetUserId]: false }));
-    }
-  };
-
-  // 1. Respond to Friend Request (Confirm / Delete)
-  const handleRespondToRequest = async (
-    request: ConnectionRequestItem,
-    action: "confirm" | "declined"
-  ) => {
-    setActionLoadingIds((prev) => ({ ...prev, [request.id]: true }));
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-
-    try {
-      await respondToConnectionRequestApi(request.id, action).catch(() => {});
-
-      setRequestStates((prev) => ({
-        ...prev,
-        [request.id]: action === "confirm" ? "confirmed" : "declined",
-      }));
-
-      if (action === "confirm") {
-        setFriends((prev) => [
-          {
-            id: request.userId || request.id,
-            connectionId: request.id,
-            name: request.name,
-            username: request.username,
-            avatarUrl: request.avatarUrl,
-            hasMutual: true,
-          },
-          ...prev,
-        ]);
-        showToast(`You and ${request.name} are now connected!`, "success");
-      } else {
-        showToast("Request removed", "info");
-      }
-    } catch (err: any) {
-      showToast(err?.message || "Failed to respond to request.", "error");
-    } finally {
-      setActionLoadingIds((prev) => ({ ...prev, [request.id]: false }));
-    }
-  };
-
-  // 2. Add Friend from Suggestions
-  const handleSendSuggestionRequest = async (suggestedUser: SuggestionUserItem) => {
-    setActionLoadingIds((prev) => ({ ...prev, [suggestedUser.id]: true }));
-    try {
-      await sendFriendRequestApi(suggestedUser.id).catch(() => {});
-      setSentSuggestionIds((prev) => ({ ...prev, [suggestedUser.id]: true }));
-      showToast(`Connection request sent to ${suggestedUser.name}!`, "success");
-    } catch (err: any) {
-      showToast(err?.message || "Failed to send connection request.", "error");
-    } finally {
-      setActionLoadingIds((prev) => ({ ...prev, [suggestedUser.id]: false }));
-    }
-  };
-
-  // 3. Dismiss Suggestion
-  const handleDismissSuggestion = (suggestedUserId: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setDismissedSuggestionIds((prev) => ({ ...prev, [suggestedUserId]: true }));
-  };
-
-  // 4. Open Direct Chat with user
-  const handleOpenChat = (targetUserId?: string | number, userName?: string, userAvatar?: string) => {
+  const handleOpenChatWithFriend = (friend: FriendItem) => {
     router.push({
       pathname: "/user/ChatConversation",
       params: {
-        userId: targetUserId ? String(targetUserId) : "",
-        name: userName || "Farmer",
-        avatarUrl: userAvatar || "",
+        userId: friend.id,
+        name: friend.name,
+        avatarUrl: friend.avatarUrl || "",
         online: "true",
       },
     } as any);
   };
 
-  // Filtered Lists
-  const activeRequests = connectionRequests.filter(
-    (req) =>
-      req.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      requestStates[req.id] !== "declined"
-  );
-
-  const displayedRequests = showAllRequests
-    ? activeRequests
-    : activeRequests.slice(0, 10);
-
-  const filteredFriends = friends.filter((friend) =>
-    friend.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filteredSuggestions = suggestions.filter(
-    (sug) =>
-      !dismissedSuggestionIds[sug.id] &&
-      !sug.name.toLowerCase().includes("admin") &&
-      sug.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filteredActiveUsers = activeUsers.filter(
-    (user) =>
-      !user.name.toLowerCase().includes("admin") &&
-      user.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const pendingCount = activeRequests.filter((r) => requestStates[r.id] !== "confirmed").length;
-
   return (
     <SafeAreaView
-      className="flex-1 bg-white relative h-full"
+      className="flex-1 bg-white relative h-full dark:bg-[#181818] "
       style={{
         flex: 1,
         position: "relative",
@@ -289,41 +124,117 @@ export default function Friends() {
         overflow: "hidden",
       }}
     >
-      {/* ── 1. Top Header Bar (Uniform with Chats Header) ── */}
-      <View className="flex-row justify-between items-center px-5 pt-4 pb-2 bg-white">
-        <Text className="text-3xl font-bold text-gray-900">Connections</Text>
+      {/* 1. Header Section */}
+      <View className="px-5 pt-4 pb-2">
+        <Text className="text-3xl font-bold text-gray-900 dark:text-[#E6E6E6] ">Connection</Text>
+      </View>
+
+      {/* 2. Search Bar */}
+      <View className="flex-row items-center px-5 py-3 gap-3 mb-1">
         <TouchableOpacity
           onPress={() => setIsSearchOpen((prev) => !prev)}
           className="p-1 active:opacity-70"
           accessibilityRole="button"
           accessibilityLabel="Search connections"
         >
-          <Ionicons name="search-outline" size={26} color="#374151" />
+          <Ionicons name="person-add-outline" size={26} color={themeColor("#34594A", "#E6E6E6")} />
         </TouchableOpacity>
+
+        <View className="flex-1 flex-row items-center bg-gray-100 rounded-full px-4 h-11 border border-gray-100 dark:bg-[#181818] dark:border-[#414141] ">
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search friends..."
+            placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
+            className="flex-1 text-base text-gray-800 pr-2 h-full dark:text-[#E6E6E6] "
+            autoCapitalize="none"
+          />
+          {searchQuery ? (
+            <TouchableOpacity
+              onPress={() => setSearchQuery("")}
+              className="p-1 mr-1"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="close-circle" size={18} color={themeColor("#34594A", "#E6E6E6")} />
+            </TouchableOpacity>
+          ) : null}
+          <Ionicons name="search-outline" size={20} color={themeColor("#34594A", "#E6E6E6")} />
+        </View>
       </View>
 
-      {/* ── 2. Search Bar ── */}
-      {isSearchOpen && (
-        <View className="px-5 py-3 bg-white border-b border-gray-100">
-          <View className="w-full flex-row items-center bg-gray-100 rounded-full px-4 h-11 border border-gray-100">
-            <TextInput
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search connections..."
-              placeholderTextColor="#9CA3AF"
-              className="flex-1 text-base text-gray-800 pr-2 h-full font-medium"
-              autoCapitalize="none"
-              autoFocus
-            />
-            {searchQuery ? (
-              <TouchableOpacity
-                onPress={() => setSearchQuery("")}
-                className="p-1 mr-1"
-              >
-                <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-              </TouchableOpacity>
-            ) : null}
-            <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+      {/* Sort Dropdown Overlay */}
+      {isSortDropdownVisible && (
+        <>
+          <Pressable
+            onPress={() => setSortDropdownVisible(false)}
+            className="absolute inset-0 z-40 bg-transparent"
+          />
+
+          <View
+            style={{
+              position: "absolute",
+              top: 130,
+              right: 20,
+              zIndex: 50,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 10,
+              elevation: 10,
+            }}
+            className="bg-white p-4 rounded-2xl border border-gray-200 w-56 dark:bg-[#242424] dark:border-[#414141] "
+          >
+            <Text className="text-gray-500 font-bold text-sm tracking-wider mb-2.5 dark:text-[#ADADAD] ">
+              SORT BY
+            </Text>
+
+            <View className="space-y-1">
+              {SORT_OPTIONS.map((option) => {
+                const isSelected = selectedSort === option;
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    onPress={() => {
+                      setSelectedSort(option);
+                      setSortDropdownVisible(false);
+                    }}
+                    className="flex-row items-center py-2"
+                  >
+                    <Ionicons
+                      name={isSelected ? "radio-button-on" : "radio-button-off"}
+                      size={20}
+                      color={isSelected ? "#34594A" : "#9CA3AF"}
+                      style={{ marginRight: 10 }}
+                    />
+                    <Text
+                      className={`text-sm ${
+                        isSelected
+                          ? "font-bold text-gray-900 dark:text-[#E6E6E6] "
+                          : "font-normal text-gray-600 dark:text-[#ADADAD] "
+                      }`}
+                    >
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View className="border-b border-gray-200 my-3 dark:border-[#414141] " />
+
+            <Text className="text-gray-500 font-bold text-xs tracking-wider mb-2 dark:text-[#ADADAD] ">
+              FILTER
+            </Text>
+
+            <View className="flex-row items-center justify-between py-1">
+              <Text className="text-gray-700 text-sm dark:text-[#E6E6E6] ">No mutual friend</Text>
+              <Switch
+                value={noMutualFilter}
+                onValueChange={setNoMutualFilter}
+                trackColor={{ false: "#E5E7EB", true: "#34594A" }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
           </View>
         </View>
       )}
@@ -401,7 +312,7 @@ export default function Friends() {
 
       {/* ── 4. Main Content ScrollView (Matching Chats ScrollView Props) ── */}
       <ScrollView
-        className="flex-1 bg-white"
+        className="flex-1 bg-white z-0 dark:bg-[#181818] "
         showsVerticalScrollIndicator={false}
         bounces={false}
         overScrollMode="never"
@@ -412,484 +323,242 @@ export default function Friends() {
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
-            onRefresh={() => fetchAll(true)}
-            colors={["#72AF5B"]}
-            tintColor="#72AF5B"
+            onRefresh={() => fetchFriends(true)}
+            colors={["#34594A"]}
+            tintColor="#34594A"
           />
         }
       >
         {isLoading ? (
-          <View className="py-16 items-center justify-center">
-            <ActivityIndicator size="large" color="#72AF5B" />
-            <Text className="text-xs text-gray-500 mt-2 font-medium">
-              Loading requests...
+          <View className="py-12 items-center justify-center">
+            <ActivityIndicator size="large" color={themeColor("#34594A", "#E6E6E6")} />
+            <Text className="text-sm text-gray-500 mt-2 font-medium dark:text-[#ADADAD] ">
+              Loading friends...
             </Text>
           </View>
-        ) : searchQuery.trim().length > 0 ? (
-          /* ── Search Results View (Real-time DB Search) ── */
-          <View className="px-5 pt-3">
-            <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-lg font-bold text-gray-900">
-                Search Results ({searchResults.length})
+        ) : (
+          <>
+            {/* ── FRIENDS HEADER ── */}
+            <View className="flex-row justify-between items-center px-5 py-2 mb-1">
+              <Text className="text-lg font-semibold text-gray-900 dark:text-[#E6E6E6] ">
+                Friends{" "}
+                <Text className="text-[#34594A] font-bold dark:text-[#E6E6E6] ">
+                  {filteredFriends.length}
+                </Text>
               </Text>
-              {isSearching && <ActivityIndicator size="small" color="#72AF5B" />}
+
+              <TouchableOpacity
+                onPress={() => setSortDropdownVisible(!isSortDropdownVisible)}
+                className="flex-row items-center py-1 px-2 rounded-lg active:bg-gray-100 dark:active:bg-[#181818] "
+              >
+                <Text className="text-sm font-medium text-gray-700 mr-1 dark:text-[#E6E6E6] ">
+                  Sort
+                </Text>
+                <Ionicons
+                  name={
+                    isSortDropdownVisible
+                      ? "chevron-up-outline"
+                      : "chevron-down-outline"
+                  }
+                  size={16}
+                  color={themeColor("#34594A", "#E6E6E6")}
+                />
+              </TouchableOpacity>
             </View>
 
-            {searchResults.length === 0 && !isSearching ? (
-              <View className="py-16 items-center justify-center">
-                <Ionicons name="search-outline" size={44} color="#9CA3AF" />
-                <Text className="text-sm font-bold text-gray-700 mt-2">
-                  No users found
+            {filteredFriends.length === 0 ? (
+              <View className="py-14 items-center justify-center px-6">
+                <View className="w-16 h-16 rounded-full bg-gray-100 items-center justify-center mb-3 dark:bg-[#181818] ">
+                  <Ionicons name="people-outline" size={32} color={themeColor("#34594A", "#E6E6E6")} />
+                </View>
+                <Text className="text-base font-bold text-gray-800 mb-1 dark:text-[#E6E6E6] ">
+                  No Friends Found
                 </Text>
-                <Text className="text-xs text-gray-400 mt-0.5">
-                  Try searching with a different name or username
+                <Text className="text-xs text-gray-500 text-center leading-5 dark:text-[#ADADAD] ">
+                  Confirm connection requests or add friends to see them here.
                 </Text>
               </View>
             ) : (
-              searchResults.map((user) => {
-                const isActionLoading = searchActionLoading[user.id];
-
-                return (
-                  <View
-                    key={user.id}
-                    className="flex-row items-center py-3.5 border-b border-gray-100"
+              <View className="px-5">
+                {filteredFriends.map((friend) => (
+                  <TouchableOpacity
+                    key={friend.id}
+                    onPress={() => handleOpenUserProfile(friend)}
+                    activeOpacity={0.7}
+                    className="flex-row items-center py-3.5 border-b border-gray-100 active:bg-gray-50 dark:border-[#414141] dark:active:bg-[#242424] "
                   >
-                    <View className="w-14 h-14 rounded-full bg-gray-200 overflow-hidden mr-3.5 border border-gray-200 items-center justify-center">
-                      {user.avatarUrl ? (
+                    <View className="h-12 w-12 rounded-full bg-gray-200 items-center justify-center mr-4 overflow-hidden border border-gray-200 dark:bg-[#181818] dark:border-[#414141] ">
+                      {friend.avatarUrl ? (
                         <Image
-                          source={{ uri: user.avatarUrl }}
+                          source={{ uri: friend.avatarUrl }}
                           className="w-full h-full"
                           resizeMode="cover"
                         />
                       ) : (
-                        <Ionicons name="person" size={28} color="#9CA3AF" />
+                        <Ionicons name="person" size={26} color={themeColor("#34594A", "#E6E6E6")} />
                       )}
                     </View>
 
-                    <View className="flex-1">
-                      <Text className="text-base font-bold text-gray-900">
-                        {user.name}
+                    <View className="flex-1 pr-2">
+                      <Text className="text-base font-semibold text-gray-800 dark:text-[#E6E6E6] ">
+                        {friend.name}
                       </Text>
-                      {user.username ? (
-                        <Text className="text-xs text-gray-400">
-                          @{user.username}
+                      {friend.username ? (
+                        <Text className="text-xs text-gray-400 dark:text-[#ADADAD] ">
+                          @{friend.username}
                         </Text>
                       ) : null}
                     </View>
 
-                    {/* Relationship Action Button */}
-                    {user.relationship === "accepted" ? (
-                      <TouchableOpacity
-                        onPress={() => handleOpenChat(user.id, user.name, user.avatarUrl)}
-                        className="px-3.5 py-1.5 bg-[#EAF4E6] rounded-lg active:bg-[#DBECCF]"
-                      >
-                        <Text className="text-xs font-bold text-[#487E34]">Message</Text>
-                      </TouchableOpacity>
-                    ) : user.relationship === "pending_sent" ? (
-                      <TouchableOpacity
-                        onPress={() =>
-                          user.connectionId &&
-                          handleSearchCancelRequest(user.connectionId, user.id)
-                        }
-                        disabled={isActionLoading}
-                        className="px-3.5 py-1.5 bg-gray-200 rounded-lg active:bg-gray-300"
-                      >
-                        {isActionLoading ? (
-                          <ActivityIndicator size="small" color="#374151" />
-                        ) : (
-                          <Text className="text-xs font-bold text-gray-700">Cancel</Text>
-                        )}
-                      </TouchableOpacity>
-                    ) : user.relationship === "pending_received" ? (
-                      <TouchableOpacity
-                        onPress={() => {
-                          if (user.connectionId) {
-                            handleRespondToRequest(
-                              {
-                                id: user.connectionId,
-                                userId: user.id,
-                                name: user.name,
-                                status: "pending",
-                              },
-                              "confirm"
-                            );
-                            setSearchResults((prev) =>
-                              prev.map((u) =>
-                                u.id === user.id ? { ...u, relationship: "accepted" } : u
-                              )
-                            );
-                          }
-                        }}
-                        disabled={isActionLoading}
-                        className="px-3.5 py-1.5 bg-[#72AF5B] rounded-lg active:bg-[#5E9C4E]"
-                      >
-                        <Text className="text-xs font-bold text-white">Accept</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity
-                        onPress={() => handleSearchSendRequest(user.id)}
-                        disabled={isActionLoading}
-                        className="flex-row items-center px-3.5 py-1.5 bg-[#72AF5B] rounded-lg active:bg-[#5E9C4E]"
-                      >
-                        {isActionLoading ? (
-                          <ActivityIndicator size="small" color="#FFFFFF" />
-                        ) : (
-                          <>
-                            <Ionicons name="person-add" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
-                            <Text className="text-xs font-bold text-white">Add</Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                );
-              })
-            )}
-          </View>
-        ) : activeTab === "active" ? (
-          /* ── "Active Community" View ── */
-          <View className="px-5 pt-3">
-            <Text className="text-lg font-bold text-gray-900 mb-3">
-              Active Now ({filteredActiveUsers.length})
-            </Text>
-            {filteredActiveUsers.length === 0 ? (
-              <View className="py-12 items-center justify-center">
-                <Ionicons name="radio-outline" size={48} color="#9CA3AF" />
-                <Text className="text-sm font-bold text-gray-700 mt-2">
-                  No active users right now
-                </Text>
-              </View>
-            ) : (
-              filteredActiveUsers.map((user) => {
-                const isSent = sentSuggestionIds[user.id];
-                const isActionLoading = actionLoadingIds[user.id];
-
-                return (
-                  <View
-                    key={user.id}
-                    className="flex-row items-center py-3.5 border-b border-gray-100"
-                  >
-                    <View className="relative mr-3.5">
-                      <View className="w-14 h-14 rounded-full bg-gray-200 overflow-hidden border border-gray-200 items-center justify-center">
-                        {user.avatarUrl ? (
-                          <Image
-                            source={{ uri: user.avatarUrl }}
-                            className="w-full h-full"
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <Ionicons name="person" size={28} color="#9CA3AF" />
-                        )}
-                      </View>
-                      <View className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-[#72AF5B] border-2 border-white" />
-                    </View>
-
-                    <View className="flex-1">
-                      <Text className="text-base font-bold text-gray-900">{user.name}</Text>
-                      <Text className="text-xs text-[#5E9C4E] font-medium">Active now</Text>
-                    </View>
-
-                    {user.isConnected ? (
-                      <TouchableOpacity
-                        onPress={() => handleOpenChat(user.id, user.name, user.avatarUrl)}
-                        className="px-3.5 py-1.5 bg-[#EAF4E6] rounded-lg active:bg-[#DBECCF]"
-                      >
-                        <Text className="text-xs font-bold text-[#487E34]">Message</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity
-                        onPress={() =>
-                          handleSendSuggestionRequest({
-                            id: user.id,
-                            name: user.name,
-                            avatarUrl: user.avatarUrl,
-                          })
-                        }
-                        disabled={isSent || isActionLoading}
-                        className={`px-3.5 py-1.5 rounded-lg ${
-                          isSent ? "bg-gray-200" : "bg-[#72AF5B] active:bg-[#5E9C4E]"
-                        }`}
-                      >
-                        {isActionLoading ? (
-                          <ActivityIndicator size="small" color={isSent ? "#374151" : "#FFFFFF"} />
-                        ) : (
-                          <Text className={`text-xs font-bold ${isSent ? "text-gray-700" : "text-white"}`}>
-                            {isSent ? "Requested" : "Add friend"}
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                );
-              })
-            )}
-          </View>
-        ) : activeTab === "friends" ? (
-          /* ── "Your Friends" View ── */
-          <View className="px-5 pt-3">
-            <Text className="text-lg font-bold text-gray-900 mb-3">
-              Your Connections ({filteredFriends.length})
-            </Text>
-            {filteredFriends.length === 0 ? (
-              <View className="py-12 items-center justify-center">
-                <Ionicons name="people-outline" size={48} color="#9CA3AF" />
-                <Text className="text-sm font-bold text-gray-700 mt-2">
-                  No connections added yet
-                </Text>
-                <Text className="text-xs text-gray-500 text-center mt-1">
-                  Confirm pending requests or add suggestions to connect!
-                </Text>
-              </View>
-            ) : (
-              filteredFriends.map((f) => (
-                <View key={f.id} className="flex-row items-center py-3 border-b border-gray-100">
-                  <View className="w-14 h-14 rounded-full bg-gray-200 overflow-hidden mr-3 border border-gray-200">
-                    {f.avatarUrl ? (
-                      <Image source={{ uri: f.avatarUrl }} className="w-full h-full" resizeMode="cover" />
-                    ) : (
-                      <Ionicons name="person" size={28} color="#9CA3AF" className="m-auto" />
-                    )}
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-base font-bold text-gray-900">{f.name}</Text>
-                    <Text className="text-xs text-gray-500">Connected</Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => handleOpenChat(f.id, f.name, f.avatarUrl)}
-                    className="px-3.5 py-1.5 bg-[#EAF4E6] rounded-lg active:bg-[#DBECCF]"
-                  >
-                    <Text className="text-xs font-bold text-[#487E34]">Message</Text>
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        setSelectedFriendForOptions(friend);
+                      }}
+                      className="w-9 h-9 rounded-full bg-gray-100 items-center justify-center active:bg-gray-200 dark:bg-[#181818] dark:active:bg-[#181818] "
+                      accessibilityRole="button"
+                      accessibilityLabel="Friend options"
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons
+                        name="ellipsis-horizontal"
+                        size={18}
+                        color={themeColor("#34594A", "#E6E6E6")}
+                      />
+                    </TouchableOpacity>
                   </TouchableOpacity>
-                </View>
-              ))
-            )}
-          </View>
-        ) : activeTab === "suggestions" ? (
-          /* ── "Suggestions" View ── */
-          <View className="px-5 pt-3">
-            <Text className="text-lg font-bold text-gray-900 mb-3">
-              People You May Know ({filteredSuggestions.length})
-            </Text>
-            {filteredSuggestions.length === 0 ? (
-              <View className="py-12 items-center justify-center">
-                <Ionicons name="sparkles-outline" size={48} color="#9CA3AF" />
-                <Text className="text-sm font-bold text-gray-700 mt-2">
-                  No more suggestions
-                </Text>
+                ))}
               </View>
-            ) : (
-              filteredSuggestions.map((sug) => {
-                const isSent = sentSuggestionIds[sug.id];
-                const isActionLoading = actionLoadingIds[sug.id];
-
-                return (
-                  <View
-                    key={sug.id}
-                    className="flex-row items-start py-3.5 border-b border-gray-100"
-                  >
-                    <View className="w-20 h-20 rounded-full bg-gray-200 overflow-hidden mr-3.5 border border-gray-200">
-                      {sug.avatarUrl ? (
-                        <Image source={{ uri: sug.avatarUrl }} className="w-full h-full" resizeMode="cover" />
-                      ) : (
-                        <Ionicons name="person" size={38} color="#9CA3AF" className="m-auto" />
-                      )}
-                    </View>
-
-                    <View className="flex-1">
-                      <Text className="text-base font-bold text-gray-900 mb-0.5">
-                        {sug.name}
-                      </Text>
-                      <Text className="text-xs text-gray-500 mb-2.5">
-                        {sug.mutualFriends || "Local Farm member"}
-                      </Text>
-
-                      <View className="flex-row gap-2.5">
-                        <TouchableOpacity
-                          onPress={() => handleSendSuggestionRequest(sug)}
-                          disabled={isSent || isActionLoading}
-                          className={`flex-1 h-10 rounded-xl items-center justify-center ${
-                            isSent ? "bg-gray-200" : "bg-[#72AF5B] active:bg-[#5E9C4E]"
-                          }`}
-                        >
-                          {isActionLoading ? (
-                            <ActivityIndicator size="small" color={isSent ? "#374151" : "#FFFFFF"} />
-                          ) : (
-                            <Text className={`font-bold text-sm ${isSent ? "text-gray-700" : "text-white"}`}>
-                              {isSent ? "Requested" : "Add friend"}
-                            </Text>
-                          )}
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          onPress={() => handleDismissSuggestion(sug.id)}
-                          className="flex-1 h-10 bg-[#E4E6EB] rounded-xl items-center justify-center active:bg-gray-300"
-                        >
-                          <Text className="text-gray-900 font-bold text-sm">Remove</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })
-            )}
-          </View>
-        ) : (
-          /* ── Standard "Connection Requests" View (Matches Reference Screenshot) ── */
-          <View className="px-5 pt-3">
-            {/* Section Header: Connection requests (count) + See all */}
-            <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-lg font-bold text-gray-900">
-                Connection requests ({pendingCount})
-              </Text>
-              {activeRequests.length > 5 && (
-                <TouchableOpacity
-                  onPress={() => setShowAllRequests((prev) => !prev)}
-                  activeOpacity={0.7}
-                >
-                  <Text className="text-sm font-semibold text-[#72AF5B]">
-                    {showAllRequests ? "Show less" : "See all"}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Connection Requests List */}
-            {activeRequests.length === 0 ? (
-              <View className="py-16 items-center justify-center">
-                <View className="w-16 h-16 rounded-full bg-[#EAF4E6] items-center justify-center mb-3">
-                  <Ionicons name="checkmark-circle-outline" size={36} color="#72AF5B" />
-                </View>
-                <Text className="text-base font-bold text-gray-900 mb-1">
-                  No pending connection requests
-                </Text>
-                <Text className="text-xs text-gray-500 text-center">
-                  You're all caught up with connection requests!
-                </Text>
-              </View>
-            ) : (
-              displayedRequests.map((request) => {
-                const isConfirmed = requestStates[request.id] === "confirmed";
-                const isActionLoading = actionLoadingIds[request.id];
-
-                return (
-                  <View
-                    key={request.id}
-                    className="flex-row items-start py-3.5 border-b border-gray-100"
-                  >
-                    {/* Large Circular Avatar (with optional online green dot) */}
-                    <View className="relative mr-3.5">
-                      <View className="w-20 h-20 rounded-full bg-gray-200 overflow-hidden border border-gray-200">
-                        {request.avatarUrl ? (
-                          <Image
-                            source={{ uri: request.avatarUrl }}
-                            className="w-full h-full"
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <View className="w-full h-full bg-gray-200 items-center justify-center">
-                            <Ionicons name="person" size={38} color="#9CA3AF" />
-                          </View>
-                        )}
-                      </View>
-                      {/* Active Online Indicator */}
-                      <View className="absolute bottom-0 right-1 w-4 h-4 rounded-full bg-[#72AF5B] border-2 border-white" />
-                    </View>
-
-                    {/* Right Content */}
-                    <View className="flex-1">
-                      {/* Name & Time Ago Row */}
-                      <View className="flex-row items-center justify-between mb-1">
-                        <Text className="text-base font-bold text-gray-900">
-                          {request.name}
-                        </Text>
-                        <Text className="text-xs text-gray-400 font-medium">
-                          {request.timeAgo || "2w"}
-                        </Text>
-                      </View>
-
-                      {/* Mutual Friends Row (Overlapping avatar bubbles + text) */}
-                      {request.mutualFriends ? (
-                        <View className="flex-row items-center mb-3 mt-0.5">
-                          <View className="flex-row -space-x-1.5 mr-2">
-                            <View className="w-5 h-5 rounded-full bg-[#2F5E24] overflow-hidden border border-white items-center justify-center">
-                              <Ionicons name="leaf" size={10} color="#FFFFFF" />
-                            </View>
-                            <View className="w-5 h-5 rounded-full bg-[#659C51] overflow-hidden border border-white items-center justify-center">
-                              <Ionicons name="person" size={10} color="#FFFFFF" />
-                            </View>
-                          </View>
-                          <Text className="text-xs text-gray-500 font-medium">
-                            {request.mutualFriends}
-                          </Text>
-                        </View>
-                      ) : (
-                        <View className="mb-3" />
-                      )}
-
-                      {/* Action Buttons: Confirm & Delete OR Accepted State */}
-                      {isConfirmed ? (
-                        <View className="flex-row items-center justify-between bg-[#EAF4E6] p-2.5 rounded-xl border border-[#CDE5C4]">
-                          <View className="flex-row items-center">
-                            <Ionicons name="checkmark-circle" size={18} color="#72AF5B" />
-                            <Text className="text-xs font-bold text-[#3D702C] ml-1.5">
-                              Request accepted
-                            </Text>
-                          </View>
-                          <TouchableOpacity
-                            onPress={() => handleOpenChat(request.userId || request.id, request.name, request.avatarUrl)}
-                            className="bg-[#72AF5B] px-3 py-1 rounded-lg active:bg-[#5E9C4E]"
-                          >
-                            <Text className="text-white text-xs font-bold">
-                              Message
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      ) : (
-                        <View className="flex-row gap-2.5">
-                          {/* Confirm Button */}
-                          <TouchableOpacity
-                            onPress={() => handleRespondToRequest(request, "confirm")}
-                            disabled={isActionLoading}
-                            activeOpacity={0.8}
-                            className="flex-1 h-10 bg-[#72AF5B] rounded-xl items-center justify-center active:bg-[#5E9C4E]"
-                          >
-                            {isActionLoading ? (
-                              <ActivityIndicator size="small" color="#FFFFFF" />
-                            ) : (
-                              <Text className="text-white font-bold text-sm">
-                                Confirm
-                              </Text>
-                            )}
-                          </TouchableOpacity>
-
-                          {/* Delete Button */}
-                          <TouchableOpacity
-                            onPress={() => handleRespondToRequest(request, "declined")}
-                            disabled={isActionLoading}
-                            activeOpacity={0.8}
-                            className="flex-1 h-10 bg-[#E4E6EB] rounded-xl items-center justify-center active:bg-gray-300"
-                          >
-                            <Text className="text-gray-900 font-bold text-sm">
-                              Delete
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                );
-              })
             )}
           </View>
         )}
       </ScrollView>
 
+      {/* Friend Options Bottom Sheet Modal */}
+      <Modal
+        visible={!!selectedFriendForOptions}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setSelectedFriendForOptions(null)}
+      >
+        <View className="flex-1 justify-end">
+          {/* Backdrop */}
+          <Pressable
+            onPress={() => setSelectedFriendForOptions(null)}
+            className="absolute inset-0 bg-black/40"
+          />
+
+          {/* Bottom Sheet Card */}
+          <View
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: -3 },
+              shadowOpacity: 0.15,
+              shadowRadius: 10,
+              elevation: 20,
+            }}
+            className="bg-white rounded-t-3xl pt-4 pb-8 px-6 border-t border-gray-100 dark:bg-[#242424] dark:border-[#414141] "
+          >
+            {/* Grabber indicator */}
+            <View className="w-12 h-1.5 bg-gray-300 rounded-full self-center mb-4 dark:bg-[#303030] " />
+
+            {/* Friend info header */}
+            {selectedFriendForOptions && (
+              <View className="flex-row items-center mb-4 pb-4 border-b border-gray-100 dark:border-[#414141] ">
+                <View className="h-12 w-12 rounded-full bg-gray-200 items-center justify-center mr-3.5 overflow-hidden border border-gray-200 dark:bg-[#181818] dark:border-[#414141] ">
+                  {selectedFriendForOptions.avatarUrl ? (
+                    <Image
+                      source={{ uri: selectedFriendForOptions.avatarUrl }}
+                      className="w-full h-full"
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Ionicons name="person" size={24} color={themeColor("#34594A", "#E6E6E6")} />
+                  )}
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-bold text-gray-900 dark:text-[#E6E6E6] ">
+                    {selectedFriendForOptions.name}
+                  </Text>
+                  <Text className="text-xs text-gray-400 mt-0.5 dark:text-[#ADADAD] ">
+                    {selectedFriendForOptions.username
+                      ? `@${selectedFriendForOptions.username}`
+                      : "Connected Friend"}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Action Items */}
+            <View className="space-y-1">
+              <TouchableOpacity
+                onPress={() => {
+                  const target = selectedFriendForOptions;
+                  setSelectedFriendForOptions(null);
+                  if (target) handleOpenUserProfile(target);
+                }}
+                className="flex-row items-center py-3 px-3 rounded-2xl active:bg-gray-50 dark:active:bg-[#242424] "
+              >
+                <View className="w-10 h-10 rounded-full bg-[#EDF3EE] items-center justify-center mr-3.5 border border-[#E4EDE6] dark:bg-[#181818] dark:border-[#414141] ">
+                  <Ionicons name="person-outline" size={20} color={themeColor("#34594A", "#E6E6E6")} />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-semibold text-gray-900 dark:text-[#E6E6E6] ">
+                    View Profile
+                  </Text>
+                  <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">
+                    See posts, photos, and info
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={themeColor("#34594A", "#E6E6E6")} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  const target = selectedFriendForOptions;
+                  setSelectedFriendForOptions(null);
+                  if (target) handleOpenChatWithFriend(target);
+                }}
+                className="flex-row items-center py-3 px-3 rounded-2xl active:bg-gray-50 dark:active:bg-[#242424] "
+              >
+                <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mr-3.5 border border-blue-100 dark:bg-[#181818] dark:border-[#414141] ">
+                  <Ionicons
+                    name="chatbubble-ellipses-outline"
+                    size={20}
+                    color="#3B82F6"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-semibold text-gray-900 dark:text-[#E6E6E6] ">
+                    Message
+                  </Text>
+                  <Text className="text-xs text-gray-500 dark:text-[#ADADAD] ">
+                    Send a direct message
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={themeColor("#34594A", "#E6E6E6")} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Cancel Button */}
+            <TouchableOpacity
+              onPress={() => setSelectedFriendForOptions(null)}
+              className="mt-4 py-3.5 rounded-2xl bg-gray-100 items-center justify-center active:bg-gray-200 dark:bg-[#181818] dark:active:bg-[#181818] "
+            >
+              <Text className="text-sm font-semibold text-gray-700 dark:text-[#E6E6E6] ">
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <BottomNavBar accentColor="#34594A" activeTab="Connection" showFab={false} />
       <SidebarMenu
         isVisible={isSidebarVisible}
         onClose={() => setSidebarVisible(false)}
         activeTab="Your Friends"
       />
-      <BottomNavBar activeTab="Friends" showFab={false} />
     </SafeAreaView>
   );
 }

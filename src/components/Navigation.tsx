@@ -1,8 +1,12 @@
+import { useAppTheme } from "@/context/theme-context";
 import { getBadgeCountsApi } from "@/services/badge-service";
 import { Ionicons } from "@expo/vector-icons";
-import { usePathname, useRouter } from "expo-router";
+import { router, usePathname } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+export const BOTTOM_NAV_BAR_BASE_HEIGHT = 56;
 
 export interface TabRoute {
   key: string;
@@ -11,6 +15,8 @@ export interface TabRoute {
 }
 
 export interface NavigationProps {
+  premium?: boolean;
+  accentColor?: string;
   activeTab?: "Home" | "Friends" | "Messages" | "Map" | "Menu" | "Chat" | "Connection" | string;
   activeTabName?: string;
   onFabPress?: () => void;
@@ -33,7 +39,7 @@ export interface NavigationProps {
   };
 }
 
-const ACTIVE_COLOR = "#72AF5B"; // LocalFarm green
+const ACTIVE_COLOR = "#34594A"; // LocalFarm green
 const INACTIVE_COLOR = "#9CA3AF"; // Neutral gray
 
 export function UserTabBar({
@@ -43,7 +49,9 @@ export function UserTabBar({
   onFabPress,
   showFab = true,
 }: NavigationProps) {
-  const router = useRouter();
+  const { themeColor } = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 0);
   const [badgeCounts, setBadgeCounts] = useState({ requestsCount: 0, unreadMessagesCount: 0 });
 
   useEffect(() => {
@@ -78,19 +86,25 @@ export function UserTabBar({
       {/* Floating Action Button (FAB) */}
       {showFab && (
         <TouchableOpacity
-          className="absolute bottom-[72px] right-4 h-14 w-14 rounded-full bg-[#72AF5B] items-center justify-center shadow-lg elevation-6 z-[60]"
-          style={{ position: "absolute", bottom: 72, right: 16, zIndex: 60 }}
+          className="absolute right-4 h-14 w-14 rounded-full bg-[#34594A] items-center justify-center shadow-lg elevation-6 z-[60] dark:bg-[#E6E6E6] "
+          style={{ position: "absolute", bottom: 72 + bottomInset, right: 16, zIndex: 60 }}
           activeOpacity={0.8}
           onPress={onFabPress}
           accessibilityRole="button"
           accessibilityLabel="Add new item"
         >
-          <Ionicons name="add" size={30} color="#FFFFFF" />
+          <Ionicons name="add" size={30} color={themeColor("#FFFFFF", "#181818")} />
         </TouchableOpacity>
       )}
 
       {/* Navigation Bar */}
-      <View className="flex-row items-center justify-around w-full h-14 bg-white border-t border-gray-200 shadow-2xl elevation-10">
+      <View
+        className="flex-row items-center justify-around w-full bg-white border-t border-gray-200 shadow-2xl elevation-10 dark:bg-[#242424] dark:border-[#414141] "
+        style={{
+          height: BOTTOM_NAV_BAR_BASE_HEIGHT + bottomInset,
+          paddingBottom: bottomInset,
+        }}
+      >
         {state.routes.map((route: TabRoute, index: number) => {
           const options = descriptors[route.key]?.options || {};
           const isFocused = state.index === index;
@@ -112,36 +126,37 @@ export function UserTabBar({
             iconName = "home";
           }
 
-          const iconColor = isFocused ? ACTIVE_COLOR : INACTIVE_COLOR;
+          const iconColor = isFocused ? themeColor(ACTIVE_COLOR, "#E6E6E6") : themeColor(INACTIVE_COLOR, "#ADADAD");
 
           const onPress = () => {
+            if (isFocused) return;
             if (route.name === "index" || route.name === "home") {
               try {
-                router.push("/user/NewsFeed");
+                router.replace("/user/NewsFeed" as any);
                 return;
               } catch {}
             }
             if (route.name === "chat" || route.name === "Chats" || route.name === "Messages") {
               try {
-                router.push("/user/Chats");
+                router.replace("/user/Chats" as any);
                 return;
               } catch {}
             }
             if (route.name === "community" || route.name === "People" || route.name === "Friends") {
               try {
-                router.push("/user/Friends");
+                router.replace("/user/People" as any);
                 return;
               } catch {}
             }
             if (route.name === "explore" || route.name === "Map" || route.name === "ExploreMap") {
               try {
-                router.push("/user/ExploreMap");
+                router.replace("/user/ExploreMap" as any);
                 return;
               } catch {}
             }
             if (route.name === "more" || route.name === "Menu" || route.name === "MenuProfile") {
               try {
-                router.push("/user/MenuProfile");
+                router.replace("/user/MenuProfile" as any);
                 return;
               } catch {}
             }
@@ -173,13 +188,13 @@ export function UserTabBar({
               {/* Short Active Green Line Indicator at Top */}
               {isFocused && (
                 <View
-                  className="absolute top-0 w-8 h-[3.5px] bg-[#72AF5B] rounded-b-md"
+                  className="absolute top-0 w-8 h-[3.5px] rounded-b-md"
                   style={{
                     position: "absolute",
                     top: 0,
                     width: 34,
                     height: 3.5,
-                    backgroundColor: "#72AF5B",
+                    backgroundColor: themeColor(ACTIVE_COLOR, "#E6E6E6"),
                     borderBottomLeftRadius: 3,
                     borderBottomRightRadius: 3,
                   }}
@@ -190,7 +205,7 @@ export function UserTabBar({
 
               {badgeCount > 0 && (
                 <View className="absolute top-2 right-[20%] min-w-[17px] h-[17px] px-1 rounded-full bg-red-600 items-center justify-center shadow-2xs">
-                  <Text className="text-white text-[10px] font-bold text-center leading-tight">
+                  <Text className="text-white text-[10px] font-bold text-center leading-tight dark:text-[#E6E6E6] ">
                     {badgeCount > 99 ? "99+" : badgeCount}
                   </Text>
                 </View>
@@ -204,7 +219,9 @@ export function UserTabBar({
 }
 
 export default function Navigation(props?: NavigationProps) {
-  const router = useRouter();
+  const { themeColor } = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 0);
   const pathname = usePathname();
   const [badgeCounts, setBadgeCounts] = useState({ requestsCount: 0, unreadMessagesCount: 0 });
 
@@ -291,33 +308,45 @@ export default function Navigation(props?: NavigationProps) {
   const showFab = props?.showFab ?? true;
 
   const handleTabPress = (tabKey: string) => {
+    // Guard: Do not re-navigate or re-trigger transitions if already on this tab screen
+    const isCurrentTab =
+      (tabKey === "index" && (pathname === "/user/NewsFeed" || pathname === "/user" || pathname === "/" || pathname.endsWith("/NewsFeed"))) ||
+      (tabKey === "community" && (pathname === "/user/People" || pathname.endsWith("/People"))) ||
+      (tabKey === "chat" && (pathname === "/user/Chats" || pathname.endsWith("/Chats"))) ||
+      (tabKey === "explore" && (pathname === "/user/ExploreMap" || pathname.endsWith("/ExploreMap"))) ||
+      (tabKey === "more" && (pathname === "/user/MenuProfile" || pathname.endsWith("/MenuProfile")));
+
+    if (isCurrentTab) {
+      return;
+    }
+
     if (tabKey === "index") {
       try {
-        router.push("/user/NewsFeed");
+        router.replace("/user/NewsFeed" as any);
       } catch (e) {
         console.warn(e);
       }
     } else if (tabKey === "community") {
       try {
-        router.push("/user/Friends");
+        router.replace("/user/People" as any);
       } catch (e) {
         console.warn(e);
       }
     } else if (tabKey === "chat") {
       try {
-        router.push("/user/Chats");
+        router.replace("/user/Chats" as any);
       } catch (e) {
         console.warn(e);
       }
     } else if (tabKey === "explore") {
       try {
-        router.push("/user/ExploreMap");
+        router.replace("/user/ExploreMap" as any);
       } catch (e) {
         console.warn(e);
       }
     } else if (tabKey === "more") {
       try {
-        router.push("/user/MenuProfile");
+        router.replace("/user/MenuProfile" as any);
       } catch (e) {
         console.warn(e);
       }
@@ -348,26 +377,34 @@ export default function Navigation(props?: NavigationProps) {
       {/* Floating Action Button (FAB) */}
       {showFab && (
         <TouchableOpacity
-          className="absolute bottom-[72px] right-4 h-14 w-14 rounded-full bg-[#72AF5B] items-center justify-center shadow-lg elevation-6 z-[60]"
-          style={{ position: "absolute", bottom: 72, right: 16, zIndex: 60 }}
+          className="absolute right-4 h-14 w-14 rounded-full bg-[#34594A] items-center justify-center shadow-lg elevation-6 z-[60] dark:bg-[#E6E6E6] "
+          style={{ position: "absolute", bottom: 72 + bottomInset, right: 20, zIndex: 60, ...(props?.premium ? { backgroundColor: themeColor(ACTIVE_COLOR, "#E6E6E6"), width: 56, height: 56, borderRadius: 28, borderWidth: 1, borderColor: themeColor("#6e886b", "#414141"), boxShadow: themeColor("0 6px 18px rgba(255, 255, 255, .65)", "0 6px 18px rgba(0, 0, 0, .3)"), shadowColor: "#ffffff" } : {}) }}
           activeOpacity={0.8}
           onPress={props?.onFabPress}
           accessibilityRole="button"
           accessibilityLabel="Add new item"
         >
-          <Ionicons name="add" size={30} color="#FFFFFF" />
+          <Ionicons name="add" size={30} color={themeColor("#FFFFFF", "#181818")} />
         </TouchableOpacity>
       )}
 
       {/* Bottom Navigation Bar */}
-      <View className="flex-row items-center justify-around w-full h-14 bg-white border-t border-gray-200 shadow-2xl elevation-10">
+      <View
+        className="flex-row items-center justify-around w-full bg-white border-t border-gray-200 shadow-2xl elevation-10 dark:bg-[#242424] dark:border-[#414141] "
+        style={{
+          height: BOTTOM_NAV_BAR_BASE_HEIGHT + bottomInset,
+          paddingBottom: bottomInset,
+        }}
+      >
         {tabsConfig.map((tab) => {
           const isFocused =
             activeKey === tab.key ||
             activeKey === tab.title ||
             activeKey.toLowerCase() === tab.title.toLowerCase();
 
-          const iconColor = isFocused ? ACTIVE_COLOR : INACTIVE_COLOR;
+          const iconColor = isFocused
+            ? themeColor(props?.accentColor ?? ACTIVE_COLOR, "#E6E6E6")
+            : themeColor(props?.premium ? "#879386" : INACTIVE_COLOR, "#ADADAD");
 
           return (
             <TouchableOpacity
@@ -381,13 +418,13 @@ export default function Navigation(props?: NavigationProps) {
               {/* Short Active Green Line Indicator at Top Edge */}
               {isFocused && (
                 <View
-                  className="absolute top-0 w-8 h-[3.5px] bg-[#72AF5B] rounded-b-md"
+                  className="absolute top-0 w-8 h-[3.5px] rounded-b-md"
                   style={{
                     position: "absolute",
                     top: 0,
                     width: 34,
                     height: 3.5,
-                    backgroundColor: "#72AF5B",
+                    backgroundColor: themeColor(props?.accentColor ?? ACTIVE_COLOR, "#E6E6E6"),
                     borderBottomLeftRadius: 3,
                     borderBottomRightRadius: 3,
                   }}
@@ -398,7 +435,7 @@ export default function Navigation(props?: NavigationProps) {
 
               {tab.badge !== undefined && tab.badge > 0 && (
                 <View className="absolute top-2 right-[20%] min-w-[17px] h-[17px] px-1 rounded-full bg-red-600 items-center justify-center shadow-2xs">
-                  <Text className="text-white text-[10px] font-bold text-center leading-tight">
+                  <Text className="text-white text-[10px] font-bold text-center leading-tight dark:text-[#E6E6E6] ">
                     {tab.badge > 99 ? "99+" : tab.badge}
                   </Text>
                 </View>

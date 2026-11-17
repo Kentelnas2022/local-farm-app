@@ -1,63 +1,179 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useToast } from "@/context/toast-context";
-import { useAuth } from "@/hooks/use-auth";
 import {
-  getSavedPostsApi,
+  createSavedCollectionApi,
+  deleteSavedCollectionApi,
   getSavedCollectionsApi,
+  getSavedPostsApi,
+  renameSavedCollectionApi,
   SavedPostItem,
   toggleSavePostApi,
 } from "@/services/post-service";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Animated,
+  useWindowDimensions,
+  Easing,
   Image,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import SaveToCollectionModal from "@/components/SaveToCollectionModal";
+
+const GRID_GAP = 2;
+const NUM_COLUMNS = 3;
+
+const COLLECTION_PADDING = 16;
+const COLLECTION_GAP = 12;
+
+// Smooth subtle entrance for premium feel
+function FadeEntrance({ children, delay = 0, width }: { children: React.ReactNode; delay?: number; width?: number }) {
+  const progress = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(10)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: 320,
+        delay,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: Platform.OS !== "web",
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 320,
+        delay,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: Platform.OS !== "web",
+      }),
+    ]).start();
+  }, [delay, progress, translateY]);
+
+  return (
+    <Animated.View style={{ width, opacity: progress, transform: [{ translateY }] }}>
+      {children}
+    </Animated.View>
+  );
+}
+
+// Tactile press button with smooth spring animation
+function TactileTouchable({
+  children,
+  onPress,
+  style,
+  disabled,
+  activeOpacity = 0.85,
+  scaleTo = 0.975,
+  ...rest
+}: any) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: scaleTo,
+      useNativeDriver: Platform.OS !== "web",
+      speed: 35,
+      bounciness: 4,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: Platform.OS !== "web",
+      speed: 35,
+      bounciness: 4,
+    }).start();
+  };
+
+  const flattened = StyleSheet.flatten(style) || {};
+  const hasFlex = flattened.flex !== undefined;
+
+  return (
+    <Animated.View
+      style={[
+        hasFlex && { flex: flattened.flex },
+        { transform: [{ scale }] },
+      ]}
+    >
+      <TouchableOpacity
+        activeOpacity={activeOpacity}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={onPress}
+        disabled={disabled}
+        style={[style, hasFlex && { width: "100%" }]}
+        {...rest}
+      >
+        {children}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
 
 export default function SavedPosts() {
+  const { width: windowWidth } = useWindowDimensions();
+  const [contentWidth, setContentWidth] = useState<number | null>(null);
+  const screenWidth = contentWidth ?? windowWidth;
+  const TILE_SIZE = Math.max(1, (screenWidth - GRID_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS);
+  const COLLECTION_CARD_WIDTH = Math.max(1, Math.floor((screenWidth - COLLECTION_PADDING * 2 - COLLECTION_GAP) / 2));
+  const { themeColor } = useAppTheme();
+  const styles = createStyles(themeColor);
+  const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user } = useAuth();
   const { showToast } = useToast();
 
   const [savedPosts, setSavedPosts] = useState<SavedPostItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Selected post for 3-dots action menu
-  const [selectedPost, setSelectedPost] = useState<SavedPostItem | null>(null);
-  const [isActionMenuVisible, setIsActionMenuVisible] = useState(false);
+  // Active view: 'collections' (2-column folders) or 'grid' (3-column photo grid)
+  const [activeTab, setActiveTab] = useState<"collections" | "grid">("collections");
+  // Currently opened collection in grid view (null means All Posts)
+  const [activeCollectionName, setActiveCollectionName] = useState<string | null>(null);
 
-  // Collection modal state
-  const [isCollectionModalVisible, setIsCollectionModalVisible] = useState(false);
-  const [selectedPostForCollection, setSelectedPostForCollection] = useState<SavedPostItem | null>(null);
+  // Collections list from API
   const [collections, setCollections] = useState<string[]>(["All Saved"]);
+
+  // Modals
+  const [isCreateCollectionVisible, setIsCreateCollectionVisible] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState("");
-  const [isCreatingCollection, setIsCreatingCollection] = useState(false);
+  const [selectedPostForDetail, setSelectedPostForDetail] = useState<SavedPostItem | null>(null);
+  const [selectedPostForFolder, setSelectedPostForFolder] = useState<SavedPostItem | null>(null);
+  const [isFolderPickerVisible, setIsFolderPickerVisible] = useState(false);
+  const [collectionMenuTarget, setCollectionMenuTarget] = useState<string | null>(null);
+  const [renameTarget, setRenameTarget] = useState<string | null>(null);
+  const [renameInput, setRenameInput] = useState("");
+  const [isRenaming, setIsRenaming] = useState(false);
 
-  const fetchCollections = async () => {
-    try {
-      const data = await getSavedCollectionsApi();
-      setCollections(data);
-    } catch (err) {
-      console.warn("Failed to fetch collections:", err);
-    }
-  };
+  // Search
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const fetchSavedPosts = async () => {
+  const loadData = async () => {
     try {
-      const data = await getSavedPostsApi();
-      setSavedPosts(data);
+      const [postsData, collectionsData] = await Promise.all([
+        getSavedPostsApi(),
+        getSavedCollectionsApi(),
+      ]);
+      setSavedPosts(postsData);
+      setCollections(collectionsData);
     } catch (err: any) {
-      console.warn("Failed to fetch saved posts:", err);
+      console.warn("Failed to load saved posts:", err);
       showToast(err?.message || "Failed to load saved posts.", "error");
     } finally {
       setLoading(false);
@@ -65,14 +181,41 @@ export default function SavedPosts() {
     }
   };
 
+  const fetchCollections = async () => {
+    try {
+      const data = await getSavedCollectionsApi();
+      setCollections(data);
+    } catch (err) {
+      console.log("Failed to fetch collections:", err);
+    }
+  };
+
   useEffect(() => {
-    fetchSavedPosts();
-    fetchCollections();
-  }, []);
+    let isMounted = true;
+    Promise.all([getSavedPostsApi(), getSavedCollectionsApi()])
+      .then(([postsData, collectionsData]) => {
+        if (isMounted) {
+          setSavedPosts(postsData);
+          setCollections(collectionsData);
+          setLoading(false);
+        }
+      })
+      .catch((err: any) => {
+        if (isMounted) {
+          console.warn("Failed to load saved posts:", err);
+          showToast(err?.message || "Failed to load saved posts.", "error");
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [showToast]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchSavedPosts();
+    loadData();
   };
 
   const handleUnsave = async (postId: string) => {
@@ -80,464 +223,1489 @@ export default function SavedPosts() {
       const res = await toggleSavePostApi(postId);
       if (!res.isSaved) {
         setSavedPosts((prev) => prev.filter((p) => p.id !== postId));
-        showToast("Removed from saved posts.", "info");
+        showToast("Removed from Saved", "info");
       }
-      setIsActionMenuVisible(false);
-      setSelectedPost(null);
+      if (selectedPostForDetail?.id === postId) {
+        setSelectedPostForDetail(null);
+      }
     } catch (err: any) {
       showToast(err?.message || "Failed to unsave post.", "error");
     }
   };
 
-  const handleOpenCollectionModal = (post: SavedPostItem) => {
-    setSelectedPostForCollection(post);
-    setIsCollectionModalVisible(true);
-  };
-
   const handleSaveToCollection = async (collection: string) => {
-    if (!selectedPostForCollection) return;
+    if (!selectedPostForFolder) return;
     try {
-      await toggleSavePostApi(selectedPostForCollection.id, collection);
+      await toggleSavePostApi(selectedPostForFolder.id, collection);
       setSavedPosts((prev) =>
         prev.map((p) =>
-          p.id === selectedPostForCollection.id
+          p.id === selectedPostForFolder.id
             ? { ...p, collectionName: collection }
             : p
         )
       );
-      showToast(`Added to "${collection}"!`, "success");
-      setIsCollectionModalVisible(false);
-      setSelectedPostForCollection(null);
+      if (selectedPostForDetail?.id === selectedPostForFolder.id) {
+        setSelectedPostForDetail((prev) =>
+          prev ? { ...prev, collectionName: collection } : null
+        );
+      }
+      showToast(`Saved to "${collection}"`, "success");
+      setIsFolderPickerVisible(false);
+      setSelectedPostForFolder(null);
       fetchCollections();
     } catch (err: any) {
       showToast(err?.message || "Failed to update collection.", "error");
     }
   };
 
-  const handleCreateNewCollection = () => {
+  const handleCreateCollection = async () => {
     const trimmed = newCollectionName.trim();
     if (!trimmed) return;
-    if (!collections.includes(trimmed)) {
-      setCollections((prev) => [...prev, trimmed]);
+    try {
+      await createSavedCollectionApi(trimmed, selectedPostForFolder?.id);
+      if (!collections.includes(trimmed)) {
+        setCollections((prev) => [...prev, trimmed]);
+      }
+      if (selectedPostForFolder) {
+        setSavedPosts((prev) =>
+          prev.map((p) =>
+            p.id === selectedPostForFolder.id
+              ? { ...p, collectionName: trimmed }
+              : p
+          )
+        );
+        showToast(`Saved to "${trimmed}"`, "success");
+      } else {
+        showToast(`Collection "${trimmed}" created`, "success");
+      }
+      setNewCollectionName("");
+      setIsCreateCollectionVisible(false);
+      setSelectedPostForFolder(null);
+      await loadData();
+    } catch (err: any) {
+      showToast(err?.message || "Failed to create collection", "error");
     }
-    if (selectedPostForCollection) {
-      handleSaveToCollection(trimmed);
+  };
+
+  const handleConfirmRename = async () => {
+    if (!renameTarget || !renameInput.trim()) return;
+    const trimmed = renameInput.trim();
+    if (trimmed.toLowerCase() === renameTarget.toLowerCase()) {
+      setRenameTarget(null);
+      return;
     }
-    setNewCollectionName("");
-    setIsCreatingCollection(false);
+    setIsRenaming(true);
+    try {
+      await renameSavedCollectionApi(renameTarget, trimmed);
+      showToast(`Collection renamed to "${trimmed}"`, "success");
+      if (activeCollectionName === renameTarget) {
+        setActiveCollectionName(trimmed);
+      }
+      setRenameTarget(null);
+      await loadData();
+    } catch (err: any) {
+      showToast(err?.message || "Failed to rename collection", "error");
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
+  const handleDeleteCollection = (name: string) => {
+    setCollectionMenuTarget(null);
+    const executeDelete = async () => {
+      try {
+        await deleteSavedCollectionApi(name);
+        showToast(`Collection "${name}" deleted. Posts moved to All Saved.`, "info");
+        if (activeCollectionName === name) {
+          setActiveCollectionName(null);
+          setActiveTab("collections");
+        }
+        await loadData();
+      } catch (err: any) {
+        showToast(err?.message || "Failed to delete collection", "error");
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (
+        window.confirm(
+          `Delete "${name}"?\nPosts in this collection will not be deleted and will remain in All Saved.`
+        )
+      ) {
+        executeDelete();
+      }
+    } else {
+      Alert.alert(
+        "Delete Collection?",
+        `Posts in "${name}" will still be kept in All Saved.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Delete", style: "destructive", onPress: executeDelete },
+        ]
+      );
+    }
+  };
+
+  // Extract distinct collection names
+  const allCollectionNames = useMemo(() => {
+    const set = new Set<string>();
+    collections.forEach((c) => {
+      if (c && c !== "All Saved") set.add(c);
+    });
+    savedPosts.forEach((p) => {
+      if (p.collectionName && p.collectionName !== "All Saved") {
+        set.add(p.collectionName);
+      }
+    });
+    return Array.from(set);
+  }, [collections, savedPosts]);
+
+  // Posts filtered by collection (if in grid view) and search
+  const visiblePosts = useMemo(() => {
+    return savedPosts.filter((post) => {
+      if (activeCollectionName) {
+        const pCol = (post.collectionName || "All Saved").toLowerCase();
+        if (pCol !== activeCollectionName.toLowerCase()) {
+          return false;
+        }
+      }
+
+      if (searchQuery.trim().length > 0) {
+        const q = searchQuery.toLowerCase().trim();
+        const cMatch = (post.content || "").toLowerCase().includes(q);
+        const aMatch = (post.authorName || "").toLowerCase().includes(q);
+        const rMatch = (post.authorRole || "").toLowerCase().includes(q);
+        const catMatch = (post.category || "").toLowerCase().includes(q);
+        return cMatch || aMatch || rMatch || catMatch;
+      }
+
+      return true;
+    });
+  }, [savedPosts, activeCollectionName, searchQuery]);
+
+  // Helper to get preview images for collection collage
+  const getCollectionPreviewImages = (colName: string | null): string[] => {
+    const matching = savedPosts.filter((p) => {
+      if (!colName) return true;
+      return (p.collectionName || "All Saved").toLowerCase() === colName.toLowerCase();
+    });
+
+    const urls: string[] = [];
+    matching.forEach((p) => {
+      const url = p.imageUrl || p.originalPost?.imageUrl || p.avatarUri;
+      if (url && !urls.includes(url)) {
+        urls.push(url);
+      }
+    });
+    return urls.slice(0, 4);
+  };
+
+  // Helper for quad collage preview
+  const renderCollageCover = (imageUrls: string[], size: number) => {
+    if (imageUrls.length === 0) {
+      return (
+        <View
+          style={{ width: size, height: size }}
+          className="bg-[#FAFAFA] items-center justify-center rounded-lg border border-gray-200 dark:bg-[#242424] dark:border-[#414141] "
+        >
+          <Ionicons name="bookmark-outline" size={36} color={themeColor("#DBDBDB", "#E6E6E6")} />
+        </View>
+      );
+    }
+
+    if (imageUrls.length < 4) {
+      return (
+        <Image
+          source={{ uri: imageUrls[0] }}
+          style={{ width: size, height: size, borderRadius: 8 }}
+          resizeMode="cover"
+        />
+      );
+    }
+
+    // 2x2 Collage (Instagram signature look)
+    const half = (size - 1) / 2;
+    return (
+      <View
+        style={{ width: size, height: size, borderRadius: 8 }}
+        className="overflow-hidden bg-gray-100 flex-row flex-wrap gap-[1px] dark:bg-[#181818] "
+      >
+        {imageUrls.slice(0, 4).map((url, idx) => (
+          <Image
+            key={idx}
+            source={{ uri: url }}
+            style={{ width: half, height: half }}
+            resizeMode="cover"
+          />
+        ))}
+      </View>
+    );
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F8F9FA]">
-      {/* Top Header */}
-      <View className="flex-row items-center justify-between px-4 py-3 bg-white shadow-xs">
-        <TouchableOpacity
+    <View
+      style={[styles.root, { paddingTop: Math.max(insets.top, 14) }]}
+      onLayout={({ nativeEvent }) => {
+        const width = nativeEvent.layout.width;
+        if (width > 0) setContentWidth(width);
+      }}
+    >
+      {/* 1. Calm Minimalist Header with proper notch clearance */}
+      <View style={styles.headerBar}>
+        <TactileTouchable
           onPress={() => {
-            if (router.canGoBack()) {
+            if (activeCollectionName) {
+              setActiveCollectionName(null);
+            } else if (activeTab === "grid") {
+              setActiveTab("collections");
+            } else if (router.canGoBack()) {
               router.back();
             } else {
               router.push("/user/MenuProfile" as any);
             }
           }}
-          className="p-1 active:opacity-70"
+          style={styles.backButton}
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-undo" size={24} color="#111827" />
-        </TouchableOpacity>
+          <Ionicons name="chevron-back" size={21} color={themeColor("#34594A", "#E6E6E6")} />
+        </TactileTouchable>
 
-        <Text className="text-lg font-bold text-gray-900">Saved</Text>
+        {/* Header Title */}
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {activeCollectionName ? activeCollectionName : "Saved"}
+        </Text>
 
-        <View className="w-8" />
+        {/* Right Action Icons: Search & + New Collection & Options */}
+        <View style={styles.headerRightActions}>
+          {Boolean(
+            activeCollectionName &&
+              activeCollectionName.toLowerCase() !== "all saved"
+          ) && (
+            <TactileTouchable
+              onPress={() => setCollectionMenuTarget(activeCollectionName)}
+              style={styles.headerActionBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Collection options"
+            >
+              <Ionicons name="ellipsis-horizontal" size={19} color={themeColor("#34594A", "#E6E6E6")} />
+            </TactileTouchable>
+          )}
+
+          <TactileTouchable
+            onPress={() => {
+              setSelectedPostForFolder(null);
+              setIsCreateCollectionVisible(true);
+            }}
+            style={styles.headerActionBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Create collection"
+          >
+            <Ionicons name="add" size={22} color={themeColor("#34594A", "#E6E6E6")} />
+          </TactileTouchable>
+        </View>
       </View>
 
-      {/* Section Subheader */}
-      <View className="px-5 pt-4 pb-2">
-        <Text className="text-xl font-bold text-gray-900">All</Text>
+      {/* 2. Calm Segmented Tab Switcher (Collections vs All Posts) */}
+      {!activeCollectionName && (
+        <View style={styles.tabSwitcherContainer}>
+          <TouchableOpacity
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === "collections" }}
+            onPress={() => setActiveTab("collections")}
+            style={[
+              styles.tabButton,
+              activeTab === "collections" && styles.tabButtonActive,
+            ]}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="grid-outline"
+              size={13}
+              color={themeColor(activeTab === "collections" ? "#FFFFFF" : "#6E8074", activeTab === "collections" ? "#E6E6E6" : "#ADADAD")}
+            />
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "collections" && styles.tabTextActive,
+              ]}
+            >
+              Collections
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === "grid" }}
+            onPress={() => setActiveTab("grid")}
+            style={[
+              styles.tabButton,
+              activeTab === "grid" && styles.tabButtonActive,
+            ]}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="images-outline"
+              size={13}
+              color={themeColor(activeTab === "grid" ? "#FFFFFF" : "#6E8074", activeTab === "grid" ? "#E6E6E6" : "#ADADAD")}
+            />
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "grid" && styles.tabTextActive,
+              ]}
+            >
+              All Posts
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* 3. Calm Privacy Hint Notice Capsule */}
+      <View style={styles.privacyPill}>
+        <Ionicons name="lock-closed" size={10} color={themeColor("#52705E", "#ADADAD")} />
+        <Text style={styles.privacyText}>
+          Only you can see what you&apos;ve saved
+        </Text>
       </View>
 
-      {/* Main Content */}
+      {/* 4. Main Content Area */}
       <ScrollView
-        className="flex-1 px-4 py-2"
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#72AF5B"]}
-            tintColor="#72AF5B"
+            colors={[themeColor("#34594A", "#E6E6E6")]}
+            tintColor={themeColor("#34594A", "#E6E6E6")}
           />
         }
       >
         {loading ? (
-          <View className="py-20 items-center justify-center">
-            <ActivityIndicator size="large" color="#72AF5B" />
-            <Text className="text-gray-500 text-sm mt-3 font-medium">
-              Loading saved posts...
-            </Text>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={themeColor("#34594A", "#E6E6E6")} />
           </View>
         ) : savedPosts.length === 0 ? (
-          <View className="py-16 items-center justify-center px-6">
-            <View className="w-20 h-20 rounded-full bg-green-50 items-center justify-center mb-4">
-              <Ionicons name="bookmark-outline" size={40} color="#72AF5B" />
-            </View>
-            <Text className="text-lg font-bold text-gray-900 text-center mb-1">
-              No Saved Posts
-            </Text>
-            <Text className="text-sm text-gray-500 text-center mb-6 leading-5">
-              Posts and updates you save will appear here in your cards list.
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.push("/user/NewsFeed" as any)}
-              className="bg-[#72AF5B] px-6 py-3 rounded-full flex-row items-center active:opacity-80 shadow-sm"
-            >
-              <Ionicons
-                name="newspaper-outline"
-                size={18}
-                color="#FFFFFF"
-                style={{ marginRight: 6 }}
-              />
-              <Text className="text-white font-bold text-sm">
-                Explore Feed
+          /* Empty State - Foolish Minimalist & Organic */
+          <FadeEntrance delay={40}>
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="bookmark-outline" size={34} color={themeColor("#34594A", "#E6E6E6")} />
+              </View>
+              <Text style={styles.emptyTitle}>Save Posts</Text>
+              <Text style={styles.emptySubtitle}>
+                Save photos and updates from local growers and farmers to your collections.
               </Text>
-            </TouchableOpacity>
+              <TactileTouchable
+                onPress={() => router.push("/user/NewsFeed" as any)}
+                style={styles.exploreButton}
+              >
+                <Text style={styles.exploreButtonText}>Explore Feed</Text>
+              </TactileTouchable>
+            </View>
+          </FadeEntrance>
+        ) : activeTab === "collections" && !activeCollectionName ? (
+          /* COLLECTIONS VIEW: 2-Column Square Cards */
+          <View style={{ padding: COLLECTION_PADDING }}>
+            <View style={styles.collectionsGrid}>
+              {/* Card 1: All Posts Collection */}
+              <FadeEntrance delay={20} width={COLLECTION_CARD_WIDTH}>
+                <TactileTouchable
+                  onPress={() => {
+                    setActiveCollectionName(null);
+                    setActiveTab("grid");
+                  }}
+                  style={[styles.collectionCard, { width: COLLECTION_CARD_WIDTH }]}
+                >
+                  {renderCollageCover(
+                    getCollectionPreviewImages(null),
+                    COLLECTION_CARD_WIDTH
+                  )}
+                  <View style={styles.collectionMeta}>
+                    <Text style={styles.collectionTitle} numberOfLines={1}>
+                      All Posts
+                    </Text>
+                    <Text style={styles.collectionSubtitle}>
+                      {savedPosts.length} {savedPosts.length === 1 ? "post" : "posts"}
+                    </Text>
+                  </View>
+                </TactileTouchable>
+              </FadeEntrance>
+
+              {/* User Collections */}
+              {allCollectionNames.map((colName, index) => {
+                const count = savedPosts.filter(
+                  (p) =>
+                    (p.collectionName || "All Saved").toLowerCase() ===
+                    colName.toLowerCase()
+                ).length;
+                const previewImgs = getCollectionPreviewImages(colName);
+
+                return (
+                  <FadeEntrance key={colName} delay={35 + index * 20} width={COLLECTION_CARD_WIDTH}>
+                    <TactileTouchable
+                      onPress={() => {
+                        setActiveCollectionName(colName);
+                        setActiveTab("grid");
+                      }}
+                      style={[styles.collectionCard, { width: COLLECTION_CARD_WIDTH }]}
+                    >
+                      {renderCollageCover(previewImgs, COLLECTION_CARD_WIDTH)}
+                      <View style={[styles.collectionMeta, { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }]}>
+                        <View style={{ flex: 1, marginRight: 4 }}>
+                          <Text style={styles.collectionTitle} numberOfLines={1}>
+                            {colName}
+                          </Text>
+                          <Text style={styles.collectionSubtitle}>
+                            {count} {count === 1 ? "post" : "posts"}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            setCollectionMenuTarget(colName);
+                          }}
+                          style={styles.moreDotsBtn}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons
+                            name="ellipsis-vertical"
+                            size={14}
+                            color={themeColor("#7A8B7F", "#E6E6E6")}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </TactileTouchable>
+                  </FadeEntrance>
+                );
+              })}
+
+              {/* Card 3: "+ New Collection" Placeholder Tile */}
+              <FadeEntrance delay={80} width={COLLECTION_CARD_WIDTH}>
+                <TactileTouchable
+                  onPress={() => {
+                    setSelectedPostForFolder(null);
+                    setIsCreateCollectionVisible(true);
+                  }}
+                  style={[
+                    styles.newCollectionPlaceholder,
+                    {
+                      width: COLLECTION_CARD_WIDTH,
+                      height: COLLECTION_CARD_WIDTH,
+                    },
+                  ]}
+                >
+                  <View style={styles.newCollectionIconCircle}>
+                    <Ionicons name="add" size={24} color={themeColor("#34594A", "#E6E6E6")} />
+                  </View>
+                  <Text style={styles.newCollectionText}>
+                    New Collection
+                  </Text>
+                </TactileTouchable>
+              </FadeEntrance>
+            </View>
           </View>
         ) : (
-          <View className="gap-3">
-            {savedPosts.map((post) => {
-              // Determine thumbnail image
-              const thumbnailUri =
-                post.imageUrl ||
-                post.originalPost?.imageUrl ||
-                post.avatarUri ||
-                null;
+          /* GRID VIEW: 3-Column Square Photo Grid */
+          <View>
+            {visiblePosts.length === 0 ? (
+              <View style={styles.emptyGridContainer}>
+                <Ionicons name="images-outline" size={38} color={themeColor("#A2B2A7", "#E6E6E6")} />
+                <Text style={styles.emptyGridTitle}>
+                  No Posts Saved
+                </Text>
+                <Text style={styles.emptyGridSubtitle}>
+                  {searchQuery
+                    ? `No matches for "${searchQuery}".`
+                    : "Bookmark posts to see them in this collection."}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.photoGrid}>
+                {visiblePosts.map((post, index) => {
+                  const mediaUri =
+                    post.imageUrl ||
+                    post.originalPost?.imageUrl ||
+                    post.avatarUri ||
+                    null;
 
-              // Determine display title
-              const displayTitle =
-                post.content && post.content.trim().length > 0
-                  ? post.content.length > 45
-                    ? post.content.substring(0, 45).trim() + "..."
-                    : post.content.trim()
-                  : `${post.authorName}'s Post`;
+                  const isRightEdge = (index + 1) % NUM_COLUMNS === 0;
 
-              return (
-                <View
-                  key={post.savedId || post.id}
-                  className="bg-white rounded-2xl p-3 shadow-sm flex-row"
-                >
-                  {/* Left Column: Media Thumbnail */}
-                  <View className="w-24 h-24 rounded-xl bg-gray-100 overflow-hidden mr-3.5 relative items-center justify-center">
-                    {thumbnailUri ? (
-                      <Image
-                        source={{ uri: thumbnailUri }}
-                        className="w-full h-full"
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View className="w-full h-full bg-green-50 items-center justify-center">
-                        <Ionicons name="leaf-outline" size={32} color="#72AF5B" />
-                      </View>
-                    )}
-
-                    {/* Badge on bottom of thumbnail if shared */}
-                    {post.isShared && (
-                      <View className="absolute bottom-1 right-1 bg-black/60 rounded px-1 py-0.5">
-                        <Ionicons name="arrow-redo" size={10} color="#FFFFFF" />
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Right Column: Details & Actions */}
-                  <View className="flex-1 justify-between py-0.5">
-                    {/* Top Text Info */}
-                    <View>
-                      {/* Post Title */}
-                      <Text
-                        className="text-base font-bold text-gray-900 leading-5 mb-0.5"
-                        numberOfLines={2}
-                      >
-                        {displayTitle}
-                      </Text>
-
-                      {/* Subtitle / Category */}
-                      <Text className="text-xs text-gray-500 mb-1.5 font-medium">
-                        Post • {post.category || post.authorRole || "General"}
-                      </Text>
-
-                      {/* Author Source Row */}
-                      <View className="flex-row items-center">
-                        <View className="w-4 h-4 rounded-full bg-gray-200 overflow-hidden mr-1.5 items-center justify-center">
-                          {post.avatarUri ? (
-                            <Image
-                              source={{ uri: post.avatarUri }}
-                              className="w-full h-full"
-                              resizeMode="cover"
-                            />
-                          ) : (
-                            <Ionicons name="person" size={10} color="#9CA3AF" />
-                          )}
-                        </View>
-                        <Text
-                          className="text-xs text-gray-600 flex-1"
-                          numberOfLines={1}
-                        >
-                          Saved from{" "}
-                          <Text className="font-semibold text-gray-800">
-                            {post.authorName}
-                          </Text>
-                          's post
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Bottom Action Row */}
-                    <View className="flex-row items-center gap-2 mt-2">
-                      {/* Add to Collection Button */}
-                      <TouchableOpacity
-                        onPress={() => handleOpenCollectionModal(post)}
-                        className="flex-1 bg-gray-100 py-1.5 px-3 rounded-lg items-center justify-center active:bg-gray-200"
-                        activeOpacity={0.7}
-                        accessibilityRole="button"
-                        accessibilityLabel="Add to collection"
-                      >
-                        <Text className="text-xs font-semibold text-gray-800">
-                          Add to Collection
-                        </Text>
-                      </TouchableOpacity>
-
-                      {/* 3-Dots Options Button */}
-                      <TouchableOpacity
-                        onPress={() => {
-                          setSelectedPost(post);
-                          setIsActionMenuVisible(true);
-                        }}
-                        className="w-9 h-8 bg-gray-100 rounded-lg items-center justify-center active:bg-gray-200"
-                        activeOpacity={0.7}
-                        accessibilityRole="button"
-                        accessibilityLabel="More options"
-                      >
-                        <Ionicons
-                          name="ellipsis-horizontal"
-                          size={18}
-                          color="#374151"
+                  return (
+                    <TouchableOpacity
+                      key={post.savedId || post.id}
+                      activeOpacity={0.88}
+                      onPress={() => setSelectedPostForDetail(post)}
+                      style={[
+                        styles.tileBox,
+                        {
+                          width: TILE_SIZE,
+                          height: TILE_SIZE,
+                          marginRight: isRightEdge ? 0 : GRID_GAP,
+                          marginBottom: GRID_GAP,
+                        },
+                      ]}
+                    >
+                      {mediaUri ? (
+                        <Image
+                          source={{ uri: mediaUri }}
+                          style={{ width: "100%", height: "100%" }}
+                          resizeMode="cover"
                         />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              );
-            })}
+                      ) : (
+                        /* Text Post Fallback Tile */
+                        <View style={styles.textTileBox}>
+                          <Text
+                            style={styles.textTileContent}
+                            numberOfLines={4}
+                          >
+                            {post.content || "Post update"}
+                          </Text>
+                          <Text
+                            style={styles.textTileAuthor}
+                            numberOfLines={1}
+                          >
+                            @{post.authorName}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Top-Right Badge: Shared Post Indicator */}
+                      {post.isShared && (
+                        <View style={styles.sharedBadge}>
+                          <Ionicons name="arrow-redo" size={9} color={themeColor("#FFFFFF", "#E6E6E6")} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
 
-      {/* 3-Dots Action Sheet Modal */}
+      {/* 5. Minimalist Post Detail Modal (When a photo tile is tapped) */}
       <Modal
-        visible={isActionMenuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsActionMenuVisible(false)}
+        visible={!!selectedPostForDetail}
+        transparent={false}
+        animationType="slide"
+        onRequestClose={() => setSelectedPostForDetail(null)}
       >
-        <Pressable
-          onPress={() => setIsActionMenuVisible(false)}
-          className="flex-1 bg-black/50 justify-end"
-        >
-          <Pressable
-            onPress={(e) => e.stopPropagation()}
-            className="bg-white rounded-t-3xl p-5 pb-8 shadow-2xl"
-          >
-            <View className="w-12 h-1.5 bg-gray-300 rounded-full self-center mb-4" />
-
-            <Text className="text-base font-bold text-gray-900 mb-3 px-1">
-              Saved Post Options
-            </Text>
-
-            <View className="gap-1">
-              {/* Add to Collection */}
-              <TouchableOpacity
-                onPress={() => {
-                  setIsActionMenuVisible(false);
-                  if (selectedPost) handleOpenCollectionModal(selectedPost);
-                }}
-                className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100"
-              >
-                <View className="w-10 h-10 rounded-full bg-blue-50 items-center justify-center mr-3">
-                  <Ionicons name="folder-outline" size={20} color="#3B82F6" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-sm font-semibold text-gray-900">
-                    Add to Collection
-                  </Text>
-                  <Text className="text-xs text-gray-500">
-                    Organize into custom folders
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* View in Feed */}
-              <TouchableOpacity
-                onPress={() => {
-                  setIsActionMenuVisible(false);
-                  router.push("/user/NewsFeed" as any);
-                }}
-                className="flex-row items-center py-3 px-2 rounded-xl active:bg-gray-100"
-              >
-                <View className="w-10 h-10 rounded-full bg-green-50 items-center justify-center mr-3">
-                  <Ionicons name="newspaper-outline" size={20} color="#72AF5B" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-sm font-semibold text-gray-900">
-                    View in Feed
-                  </Text>
-                  <Text className="text-xs text-gray-500">
-                    Go to community newsfeed
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Unsave / Remove from Saved */}
-              <TouchableOpacity
-                onPress={() => {
-                  if (selectedPost) handleUnsave(selectedPost.id);
-                }}
-                className="flex-row items-center py-3 px-2 rounded-xl active:bg-red-50"
-              >
-                <View className="w-10 h-10 rounded-full bg-red-50 items-center justify-center mr-3">
-                  <Ionicons name="bookmark" size={20} color="#EF4444" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-sm font-semibold text-red-600">
-                    Unsave Post
-                  </Text>
-                  <Text className="text-xs text-red-400">
-                    Remove this item from your saved list
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => setIsActionMenuVisible(false)}
-              className="mt-3 py-3 rounded-xl bg-gray-100 items-center justify-center active:bg-gray-200"
+        <SafeAreaView style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }}>
+          {/* Header */}
+          <View style={styles.modalHeader}>
+            <TactileTouchable
+              onPress={() => setSelectedPostForDetail(null)}
+              style={styles.backButton}
             >
-              <Text className="text-sm font-semibold text-gray-700">Cancel</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
+              <Ionicons name="chevron-back" size={20} color={themeColor("#34594A", "#E6E6E6")} />
+            </TactileTouchable>
 
-      {/* Add to Collection Modal */}
-      <Modal
-        visible={isCollectionModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsCollectionModalVisible(false)}
-      >
-        <Pressable
-          onPress={() => setIsCollectionModalVisible(false)}
-          className="flex-1 bg-black/50 justify-end"
-        >
-          <Pressable
-            onPress={(e) => e.stopPropagation()}
-            className="bg-white rounded-t-3xl p-5 pb-8 shadow-2xl"
-          >
-            <View className="w-12 h-1.5 bg-gray-300 rounded-full self-center mb-4" />
+            <Text style={styles.modalHeaderTitle}>Post</Text>
 
-            <View className="flex-row items-center justify-between mb-3 px-1">
-              <Text className="text-base font-bold text-gray-900">
-                Add to Collection
-              </Text>
-              <TouchableOpacity
-                onPress={() => setIsCreatingCollection(true)}
-                className="flex-row items-center"
-              >
-                <Ionicons name="add" size={18} color="#72AF5B" />
-                <Text className="text-xs font-bold text-[#72AF5B] ml-1">
-                  New Collection
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <TactileTouchable
+              onPress={() => {
+                if (selectedPostForDetail) {
+                  setSelectedPostForFolder(selectedPostForDetail);
+                  setIsFolderPickerVisible(true);
+                }
+              }}
+              style={styles.headerActionBtn}
+            >
+              <Ionicons name="folder-outline" size={20} color={themeColor("#34594A", "#E6E6E6")} />
+            </TactileTouchable>
+          </View>
 
-            {isCreatingCollection && (
-              <View className="mb-4 bg-gray-50 p-3 rounded-xl border border-gray-200">
-                <TextInput
-                  value={newCollectionName}
-                  onChangeText={setNewCollectionName}
-                  placeholder="Collection name (e.g. Favorite Produce)"
-                  placeholderTextColor="#9CA3AF"
-                  autoFocus
-                  className="bg-white px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 mb-2"
-                />
-                <View className="flex-row justify-end gap-2">
+          {selectedPostForDetail && (
+            <ScrollView style={{ flex: 1, backgroundColor: themeColor("#FFFFFF", "#242424") }} showsVerticalScrollIndicator={false}>
+              {/* Author Header */}
+              <View style={styles.postAuthorRow}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <View style={styles.postAuthorAvatar}>
+                    {selectedPostForDetail.avatarUri ? (
+                      <Image
+                        source={{ uri: selectedPostForDetail.avatarUri }}
+                        style={{ width: "100%", height: "100%" }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Ionicons name="person" size={16} color={themeColor("#7A8D80", "#ADADAD")} />
+                    )}
+                  </View>
+                  <View>
+                    <Text style={styles.postAuthorName}>
+                      {selectedPostForDetail.authorName}
+                    </Text>
+                    <Text style={styles.postAuthorSubtext}>
+                      {selectedPostForDetail.location || selectedPostForDetail.authorRole || "Local Farm"}
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedPostForFolder(selectedPostForDetail);
+                    setIsFolderPickerVisible(true);
+                  }}
+                  style={{ padding: 6 }}
+                >
+                  <Ionicons name="ellipsis-horizontal" size={18} color={themeColor("#6E8074", "#ADADAD")} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Main Post Media */}
+              {(selectedPostForDetail.imageUrl ||
+                selectedPostForDetail.originalPost?.imageUrl) ? (
+                <View
+                  style={{ width: windowWidth, height: windowWidth, backgroundColor: themeColor("#F3F6F3", "#181818") }}
+                >
+                  <Image
+                    source={{
+                      uri:
+                        selectedPostForDetail.imageUrl ||
+                        selectedPostForDetail.originalPost?.imageUrl,
+                    }}
+                    style={{ width: "100%", height: "100%" }}
+                    resizeMode="cover"
+                  />
+                </View>
+              ) : null}
+
+              {/* Action Icons Bar */}
+              <View style={styles.postActionsBar}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
                   <TouchableOpacity
-                    onPress={() => setIsCreatingCollection(false)}
-                    className="px-3 py-1.5 rounded-lg bg-gray-200"
+                    onPress={() => router.push("/user/NewsFeed" as any)}
+                    activeOpacity={0.6}
                   >
-                    <Text className="text-xs font-semibold text-gray-700">
-                      Cancel
+                    <Ionicons
+                      name={selectedPostForDetail.isLiked ? "heart" : "heart-outline"}
+                      size={24}
+                      color={selectedPostForDetail.isLiked ? "#D9534F" : "#23382D"}
+                    />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedPostForDetail(null);
+                      router.push("/user/NewsFeed" as any);
+                    }}
+                    activeOpacity={0.6}
+                  >
+                    <Ionicons
+                      name="chatbubble-outline"
+                      size={22}
+                      color={themeColor("#23382D", "#E6E6E6")}
+                    />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedPostForDetail(null);
+                      router.push("/user/NewsFeed" as any);
+                    }}
+                    activeOpacity={0.6}
+                  >
+                    <Ionicons
+                      name="paper-plane-outline"
+                      size={22}
+                      color={themeColor("#23382D", "#E6E6E6")}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Bookmark Saved Icon */}
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedPostForFolder(selectedPostForDetail);
+                    setIsFolderPickerVisible(true);
+                  }}
+                  activeOpacity={0.6}
+                  accessibilityLabel="Save to collection"
+                >
+                  <Ionicons name="bookmark" size={23} color={themeColor("#34594A", "#E6E6E6")} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Likes Count */}
+              <View style={{ paddingHorizontal: 16, marginBottom: 4 }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: themeColor("#23382D", "#E6E6E6") }}>
+                  {selectedPostForDetail.likes || 0} likes
+                </Text>
+              </View>
+
+              {/* Caption */}
+              <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+                <Text style={{ fontSize: 13, lineHeight: 19, color: themeColor("#2E4237", "#E6E6E6") }}>
+                  <Text style={{ fontWeight: "700", color: themeColor("#1D3025", "#E6E6E6") }}>
+                    {selectedPostForDetail.authorName}{" "}
+                  </Text>
+                  {selectedPostForDetail.content}
+                </Text>
+              </View>
+
+              {/* Comments & Timestamp */}
+              <View style={{ paddingHorizontal: 16, paddingBottom: 32 }}>
+                {selectedPostForDetail.comments > 0 && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedPostForDetail(null);
+                      router.push("/user/NewsFeed" as any);
+                    }}
+                    style={{ marginBottom: 6 }}
+                  >
+                    <Text style={{ fontSize: 12, color: themeColor("#7A8D80", "#ADADAD") }}>
+                      View all {selectedPostForDetail.comments} comments
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={handleCreateNewCollection}
-                    disabled={!newCollectionName.trim()}
-                    className="px-3.5 py-1.5 rounded-lg bg-[#72AF5B]"
-                  >
-                    <Text className="text-xs font-bold text-white">Create</Text>
-                  </TouchableOpacity>
-                </View>
+                )}
+                <Text style={{ fontSize: 10, color: themeColor("#92A297", "#ADADAD"), textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  {selectedPostForDetail.timeAgo} • Saved in{" "}
+                  {selectedPostForDetail.collectionName || "All Saved"}
+                </Text>
               </View>
-            )}
+            </ScrollView>
+          )}
+        </SafeAreaView>
+      </Modal>
 
-            <View className="gap-2 mb-3">
-              {collections.map((col) => {
-                const isSelected =
-                  selectedPostForCollection?.collectionName === col;
-
-                return (
-                  <TouchableOpacity
-                    key={col}
-                    onPress={() => handleSaveToCollection(col)}
-                    className={`flex-row items-center justify-between p-3 rounded-xl border ${
-                      isSelected
-                        ? "bg-green-50/70 border-[#72AF5B]"
-                        : "bg-gray-50 border-gray-200"
-                    } active:opacity-80`}
-                  >
-                    <View className="flex-row items-center">
-                      <View className="w-8 h-8 rounded-full bg-white items-center justify-center mr-3 border border-gray-100">
-                        <Ionicons
-                          name="folder"
-                          size={16}
-                          color={isSelected ? "#72AF5B" : "#6B7280"}
-                        />
-                      </View>
-                      <Text className="text-sm font-semibold text-gray-900">
-                        {col}
-                      </Text>
-                    </View>
-
-                    {isSelected && (
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={20}
-                        color="#72AF5B"
-                      />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
+      {/* 6. Minimalist "New Collection" Modal */}
+      <Modal
+        visible={isCreateCollectionVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsCreateCollectionVisible(false)}
+      >
+        <Pressable
+          onPress={() => setIsCreateCollectionVisible(false)}
+          style={styles.modalOverlay}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={styles.dialogCard}
+          >
+            <View style={styles.dialogIconBox}>
+              <Ionicons name="folder-outline" size={24} color={themeColor("#34594A", "#E6E6E6")} />
             </View>
 
-            <TouchableOpacity
-              onPress={() => setIsCollectionModalVisible(false)}
-              className="mt-2 py-3 rounded-xl bg-gray-100 items-center justify-center active:bg-gray-200"
-            >
-              <Text className="text-sm font-semibold text-gray-700">Done</Text>
-            </TouchableOpacity>
+            <Text style={styles.dialogTitle}>
+              New Collection
+            </Text>
+            <Text style={styles.dialogSubtitle}>
+              Give your collection a memorable name
+            </Text>
+
+            <TextInput
+              value={newCollectionName}
+              onChangeText={setNewCollectionName}
+              placeholder="Collection name"
+              placeholderTextColor={themeColor("#8E9E93", "#ADADAD")}
+              autoFocus
+              style={styles.dialogInput}
+            />
+
+            <View style={styles.dialogButtonsRow}>
+              <TactileTouchable
+                onPress={() => {
+                  setNewCollectionName("");
+                  setIsCreateCollectionVisible(false);
+                }}
+                style={styles.dialogCancelBtn}
+              >
+                <Text style={styles.dialogCancelBtnText}>Cancel</Text>
+              </TactileTouchable>
+
+              <TactileTouchable
+                onPress={handleCreateCollection}
+                disabled={!newCollectionName.trim()}
+                style={[
+                  styles.dialogConfirmBtn,
+                  !newCollectionName.trim() && { opacity: 0.5 },
+                ]}
+              >
+                <Text style={styles.dialogConfirmBtnText}>Save</Text>
+              </TactileTouchable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
-    </SafeAreaView>
+
+      {/* 7. Save to Collection Modal */}
+      <SaveToCollectionModal
+        visible={isFolderPickerVisible && selectedPostForFolder !== null}
+        postId={selectedPostForFolder?.id || null}
+        postImageUrl={
+          selectedPostForFolder?.imageUrl ||
+          selectedPostForFolder?.originalPost?.imageUrl ||
+          selectedPostForFolder?.avatarUri
+        }
+        currentCollectionName={selectedPostForFolder?.collectionName || "All Saved"}
+        onClose={() => {
+          setIsFolderPickerVisible(false);
+          setSelectedPostForFolder(null);
+        }}
+        onSaveToCollection={async (collectionName) => {
+          if (selectedPostForFolder) {
+            await handleSaveToCollection(collectionName);
+          }
+        }}
+        onCollectionCreated={() => {
+          loadData();
+        }}
+        onShowToast={showToast}
+      />
+
+      {/* 8. Collection Context / Options Bottom Sheet */}
+      {collectionMenuTarget && (
+        <Modal
+          visible={Boolean(collectionMenuTarget)}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setCollectionMenuTarget(null)}
+        >
+          <Pressable
+            style={styles.bottomSheetOverlay}
+            onPress={() => setCollectionMenuTarget(null)}
+          >
+            <Pressable
+              style={styles.bottomSheetCard}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <View style={styles.sheetHandleWrap}>
+                <View style={styles.sheetHandle} />
+              </View>
+
+              <Text style={styles.sheetTitle}>
+                {collectionMenuTarget}
+              </Text>
+
+              <TactileTouchable
+                onPress={() => {
+                  const target = collectionMenuTarget;
+                  setCollectionMenuTarget(null);
+                  setRenameTarget(target);
+                  setRenameInput(target);
+                }}
+                style={styles.sheetRow}
+              >
+                <Ionicons name="pencil-outline" size={18} color={themeColor("#34594A", "#E6E6E6")} />
+                <Text style={styles.sheetRowText}>
+                  Rename Collection
+                </Text>
+              </TactileTouchable>
+
+              <TactileTouchable
+                onPress={() => {
+                  const target = collectionMenuTarget;
+                  handleDeleteCollection(target);
+                }}
+                style={[styles.sheetRow, { marginTop: 4 }]}
+              >
+                <Ionicons name="trash-outline" size={18} color="#A05656" />
+                <Text style={[styles.sheetRowText, { color: "#A05656" }]}>
+                  Delete Collection
+                </Text>
+              </TactileTouchable>
+
+              <TactileTouchable
+                onPress={() => setCollectionMenuTarget(null)}
+                style={styles.sheetCancelBtn}
+              >
+                <Text style={styles.sheetCancelBtnText}>Cancel</Text>
+              </TactileTouchable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+
+      {/* 9. Rename Collection Modal */}
+      {renameTarget && (
+        <Modal
+          visible={Boolean(renameTarget)}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setRenameTarget(null)}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setRenameTarget(null)}
+          >
+            <Pressable
+              style={styles.dialogCard}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <Text style={styles.dialogTitle}>
+                Rename Collection
+              </Text>
+              <TextInput
+                value={renameInput}
+                onChangeText={setRenameInput}
+                autoFocus={true}
+                style={styles.dialogInput}
+                placeholder="Collection name"
+                placeholderTextColor={themeColor("#8E9E93", "#ADADAD")}
+              />
+              <View style={styles.dialogButtonsRow}>
+                <TactileTouchable
+                  onPress={() => setRenameTarget(null)}
+                  style={styles.dialogCancelBtn}
+                >
+                  <Text style={styles.dialogCancelBtnText}>Cancel</Text>
+                </TactileTouchable>
+                <TactileTouchable
+                  onPress={handleConfirmRename}
+                  disabled={!renameInput.trim() || isRenaming}
+                  style={[
+                    styles.dialogConfirmBtn,
+                    (!renameInput.trim() || isRenaming) && { opacity: 0.5 },
+                  ]}
+                >
+                  {isRenaming ? (
+                    <ActivityIndicator size="small" color={themeColor("#ffffff", "#E6E6E6")} />
+                  ) : (
+                    <Text style={styles.dialogConfirmBtnText}>Save</Text>
+                  )}
+                </TactileTouchable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+    </View>
   );
 }
+
+const createStyles = (themeColor: (light: string, dark: string) => string) => StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: themeColor("#F7F9F7", "#181818"), // Calm organic background matching Reservations & Profile
+  },
+  headerBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 10,
+    backgroundColor: themeColor("#F7F9F7", "#181818"),
+  },
+  backButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderWidth: 1,
+    borderColor: themeColor("#E5ECE6", "#414141"),
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#293E33",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: -0.4,
+    color: themeColor("#23382D", "#E6E6E6"), // Calm deep forest
+  },
+  headerRightActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerActionBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderWidth: 1,
+    borderColor: themeColor("#E5ECE6", "#414141"),
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#293E33",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+  },
+  searchInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 40,
+    borderWidth: 1,
+    borderColor: themeColor("#E1E8E3", "#414141"),
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: themeColor("#23382D", "#E6E6E6"),
+    marginLeft: 8,
+    height: "100%",
+  },
+
+  // Segmented Tab Switcher matching Reservations
+  tabSwitcherContainer: {
+    flexDirection: "row",
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 3,
+    backgroundColor: themeColor("#EBF1EC", "#181818"),
+    borderRadius: 12,
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    minHeight: 34,
+    paddingHorizontal: 6,
+    paddingVertical: 7,
+    borderRadius: 9,
+  },
+  tabButtonActive: {
+    backgroundColor: themeColor("#34594A", "#303030"),
+    shadowColor: "#293E33",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  tabText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: themeColor("#6E8074", "#ADADAD"),
+  },
+  tabTextActive: {
+    color: themeColor("#FFFFFF", "#E6E6E6"),
+  },
+
+  // Privacy Pill
+  privacyPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 16,
+    alignSelf: "center",
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: themeColor("#E2ECE4", "#414141"),
+  },
+  privacyText: {
+    fontSize: 10.5,
+    color: themeColor("#52705E", "#ADADAD"),
+    marginLeft: 5,
+    fontWeight: "500",
+  },
+
+  scrollView: {
+    flex: 1,
+  },
+  loadingContainer: {
+    paddingVertical: 100,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // Empty State - Calm & Uniform
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    paddingTop: 60,
+    paddingBottom: 40,
+  },
+  emptyIconCircle: {
+    width: 76,
+    height: 76,
+    borderRadius: 26,
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
+    borderWidth: 1,
+    borderColor: themeColor("#DEE8E0", "#414141"),
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 18,
+    shadowColor: "#293E33",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+    color: themeColor("#23382D", "#E6E6E6"),
+    marginBottom: 6,
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: themeColor("#738579", "#ADADAD"),
+    textAlign: "center",
+    marginBottom: 24,
+    maxWidth: 280,
+  },
+  exploreButton: {
+    minHeight: 46,
+    paddingHorizontal: 26,
+    borderRadius: 14,
+    backgroundColor: themeColor("#34594A", "#303030"), // Uniform calm primary button
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#293E33",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  exploreButtonText: {
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
+    letterSpacing: -0.2,
+  },
+
+  // Collections 2-Column Grid
+  collectionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: COLLECTION_GAP,
+  },
+  collectionCard: {
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  collectionMeta: {
+    marginTop: 7,
+    paddingHorizontal: 2,
+  },
+  collectionTitle: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: themeColor("#23382D", "#E6E6E6"),
+    letterSpacing: -0.2,
+  },
+  collectionSubtitle: {
+    fontSize: 11,
+    color: themeColor("#778A7E", "#E6E6E6"),
+    marginTop: 1,
+  },
+  moreDotsBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // New Collection Tile
+  newCollectionPlaceholder: {
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: themeColor("#C5D4C9", "#414141"),
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: themeColor("#F1F6F2", "#181818"),
+  },
+  newCollectionIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderWidth: 1,
+    borderColor: themeColor("#D9E5DC", "#414141"),
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  newCollectionText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: themeColor("#34594A", "#E6E6E6"),
+  },
+
+  // Photo Grid
+  photoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  tileBox: {
+    backgroundColor: themeColor("#EBF1EC", "#181818"),
+    overflow: "hidden",
+  },
+  textTileBox: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    padding: 8,
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: themeColor("#E5ECE6", "#414141"),
+  },
+  textTileContent: {
+    fontSize: 10,
+    color: themeColor("#293E33", "#E6E6E6"),
+    lineHeight: 14,
+    fontWeight: "500",
+  },
+  textTileAuthor: {
+    fontSize: 9,
+    color: themeColor("#778A7E", "#E6E6E6"),
+    fontWeight: "600",
+  },
+  sharedBadge: {
+    position: "absolute",
+    top: 3,
+    right: 3,
+    backgroundColor: "rgba(35, 56, 45, 0.7)",
+    borderRadius: 3,
+    padding: 2,
+  },
+  emptyGridContainer: {
+    paddingVertical: 80,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  emptyGridTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: themeColor("#23382D", "#E6E6E6"),
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  emptyGridSubtitle: {
+    fontSize: 12,
+    color: themeColor("#778A7E", "#E6E6E6"),
+    textAlign: "center",
+    maxWidth: 240,
+  },
+
+  // Post Detail Modal
+  modalHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderBottomWidth: 1,
+    borderBottomColor: themeColor("#EDF2EE", "#414141"),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  modalHeaderTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: themeColor("#23382D", "#E6E6E6"),
+  },
+  postAuthorRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  postAuthorAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: themeColor("#E1EAE3", "#414141"),
+  },
+  postAuthorName: {
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: themeColor("#23382D", "#E6E6E6"),
+  },
+  postAuthorSubtext: {
+    fontSize: 11,
+    color: themeColor("#7A8D80", "#ADADAD"),
+  },
+  postActionsBar: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  // Dialog Modals (New Collection / Rename)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(22, 38, 29, 0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  dialogCard: {
+    width: "100%",
+    maxWidth: 340,
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderRadius: 24,
+    padding: 22,
+    alignItems: "center",
+    shadowColor: "#293E33",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  dialogIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: themeColor("#EDF3EE", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  dialogTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: themeColor("#23382D", "#E6E6E6"),
+    marginBottom: 4,
+  },
+  dialogSubtitle: {
+    fontSize: 12,
+    color: themeColor("#7A8D80", "#ADADAD"),
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  dialogInput: {
+    width: "100%",
+    backgroundColor: themeColor("#F6F9F6", "#181818"),
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 13.5,
+    color: themeColor("#23382D", "#E6E6E6"),
+    borderWidth: 1,
+    borderColor: themeColor("#E2ECE4", "#414141"),
+    marginBottom: 18,
+  },
+  dialogButtonsRow: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+    marginTop: 4,
+  },
+  dialogCancelBtn: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 14,
+    backgroundColor: themeColor("#F1F5F2", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: themeColor("#E2ECE4", "#414141"),
+  },
+  dialogCancelBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: themeColor("#5E7265", "#E6E6E6"),
+  },
+  dialogConfirmBtn: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 14,
+    backgroundColor: themeColor("#34594A", "#303030"),
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    shadowColor: "#293E33",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  dialogConfirmBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: themeColor("#FFFFFF", "#E6E6E6"),
+  },
+
+  // Bottom Sheet
+  bottomSheetOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(22, 38, 29, 0.4)",
+    justifyContent: "flex-end",
+  },
+  bottomSheetCard: {
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 34,
+  },
+  sheetHandleWrap: {
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: themeColor("#D9E3DC", "#303030"),
+    borderRadius: 2,
+  },
+  sheetTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: themeColor("#23382D", "#E6E6E6"),
+    textAlign: "center",
+    marginBottom: 14,
+  },
+  sheetRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: themeColor("#F7FAF7", "#181818"),
+    marginBottom: 6,
+  },
+  sheetRowText: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: themeColor("#293E33", "#E6E6E6"),
+    marginLeft: 12,
+  },
+  sheetCancelBtn: {
+    marginTop: 10,
+    minHeight: 44,
+    borderRadius: 12,
+    backgroundColor: themeColor("#F1F5F2", "#181818"),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sheetCancelBtnText: {
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: themeColor("#5E7265", "#E6E6E6"),
+  },
+});

@@ -1,5 +1,6 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useToast } from "@/context/toast-context";
-import { useAuth } from "@/hooks/use-auth";
+import { sendSignupOtpApi } from "@/services/auth-service";
 import {
   validateConfirmPassword,
   validateEmail,
@@ -33,8 +34,8 @@ const LOGO2_IMAGE = require("../../../assets/images/logo2.png");
 const GENDER_OPTIONS = ["Male", "Female", "Other", "Prefer not to say"];
 
 export default function SignUpScreen() {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
-  const { signUp } = useAuth();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
 
@@ -135,21 +136,29 @@ export default function SignUpScreen() {
 
     setIsSubmitting(true);
     try {
-      const fullName = `${firstName.trim()} ${lastName.trim()}`;
-      await signUp({
-        name: fullName,
+      // Send verification OTP to the user's email
+      await sendSignupOtpApi({
         email: email.trim(),
-        password,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
         username: username.trim(),
-        phoneNumber: phoneNumber.trim(),
-        gender,
       });
 
-      showToast("Account created successfully! Welcome to Local Farm!", "success");
+      showToast("Verification code sent to your email!", "success");
+
+      router.push({
+        pathname: "/auth/Otp",
+        params: {
+          email: email.trim(),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          username: username.trim(),
+          phoneNumber: phoneNumber.trim(),
+          gender,
+          password,
+        },
+      });
     } catch (err: any) {
-      const msg = err?.message || "Failed to create account. Please try again.";
+      const msg =
+        err?.message || "Failed to send verification code. Please try again.";
       showToast(msg, "error");
     } finally {
       setIsSubmitting(false);
@@ -163,6 +172,19 @@ export default function SignUpScreen() {
       resizeMode="cover"
       style={{ flex: 1, overflow: "hidden" }}
     >
+      {/* Top Banner Header: Logo in the top-left corner */}
+      <View
+        className="w-full px-5 z-20"
+        style={{ paddingTop: Math.max(insets.top + 8, 16) }}
+      >
+        <Image
+          source={LF3_IMAGE}
+          className="w-[135px] h-[40px]"
+          style={{ width: 135, height: 40 }}
+          resizeMode="contain"
+        />
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
@@ -171,7 +193,7 @@ export default function SignUpScreen() {
           className="flex-1"
           contentContainerClassName="flex-grow justify-center items-center px-5"
           contentContainerStyle={{
-            paddingTop: Math.max(insets.top + 16, 24),
+            paddingTop: 12,
             paddingBottom: Math.max(insets.bottom + 24, 32),
           }}
           keyboardShouldPersistTaps="handled"
@@ -185,18 +207,12 @@ export default function SignUpScreen() {
         >
           {/* Form Wrapper */}
           <View className="w-full max-w-[380px]">
-            {/* Brand Logo & Header Block */}
+            {/* Header Block: Left-Aligned */}
             <View className="items-start mb-5 w-full">
-              <Image
-                source={LF3_IMAGE}
-                className="w-[135px] h-[40px] mb-4"
-                style={{ width: 135, height: 40 }}
-                resizeMode="contain"
-              />
-              <Text className="text-3xl font-extrabold text-neutral-900 tracking-tight mb-1">
+              <Text className="text-3xl font-extrabold text-neutral-900 tracking-tight mb-1 text-left dark:text-[#E6E6E6] ">
                 Join Us
               </Text>
-              <Text className="text-sm font-medium text-neutral-500">
+              <Text className="text-sm font-medium text-neutral-500 text-left dark:text-[#ADADAD] ">
                 Create an account to get started
               </Text>
             </View>
@@ -206,11 +222,13 @@ export default function SignUpScreen() {
               {/* First Name */}
               <View className="flex-1">
                 <RNTextInput
-                  className={`w-full h-[48px] bg-white/95 border ${
-                    firstNameError ? "border-[#FF3B30] bg-[#FFF8F8]" : "border-gray-200"
-                  } rounded-2xl px-3.5 text-[15px] text-gray-900 shadow-sm`}
+                  className={`w-full h-[48px] bg-white/95 border  dark:bg-[#242424]/95 ${
+                    firstNameError
+                      ? "border-[#FF3B30] bg-[#FFF8F8] dark:bg-[#181818] "
+                      : "border-gray-200 dark:border-[#414141] "
+                  } rounded-2xl px-3.5 text-[15px] text-gray-900 shadow-sm dark:text-[#E6E6E6] `}
                   placeholder="First Name"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
                   value={firstName}
                   onChangeText={(text: string) => {
                     setFirstName(text);
@@ -227,11 +245,13 @@ export default function SignUpScreen() {
               {/* Last Name */}
               <View className="flex-1">
                 <RNTextInput
-                  className={`w-full h-[48px] bg-white/95 border ${
-                    lastNameError ? "border-[#FF3B30] bg-[#FFF8F8]" : "border-gray-200"
-                  } rounded-2xl px-3.5 text-[15px] text-gray-900 shadow-sm`}
+                  className={`w-full h-[48px] bg-white/95 border  dark:bg-[#242424]/95 ${
+                    lastNameError
+                      ? "border-[#FF3B30] bg-[#FFF8F8] dark:bg-[#181818] "
+                      : "border-gray-200 dark:border-[#414141] "
+                  } rounded-2xl px-3.5 text-[15px] text-gray-900 shadow-sm dark:text-[#E6E6E6] `}
                   placeholder="Last Name"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
                   value={lastName}
                   onChangeText={(text: string) => {
                     setLastName(text);
@@ -249,11 +269,13 @@ export default function SignUpScreen() {
             {/* Username Field */}
             <View className="w-full mb-3">
               <RNTextInput
-                className={`w-full h-[48px] bg-white/95 border ${
-                  usernameError ? "border-[#FF3B30] bg-[#FFF8F8]" : "border-gray-200"
-                } rounded-2xl px-3.5 text-[15px] text-gray-900 shadow-sm`}
+                className={`w-full h-[48px] bg-white/95 border  dark:bg-[#242424]/95 ${
+                  usernameError
+                    ? "border-[#FF3B30] bg-[#FFF8F8] dark:bg-[#181818] "
+                    : "border-gray-200 dark:border-[#414141] "
+                } rounded-2xl px-3.5 text-[15px] text-gray-900 shadow-sm dark:text-[#E6E6E6] `}
                 placeholder="Username"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
                 value={username}
                 onChangeText={(text: string) => {
                   setUsername(text);
@@ -271,11 +293,13 @@ export default function SignUpScreen() {
             {/* Phone Number Field */}
             <View className="w-full mb-3">
               <RNTextInput
-                className={`w-full h-[48px] bg-white/95 border ${
-                  phoneNumberError ? "border-[#FF3B30] bg-[#FFF8F8]" : "border-gray-200"
-                } rounded-2xl px-3.5 text-[15px] text-gray-900 shadow-sm`}
+                className={`w-full h-[48px] bg-white/95 border  dark:bg-[#242424]/95 ${
+                  phoneNumberError
+                    ? "border-[#FF3B30] bg-[#FFF8F8] dark:bg-[#181818] "
+                    : "border-gray-200 dark:border-[#414141] "
+                } rounded-2xl px-3.5 text-[15px] text-gray-900 shadow-sm dark:text-[#E6E6E6] `}
                 placeholder="Phone Number"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
                 value={phoneNumber}
                 onChangeText={(text: string) => {
                   setPhoneNumber(text);
@@ -294,48 +318,54 @@ export default function SignUpScreen() {
             {/* Gender Dropdown Field */}
             <View className="w-full mb-3 z-30 relative">
               <TouchableOpacity
-                className={`w-full h-[48px] bg-white/95 border ${
-                  genderError ? "border-[#FF3B30] bg-[#FFF8F8]" : "border-gray-200"
+                className={`w-full h-[48px] bg-white/95 border  dark:bg-[#242424]/95 ${
+                  genderError
+                    ? "border-[#FF3B30] bg-[#FFF8F8] dark:bg-[#181818] "
+                    : "border-gray-200 dark:border-[#414141] "
                 } rounded-2xl px-3.5 flex-row items-center justify-between shadow-sm`}
                 onPress={() => setShowGenderDropdown((prev) => !prev)}
                 activeOpacity={0.8}
               >
                 <Text
                   className={`text-[15px] ${
-                    gender ? "text-gray-900 font-medium" : "text-[#9CA3AF]"
+                    gender ? "text-gray-900 font-medium dark:text-[#E6E6E6] " : "text-[#9CA3AF] dark:text-[#ADADAD] "
                   }`}
                   numberOfLines={1}
                 >
                   {gender || "Select Gender"}
                 </Text>
                 <Ionicons
-                  name={showGenderDropdown ? "chevron-up-outline" : "chevron-down-outline"}
+                  name={
+                    showGenderDropdown
+                      ? "chevron-up-outline"
+                      : "chevron-down-outline"
+                  }
                   size={18}
-                  color="#72AF5B"
+                  color={themeColor("#72AF5B", "#E6E6E6")}
                 />
               </TouchableOpacity>
 
               {/* Dropdown Options */}
               {showGenderDropdown ? (
-                <View className="absolute top-[54px] left-0 right-0 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+                <View className="absolute top-[54px] left-0 right-0 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden dark:bg-[#242424] dark:border-[#414141] ">
                   {GENDER_OPTIONS.map((option) => (
                     <TouchableOpacity
                       key={option}
-                      className="px-4 py-3 border-b border-gray-100 active:bg-gray-50 flex-row items-center justify-between"
+                      className="px-4 py-3 border-b border-gray-100 active:bg-gray-50 flex-row items-center justify-between dark:border-[#414141] dark:active:bg-[#242424] "
                       onPress={() => {
                         setGender(option);
                         setShowGenderDropdown(false);
                         if (genderError) setGenderError("");
                       }}
                     >
-                      <Text className="text-sm text-gray-800 font-medium">
+                      <Text className="text-sm text-gray-800 font-medium dark:text-[#E6E6E6] ">
                         {option}
                       </Text>
                       {gender === option ? (
                         <Ionicons
                           name="checkmark-outline"
                           size={18}
-                          color="#72AF5B"
+                          color={themeColor("#72AF5B", "#E6E6E6")}
                         />
                       ) : null}
                     </TouchableOpacity>
@@ -353,11 +383,13 @@ export default function SignUpScreen() {
             {/* Email Field */}
             <View className="w-full mb-3 z-10">
               <RNTextInput
-                className={`w-full h-[48px] bg-white/95 border ${
-                  emailError ? "border-[#FF3B30] bg-[#FFF8F8]" : "border-gray-200"
-                } rounded-2xl px-3.5 text-[15px] text-gray-900 shadow-sm`}
+                className={`w-full h-[48px] bg-white/95 border  dark:bg-[#242424]/95 ${
+                  emailError
+                    ? "border-[#FF3B30] bg-[#FFF8F8] dark:bg-[#181818] "
+                    : "border-gray-200 dark:border-[#414141] "
+                } rounded-2xl px-3.5 text-[15px] text-gray-900 shadow-sm dark:text-[#E6E6E6] `}
                 placeholder="Email address"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
                 value={email}
                 onChangeText={(text: string) => {
                   setEmail(text);
@@ -377,11 +409,13 @@ export default function SignUpScreen() {
             <View className="w-full mb-3 z-10">
               <View className="w-full relative justify-center">
                 <RNTextInput
-                  className={`w-full h-[48px] bg-white/95 border ${
-                    passwordError ? "border-[#FF3B30] bg-[#FFF8F8]" : "border-gray-200"
-                  } rounded-2xl pl-3.5 pr-12 text-[15px] text-gray-900 shadow-sm`}
+                  className={`w-full h-[48px] bg-white/95 border  dark:bg-[#242424]/95 ${
+                    passwordError
+                      ? "border-[#FF3B30] bg-[#FFF8F8] dark:bg-[#181818] "
+                      : "border-gray-200 dark:border-[#414141] "
+                  } rounded-2xl pl-3.5 pr-12 text-[15px] text-gray-900 shadow-sm dark:text-[#E6E6E6] `}
                   placeholder="Create a password (min. 6 chars)"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={(text: string) => {
@@ -398,7 +432,7 @@ export default function SignUpScreen() {
                   <Ionicons
                     name={showPassword ? "eye-off-outline" : "eye-outline"}
                     size={20}
-                    color="#848484"
+                    color={themeColor("#848484", "#ADADAD")}
                   />
                 </TouchableOpacity>
               </View>
@@ -413,13 +447,13 @@ export default function SignUpScreen() {
             <View className="w-full mb-5 z-10">
               <View className="w-full relative justify-center">
                 <RNTextInput
-                  className={`w-full h-[48px] bg-white/95 border ${
+                  className={`w-full h-[48px] bg-white/95 border  dark:bg-[#242424]/95 ${
                     confirmPasswordError
-                      ? "border-[#FF3B30] bg-[#FFF8F8]"
-                      : "border-gray-200"
-                  } rounded-2xl pl-3.5 pr-12 text-[15px] text-gray-900 shadow-sm`}
+                      ? "border-[#FF3B30] bg-[#FFF8F8] dark:bg-[#181818] "
+                      : "border-gray-200 dark:border-[#414141] "
+                  } rounded-2xl pl-3.5 pr-12 text-[15px] text-gray-900 shadow-sm dark:text-[#E6E6E6] `}
                   placeholder="Re-enter your password"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
                   secureTextEntry={!showConfirmPassword}
                   value={confirmPassword}
                   onChangeText={(text: string) => {
@@ -438,7 +472,7 @@ export default function SignUpScreen() {
                       showConfirmPassword ? "eye-off-outline" : "eye-outline"
                     }
                     size={20}
-                    color="#848484"
+                    color={themeColor("#848484", "#ADADAD")}
                   />
                 </TouchableOpacity>
               </View>
@@ -452,23 +486,23 @@ export default function SignUpScreen() {
             {/* Submit Button */}
             <TouchableOpacity
               className={`w-full h-[52px] ${
-                isSubmitting ? "bg-[#72AF5B]/80" : "bg-[#72AF5B]"
+                isSubmitting ? "bg-[#72AF5B]/80 dark:bg-[#E6E6E6]/80 " : "bg-[#72AF5B] dark:bg-[#E6E6E6] "
               } rounded-2xl items-center justify-center shadow-md shadow-[#72AF5B]/30 active:opacity-90 mb-2 flex-row gap-2`}
               onPress={handleSignUp}
               disabled={isSubmitting}
               activeOpacity={0.85}
             >
               {isSubmitting ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={themeColor("#FFFFFF", "#181818")} />
               ) : null}
-              <Text className="text-white text-base font-bold tracking-wide">
-                {isSubmitting ? "Creating account..." : "Sign Up"}
+              <Text className="text-white text-base font-bold tracking-wide dark:text-[#181818] ">
+                {isSubmitting ? "Sending OTP..." : "Sign Up"}
               </Text>
             </TouchableOpacity>
 
             {/* Footer */}
             <View className="flex-row justify-center items-center mt-4 mb-2 w-full">
-              <Text className="text-sm text-neutral-600">
+              <Text className="text-md text-neutral-600 dark:text-[#ADADAD] ">
                 Already have an account?{" "}
               </Text>
               <TouchableOpacity
@@ -476,7 +510,7 @@ export default function SignUpScreen() {
                 activeOpacity={0.7}
                 className="py-1"
               >
-                <Text className="text-sm font-bold text-[#72AF5B]">
+                <Text className="text-md font-bold text-[#72AF5B] dark:text-[#E6E6E6] ">
                   Sign In
                 </Text>
               </TouchableOpacity>

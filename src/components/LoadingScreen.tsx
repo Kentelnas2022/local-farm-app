@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import React, { useEffect } from "react";
 import { Image, StyleSheet, View } from "react-native";
 import Animated, {
@@ -17,6 +18,8 @@ const PERIMETER = 4 * FS;
 const DURATION = 2000;
 
 export function LoadingScreen(): React.JSX.Element {
+  const { themeColor } = useAppTheme();
+  const styles = createStyles(themeColor);
   const dist = useSharedValue(0);
 
   useEffect(() => {
@@ -69,24 +72,24 @@ export function LoadingScreen(): React.JSX.Element {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (themeColor: (light: string, dark: string) => string) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#F2F2F7",
+    backgroundColor: themeColor("#F2F2F7", "#181818"),
     justifyContent: "center",
     alignItems: "center",
   },
   frame: {
     width: FS,
     height: FS,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: themeColor("#FFFFFF", "#242424"),
     overflow: "hidden",
     justifyContent: "center",
     alignItems: "center",
   },
   dash: {
     position: "absolute",
-    backgroundColor: "#72AF5B",
+    backgroundColor: themeColor("#72AF5B", "#E6E6E6"),
   },
   logoContainer: {
     position: "absolute",

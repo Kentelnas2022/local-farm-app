@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { resetPasswordApi } from "@/services/auth-service";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -20,6 +21,7 @@ import { validatePassword } from "@/utils/validation";
 const BG_IMAGE = require("../../../assets/images/background-blur.png");
 
 export default function ResetPasswordScreen() {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ email?: string }>();
@@ -87,10 +89,16 @@ export default function ResetPasswordScreen() {
       >
         <TouchableOpacity
           className="p-2 self-start rounded-full active:opacity-70"
-          onPress={() => router.back()}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/auth/Login");
+            }
+          }}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back-outline" size={26} color="#4B5563" />
+          <Ionicons name="arrow-back-outline" size={26} color={themeColor("#4B5563", "#ADADAD")} />
         </TouchableOpacity>
       </View>
 
@@ -112,16 +120,16 @@ export default function ResetPasswordScreen() {
           <View className="w-full max-w-[380px]">
             {/* Header Block */}
             <View className="items-start mb-6 w-full">
-              <Text className="text-3xl font-extrabold text-neutral-900 text-left mb-1 tracking-tight">
-                Reset <Text className="text-[#72AF5B]">Password</Text>
+              <Text className="text-3xl font-extrabold text-neutral-900 text-left mb-1 tracking-tight dark:text-[#E6E6E6] ">
+                Reset <Text className="text-[#72AF5B] dark:text-[#E6E6E6] ">Password</Text>
               </Text>
-              <Text className="text-sm text-neutral-600 text-left">
+              <Text className="text-sm text-neutral-600 text-left dark:text-[#ADADAD] ">
                 Create a strong new password for your account.
               </Text>
             </View>
 
             {generalError ? (
-              <View className="bg-[#FFEBEA] p-3.5 rounded-2xl mb-5 w-full border border-[#FF3B30]/30">
+              <View className="bg-[#FFEBEA] p-3.5 rounded-2xl mb-5 w-full border border-[#FF3B30]/30 dark:bg-[#181818] ">
                 <Text className="text-[#FF3B30] text-sm text-center font-medium">
                   {generalError}
                 </Text>
@@ -132,11 +140,11 @@ export default function ResetPasswordScreen() {
             <View className="w-full mb-4">
               <View className="w-full relative justify-center">
                 <RNTextInput
-                  className={`w-full h-[52px] bg-white/95 border ${
-                    passwordError ? "border-[#FF3B30] bg-[#FFF8F8]" : "border-gray-200"
-                  } rounded-2xl pl-4 pr-12 text-base text-gray-900 shadow-sm`}
+                  className={`w-full h-[52px] bg-white/95 border  dark:bg-[#242424]/95 ${
+                    passwordError ? "border-[#FF3B30] bg-[#FFF8F8] dark:bg-[#181818] " : "border-gray-200 dark:border-[#414141] "
+                  } rounded-2xl pl-4 pr-12 text-base text-gray-900 shadow-sm dark:text-[#E6E6E6] `}
                   placeholder="Enter new password (min. 6 chars)"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={(text: string) => {
@@ -153,7 +161,7 @@ export default function ResetPasswordScreen() {
                   <Ionicons
                     name={showPassword ? "eye-off-outline" : "eye-outline"}
                     size={22}
-                    color="#848484"
+                    color={themeColor("#848484", "#ADADAD")}
                   />
                 </TouchableOpacity>
               </View>
@@ -168,13 +176,13 @@ export default function ResetPasswordScreen() {
             <View className="w-full mb-6">
               <View className="w-full relative justify-center">
                 <RNTextInput
-                  className={`w-full h-[52px] bg-white/95 border ${
+                  className={`w-full h-[52px] bg-white/95 border  dark:bg-[#242424]/95 ${
                     confirmPasswordError
-                      ? "border-[#FF3B30] bg-[#FFF8F8]"
-                      : "border-gray-200"
-                  } rounded-2xl pl-4 pr-12 text-base text-gray-900 shadow-sm`}
+                      ? "border-[#FF3B30] bg-[#FFF8F8] dark:bg-[#181818] "
+                      : "border-gray-200 dark:border-[#414141] "
+                  } rounded-2xl pl-4 pr-12 text-base text-gray-900 shadow-sm dark:text-[#E6E6E6] `}
                   placeholder="Re-enter your new password"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
                   secureTextEntry={!showConfirmPassword}
                   value={confirmPassword}
                   onChangeText={(text: string) => {
@@ -193,7 +201,7 @@ export default function ResetPasswordScreen() {
                       showConfirmPassword ? "eye-off-outline" : "eye-outline"
                     }
                     size={22}
-                    color="#848484"
+                    color={themeColor("#848484", "#ADADAD")}
                   />
                 </TouchableOpacity>
               </View>
@@ -206,12 +214,12 @@ export default function ResetPasswordScreen() {
 
             {/* Submit Button */}
             <TouchableOpacity
-              className="w-full h-[52px] bg-[#72AF5B] rounded-2xl items-center justify-center shadow-md shadow-[#72AF5B]/30 active:opacity-90 mb-4"
+              className="w-full h-[52px] bg-[#72AF5B] rounded-2xl items-center justify-center shadow-md shadow-[#72AF5B]/30 active:opacity-90 mb-4 dark:bg-[#E6E6E6] "
               onPress={handleResetPassword}
               disabled={isLoading}
               activeOpacity={0.85}
             >
-              <Text className="text-white text-base font-bold tracking-wide">
+              <Text className="text-white text-base font-bold tracking-wide dark:text-[#181818] ">
                 {isLoading ? "Resetting..." : "Reset Password"}
               </Text>
             </TouchableOpacity>
@@ -227,41 +235,41 @@ export default function ResetPasswordScreen() {
         statusBarTranslucent
       >
         <View className="flex-1 bg-black/50 justify-center items-center px-6">
-          <View className="bg-white rounded-3xl p-8 w-full max-w-[340px] items-center shadow-2xl">
+          <View className="bg-white rounded-3xl p-8 w-full max-w-[340px] items-center shadow-2xl dark:bg-[#242424] ">
             {/* Animated Check Icon */}
-            <View className="w-16 h-16 rounded-full bg-[#E8F5E9] items-center justify-center mb-4">
+            <View className="w-16 h-16 rounded-full bg-[#E8F5E9] items-center justify-center mb-4 dark:bg-[#181818] ">
               <MaterialCommunityIcons
                 name="check-circle-outline"
                 size={40}
-                color="#72AF5B"
+                color={themeColor("#72AF5B", "#E6E6E6")}
               />
             </View>
 
             {/* Title */}
-            <Text className="text-2xl font-extrabold text-neutral-900 text-center mb-2">
+            <Text className="text-2xl font-extrabold text-neutral-900 text-center mb-2 dark:text-[#E6E6E6] ">
               Password Reset!
             </Text>
 
             {/* Message */}
-            <Text className="text-sm text-neutral-600 text-center mb-2 leading-5">
+            <Text className="text-sm text-neutral-600 text-center mb-2 leading-5 dark:text-[#ADADAD] ">
               Your password has been successfully reset.
             </Text>
-            <Text className="text-sm text-neutral-600 text-center mb-6 leading-5">
+            <Text className="text-sm text-neutral-600 text-center mb-6 leading-5 dark:text-[#ADADAD] ">
               You can now sign in with your new password.
             </Text>
 
             {/* Divider */}
-            <View className="w-full h-px bg-gray-100 mb-5" />
+            <View className="w-full h-px bg-gray-100 mb-5 dark:bg-[#181818] " />
 
             {/* Info Note */}
             <View className="flex-row items-start mb-6 px-1">
               <Ionicons
                 name="shield-checkmark-outline"
                 size={16}
-                color="#72AF5B"
+                color={themeColor("#72AF5B", "#E6E6E6")}
                 style={{ marginTop: 1, marginRight: 6 }}
               />
-              <Text className="text-xs text-neutral-500 flex-1 leading-4">
+              <Text className="text-xs text-neutral-500 flex-1 leading-4 dark:text-[#ADADAD] ">
                 For your security, please do not share your password with
                 anyone.
               </Text>
@@ -269,11 +277,11 @@ export default function ResetPasswordScreen() {
 
             {/* Back to Sign In Button */}
             <TouchableOpacity
-              className="w-full h-[50px] bg-[#72AF5B] rounded-2xl items-center justify-center shadow-sm active:opacity-90"
+              className="w-full h-[50px] bg-[#72AF5B] rounded-2xl items-center justify-center shadow-sm active:opacity-90 dark:bg-[#E6E6E6] "
               onPress={handleGoToLogin}
               activeOpacity={0.85}
             >
-              <Text className="text-white text-base font-bold">
+              <Text className="text-white text-base font-bold dark:text-[#181818] ">
                 Back to Sign In
               </Text>
             </TouchableOpacity>

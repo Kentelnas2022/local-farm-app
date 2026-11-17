@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/context/theme-context";
 import { useToast } from "@/context/toast-context";
 import { resetPasswordForEmailApi } from "@/services/auth-service";
 import { validateEmail } from "@/utils/validation";
@@ -19,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const BG_IMAGE = require("../../../assets/images/background-blur.png");
 
 export default function ForgotPasswordScreen() {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
@@ -35,7 +37,10 @@ export default function ForgotPasswordScreen() {
 
     if (!emailVal.isValid) {
       setEmailError(emailVal.error || "Please enter a valid email address.");
-      showToast(emailVal.error || "Please enter a valid email address.", "warning");
+      showToast(
+        emailVal.error || "Please enter a valid email address.",
+        "warning",
+      );
       return;
     }
 
@@ -49,7 +54,8 @@ export default function ForgotPasswordScreen() {
       showToast("OTP code sent successfully to your email!", "success");
     } catch (err: any) {
       setIsLoading(false);
-      const msg = err?.message || "Failed to send reset code. Please try again.";
+      const msg =
+        err?.message || "Failed to send reset code. Please try again.";
       setGeneralError(msg);
       showToast(msg, "error");
     }
@@ -70,56 +76,49 @@ export default function ForgotPasswordScreen() {
       resizeMode="cover"
       style={{ flex: 1, overflow: "hidden" }}
     >
-      {/* Top Header Bar */}
+      {/* Top Header Bar - Absolute overlay so it doesn't shift the centered form */}
       <View
-        className="w-full px-4 z-20"
+        className="absolute top-0 left-0 right-0 px-4 z-20"
         style={{ paddingTop: Math.max(insets.top + 8, 16) }}
-      >
-        <TouchableOpacity
-          className="p-2 self-start rounded-full active:opacity-70"
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back-outline" size={26} color="#4B5563" />
-        </TouchableOpacity>
-      </View>
+      ></View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1 justify-center items-center px-5"
         style={{
+          paddingTop: Math.max(insets.top + 16, 24),
           paddingBottom: Math.max(insets.bottom + 16, 24),
         }}
       >
-        <View className="w-full max-w-[380px]">
+        <View className="w-full max-w-[380px] items-center">
           {/* Centered Circular Vector Icon */}
-          <View className="w-20 h-20 rounded-full bg-[#72AF5B] items-center justify-center self-center mb-6 shadow-md shadow-[#72AF5B]/30">
+          <View className="w-20 h-20 rounded-full bg-[#72AF5B] items-center justify-center self-center mb-6 shadow-md shadow-[#72AF5B]/30 dark:bg-[#E6E6E6] ">
             <MaterialCommunityIcons
               name="lock-reset"
               size={40}
-              color="#FFFFFF"
+              color={themeColor("#FFFFFF", "#181818")}
             />
           </View>
 
-          {/* Header Block */}
-          <View className="items-start mb-6 w-full">
-            <Text className="text-3xl font-extrabold text-neutral-900 text-left mb-2 tracking-tight">
+          {/* Centered Header Block */}
+          <View className="items-center mb-6 w-full">
+            <Text className="text-3xl font-extrabold text-neutral-900 text-center mb-2 tracking-tight dark:text-[#E6E6E6] ">
               Forgot Password?
             </Text>
-            <Text className="text-sm text-neutral-600 text-left leading-relaxed">
-              Enter your registered email address and we will send a 6-digit
-              OTP code to reset your password.
+            <Text className="text-md text-neutral-600 text-center leading-relaxed px-2 dark:text-[#ADADAD] ">
+              Enter your registered email address and we will send a 6-digit OTP
+              code to reset your password.
             </Text>
           </View>
 
           {/* Email Field */}
           <View className="w-full mb-6">
             <RNTextInput
-              className={`w-full h-[52px] bg-white/95 border ${
-                emailError ? "border-[#FF3B30] bg-[#FFF8F8]" : "border-gray-200"
-              } rounded-2xl px-4 text-base text-gray-900 shadow-sm`}
+              className={`w-full h-[52px] bg-white/95 border  dark:bg-[#242424]/95 ${
+                emailError ? "border-[#FF3B30] bg-[#FFF8F8] dark:bg-[#181818] " : "border-gray-200 dark:border-[#414141] "
+              } rounded-2xl px-4 text-base text-gray-900 shadow-sm dark:text-[#E6E6E6] `}
               placeholder="Enter your email"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={themeColor("#9CA3AF", "#ADADAD")}
               value={email}
               onChangeText={(text: string) => {
                 setEmail(text);
@@ -139,19 +138,19 @@ export default function ForgotPasswordScreen() {
 
           {/* Send Code Button */}
           <TouchableOpacity
-            className="w-full h-[52px] bg-[#72AF5B] rounded-2xl items-center justify-center shadow-md shadow-[#72AF5B]/30 active:opacity-90 mb-6"
+            className="w-full h-[52px] bg-[#72AF5B] rounded-2xl items-center justify-center shadow-md shadow-[#72AF5B]/30 active:opacity-90 mb-6 dark:bg-[#E6E6E6] "
             onPress={handleSendOtp}
             disabled={isLoading}
             activeOpacity={0.85}
           >
-            <Text className="text-white text-base font-bold tracking-wide">
+            <Text className="text-white text-base font-bold tracking-wide dark:text-[#181818] ">
               {isLoading ? "Sending..." : "Send Code"}
             </Text>
           </TouchableOpacity>
 
           {/* Footer / Back to Login Link */}
           <View className="flex-row justify-center items-center mt-2 w-full">
-            <Text className="text-sm text-neutral-600">
+            <Text className="text-md text-neutral-600 dark:text-[#ADADAD] ">
               Remember your password?{" "}
             </Text>
             <TouchableOpacity
@@ -159,9 +158,7 @@ export default function ForgotPasswordScreen() {
               activeOpacity={0.7}
               className="py-1"
             >
-              <Text className="text-sm font-bold text-[#72AF5B]">
-                Sign In
-              </Text>
+              <Text className="text-md font-bold text-[#72AF5B] dark:text-[#E6E6E6] ">Sign In</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -175,41 +172,41 @@ export default function ForgotPasswordScreen() {
         statusBarTranslucent
       >
         <View className="flex-1 bg-black/50 justify-center items-center px-6">
-          <View className="bg-white rounded-3xl p-8 w-full max-w-[340px] items-center shadow-2xl">
+          <View className="bg-white rounded-3xl p-8 w-full max-w-[340px] items-center shadow-2xl dark:bg-[#242424] ">
             {/* Modal Icon */}
-            <View className="w-16 h-16 rounded-full bg-[#E8F5E9] items-center justify-center mb-4">
+            <View className="w-16 h-16 rounded-full bg-[#E8F5E9] items-center justify-center mb-4 dark:bg-[#181818] ">
               <MaterialCommunityIcons
                 name="email-check-outline"
                 size={36}
-                color="#72AF5B"
+                color={themeColor("#72AF5B", "#E6E6E6")}
               />
             </View>
 
             {/* Modal Title */}
-            <Text className="text-2xl font-extrabold text-neutral-900 text-center mb-2">
+            <Text className="text-2xl font-extrabold text-neutral-900 text-center mb-2 dark:text-[#E6E6E6] ">
               Check Your Email!
             </Text>
 
             {/* Modal Message */}
-            <Text className="text-sm text-neutral-600 text-center mb-1 leading-5">
+            <Text className="text-md text-neutral-600 text-center mb-1 leading-5 dark:text-[#ADADAD] ">
               We've sent a 6-digit verification code to
             </Text>
-            <Text className="text-sm font-bold text-[#72AF5B] text-center mb-5">
+            <Text className="text-md font-bold text-[#72AF5B] text-center mb-5 dark:text-[#E6E6E6] ">
               {email}
             </Text>
 
             {/* Divider */}
-            <View className="w-full h-px bg-gray-100 mb-5" />
+            <View className="w-full h-px bg-gray-100 mb-5 dark:bg-[#181818] " />
 
             {/* Note */}
             <View className="flex-row items-start mb-6 px-1">
               <Ionicons
                 name="information-circle-outline"
                 size={16}
-                color="#888888"
+                color={themeColor("#888888", "#ADADAD")}
                 style={{ marginTop: 1, marginRight: 6 }}
               />
-              <Text className="text-xs text-neutral-500 flex-1 leading-4">
+              <Text className="text-sm text-neutral-500 flex-1 leading-4 dark:text-[#ADADAD] ">
                 Didn't receive the email? Check your spam folder or wait a few
                 minutes before requesting again.
               </Text>
@@ -217,21 +214,21 @@ export default function ForgotPasswordScreen() {
 
             {/* Continue Button */}
             <TouchableOpacity
-              className="w-full h-[50px] bg-[#72AF5B] rounded-2xl items-center justify-center shadow-sm active:opacity-90 mb-3"
+              className="w-full h-[50px] bg-[#72AF5B] rounded-2xl items-center justify-center shadow-sm active:opacity-90 mb-3 dark:bg-[#E6E6E6] "
               onPress={handleModalContinue}
               activeOpacity={0.85}
             >
-              <Text className="text-white text-base font-bold">
+              <Text className="text-white text-base font-bold dark:text-[#181818] ">
                 Enter Verification Code
               </Text>
             </TouchableOpacity>
 
             {/* Close / Cancel Button */}
             <TouchableOpacity
-              className="w-full h-[46px] border border-gray-200 rounded-2xl items-center justify-center active:opacity-70"
+              className="w-full h-[46px] border border-gray-200 rounded-2xl items-center justify-center active:opacity-70 dark:border-[#414141] "
               onPress={() => setShowModal(false)}
             >
-              <Text className="text-sm text-neutral-600 font-medium">Back</Text>
+              <Text className="text-sm text-neutral-600 font-medium dark:text-[#ADADAD] ">Back</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -239,4 +236,3 @@ export default function ForgotPasswordScreen() {
     </ImageBackground>
   );
 }
-

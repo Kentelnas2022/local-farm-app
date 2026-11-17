@@ -1,13 +1,18 @@
+import { useAppTheme } from "@/context/theme-context";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
   Modal,
   Pressable,
-  SafeAreaView,
+  ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
+  
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export interface SidebarMenuProps {
   isVisible: boolean;
@@ -38,11 +43,14 @@ export default function SidebarMenu({
   activeTab = "Request",
   onSelectTab,
 }: SidebarMenuProps) {
+  const { themeColor } = useAppTheme();
   const router = useRouter();
 
   const handlePressItem = (item: string) => {
     if (onSelectTab) onSelectTab(item);
     onClose();
+
+    if (item === activeTab) return;
 
     const targetRoute = ROUTE_MAP[item];
     if (targetRoute) {
@@ -60,29 +68,66 @@ export default function SidebarMenu({
       transparent={true}
       animationType="fade"
       onRequestClose={onClose}
+      statusBarTranslucent={true}
     >
-      <Pressable onPress={onClose} className="flex-1 bg-black/50 flex-row">
-        {/* Main Sidebar View */}
+      <View className="flex-1 relative" style={{ flex: 1 }}>
+        {/* Full-bleed Gradient Backdrop (Dark Gradient Black) */}
+        <Pressable onPress={onClose} style={StyleSheet.absoluteFill}>
+          <View style={StyleSheet.absoluteFill}>
+            <LinearGradient
+              colors={[
+                "rgba(0, 0, 0, 0.78)",
+                "rgba(0, 0, 0, 0.58)",
+                "rgba(0, 0, 0, 0.38)",
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </View>
+        </Pressable>
+
+        {/* Mobile Responsive Sidebar Drawer */}
         <Pressable
           onPress={(e) => e.stopPropagation()}
-          className="w-3/4 max-w-xs h-full bg-white shadow-2xl flex-col"
+          className="h-full w-[78%] max-w-[320px] bg-white flex-col dark:bg-[#242424] "
+          style={{
+            height: "100%",
+            width: "78%",
+            maxWidth: 320,
+            backgroundColor: themeColor("#FFFFFF", "#242424"),
+            elevation: 24,
+            shadowColor: "#000000",
+            shadowOffset: { width: 4, height: 0 },
+            shadowOpacity: 0.25,
+            shadowRadius: 16,
+          }}
         >
-          <SafeAreaView className="flex-1">
+          <SafeAreaView
+            className="flex-1 bg-white dark:bg-[#181818] "
+            edges={["top", "bottom", "left"]}
+          >
             {/* Header Section */}
-            <View className="flex-row items-center justify-between px-5 pt-3 pb-3.5 border-b border-gray-100 mb-3">
-              <Text className="text-2xl font-bold text-gray-900">Connection</Text>
+            <View className="flex-row items-center justify-between px-5 pt-3 pb-3.5 border-b border-gray-100 mb-3 dark:border-[#414141] ">
+              <Text className="text-2xl font-bold text-gray-900 dark:text-[#E6E6E6] ">
+                Connection
+              </Text>
               <TouchableOpacity
                 onPress={onClose}
                 className="p-1 -mr-1 active:opacity-70"
                 accessibilityRole="button"
                 accessibilityLabel="Close sidebar"
               >
-                <Ionicons name="close" size={26} color="#374151" />
+                <Ionicons name="close" size={26} color={themeColor("#34594A", "#E6E6E6")} />
               </TouchableOpacity>
             </View>
 
             {/* Navigation Menu List */}
-            <View className="px-3 gap-1.5 flex-1">
+            <ScrollView
+              className="flex-1 px-3"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ gap: 6, paddingBottom: 28 }}
+            >
               {MENU_ITEMS.map((item) => {
                 const isActive = activeTab === item;
 
@@ -90,15 +135,18 @@ export default function SidebarMenu({
                   <TouchableOpacity
                     key={item}
                     onPress={() => handlePressItem(item)}
+                    activeOpacity={0.8}
                     className={`py-3.5 px-4 rounded-xl flex-row items-center ${
-                      isActive ? "bg-[#72AF5B]" : "bg-transparent"
+                      isActive
+                        ? "bg-[#34594A] dark:bg-[#E6E6E6] "
+                        : "bg-transparent active:bg-gray-100 dark:active:bg-[#181818] "
                     }`}
                   >
                     <Text
                       className={`text-base pl-1 ${
                         isActive
-                          ? "text-white font-bold"
-                          : "text-gray-800 font-medium"
+                          ? "text-white font-bold dark:text-[#181818] "
+                          : "text-gray-800 font-medium dark:text-[#E6E6E6] "
                       }`}
                     >
                       {item}
@@ -106,11 +154,10 @@ export default function SidebarMenu({
                   </TouchableOpacity>
                 );
               })}
-            </View>
+            </ScrollView>
           </SafeAreaView>
         </Pressable>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
-
